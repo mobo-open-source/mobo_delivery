@@ -1,45 +1,60 @@
-# Miscellaneous
-*.class
+# ================== GENERAL ==================
+.DS_Store
 *.log
 *.pyc
 *.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
+# ================== IDE ==================
 .idea/
+*.iml
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# ================== FLUTTER ==================
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
-/build/
+build/
 
-# Symbolication related
+# Generated
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# ================== ANDROID ==================
+android/.gradle/
+android/local.properties
+android/key.properties
+*.keystore
+*.jks
+captures/
+.gradle/
+
+# Build outputs
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# ================== IOS ==================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/App.framework
+ios/Flutter/engine/
+ios/ServiceDefinitions.json
+
+# Xcode user data (VERY IMPORTANT)
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+*.xcuserstate
+
+# ================== MACOS ==================
+macos/Pods/
+macos/Flutter/ephemeral/
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/xcuserdata/
+
+# ================== SYMBOLS ==================
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
