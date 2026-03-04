@@ -11,6 +11,7 @@ import 'package:hive/hive.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../core/providers/motion_provider.dart';
@@ -369,6 +370,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (success == true) {
         await _loadSavingData();
         setState(() => isSaving = false);
+        ReviewService().trackSignificantEvent();
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!mounted) return;
+          ReviewService().checkAndShowRating(context);
+        });
       } else if (success is Map && success['name'] == 'Create Backorder?') {
         await _showBackorderDialog(pickingId, success);
         setState(() => isSaving = false);
@@ -416,6 +422,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (success) {
         await _loadSavingData();
         setState(() => isSaving = false);
+        ReviewService().trackSignificantEvent();
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!mounted) return;
+          ReviewService().checkAndShowRating(context);
+        });
       } else {
         setState(() {
           isSaving = false;
@@ -614,6 +625,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     if (success) {
       await _loadSavingData();
       setState(() => isSaving = false);
+      ReviewService().trackSignificantEvent();
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        ReviewService().checkAndShowRating(context);
+      });
     } else {
       setState(() {
         isSaving = false;
@@ -760,6 +776,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           isSaving = false;
           _isEditing = false;
           _errorMessage = "Changes saved offline. Will sync when online.";
+        });
+        ReviewService().trackSignificantEvent();
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!mounted) return;
+          ReviewService().checkAndShowRating(context);
         });
       }
     } else {

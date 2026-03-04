@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../../../../Rating/review_service.dart';
 import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/snackbar.dart';
@@ -291,6 +292,11 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                   },
             ),
           );
+          ReviewService().trackSignificantEvent();
+          Future.delayed(const Duration(seconds: 3), () {
+            if (!mounted) return;
+            ReviewService().checkAndShowRating(context);
+          });
         } else {
           setState(() {
             isLoading = false;
@@ -332,7 +338,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           context,
           'No internet. Picking saved offline.',
         );
-
         Navigator.pop(context);
       }
     } catch (e) {

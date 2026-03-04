@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+import '../../Rating/review_service.dart';
 import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -40,6 +41,12 @@ class _SplashScreenState extends State<SplashScreen> {
     );
 
     _startAuthCheck();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 2), () {
+        ReviewService().trackAppOpen();
+      });
+    });
   }
 
   /// Delays for branding visibility, then checks authentication status and navigates.

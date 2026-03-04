@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../../../Rating/review_service.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../services/odoo_picking_note_service.dart';
@@ -80,6 +81,11 @@ class _AddNoteBottomSheetState extends State<AddNoteBottomSheet> {
       widget.onNoteAdded();
       Navigator.pop(context);
       CustomSnackbar.showSuccess(context, 'Note saved successfully to ${widget.pickingName}');
+      ReviewService().trackSignificantEvent();
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        ReviewService().checkAndShowRating(context);
+      });
     } else {
       Navigator.pop(context);
       CustomSnackbar.showError(context, 'Failed to save note. Please try again.');

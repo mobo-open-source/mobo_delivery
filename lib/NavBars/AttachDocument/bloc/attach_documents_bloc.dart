@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../Rating/review_service.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
 import 'attach_documents_event.dart';
 import 'attach_documents_state.dart';
@@ -303,6 +304,7 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
         displayedCount: displayedCount,
         totalCount: totalCount,
       ));
+      ReviewService().trackSignificantEvent();
     } catch (e) {
       emit(AttachDocumentsError(
         'Failed to upload file: $e',

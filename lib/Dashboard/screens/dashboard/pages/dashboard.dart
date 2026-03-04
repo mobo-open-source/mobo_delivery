@@ -6,6 +6,7 @@ import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:provider/provider.dart';
 import '../../../../NavBars/AttachDocument/pages/attach_documents_page.dart';
 import '../../../../NavBars/PickingNotes/screens/picking_notes_page.dart';
+import '../../../../Rating/review_service.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
 import '../../../../core/company/widgets/company_selector_widget.dart';
@@ -44,6 +45,13 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          ReviewService().checkAndShowRating(context);
+        }
+      });
+    });
   }
 
   @override
