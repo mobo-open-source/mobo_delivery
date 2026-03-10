@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +55,12 @@ class _DashboardState extends State<Dashboard> {
         }
       });
     });
+  }
+
+  /// Checks if a given byte array contains SVG content.
+  bool isSvgBytes(Uint8List bytes) {
+    final str = utf8.decode(bytes, allowMalformed: true);
+    return str.contains('<svg');
   }
 
   @override
@@ -189,16 +198,30 @@ class _DashboardState extends State<Dashboard> {
                           },
                           child: CircleAvatar(
                             radius: 20,
-                            backgroundColor: Colors.white,
-                            backgroundImage: state.profilePicBytes != null
-                                ? MemoryImage(state.profilePicBytes!)
-                                : null,
-                            child: state.profilePicBytes == null
-                                ? const Icon(
-                                    Icons.person,
-                                    color: AppStyle.primaryColor,
-                                  )
-                                : null,
+                            backgroundColor: AppStyle.primaryColor,
+                            child: state.profilePicBytes != null
+                                ? isSvgBytes(state.profilePicBytes!)
+                                ? ClipOval(
+                              child: SvgPicture.memory(
+                                state.profilePicBytes!,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                                : ClipOval(
+                              child: Image.memory(
+                                state.profilePicBytes!,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  HugeIcons.strokeRoundedUser,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                                : Icon(HugeIcons.strokeRoundedUser, color: Colors.white),
                           ),
                         ),
                         const SizedBox(width: 12),

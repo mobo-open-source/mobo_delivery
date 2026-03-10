@@ -108,7 +108,12 @@ class CommonStorageService {
   Future<void> saveAccount(Map<String, dynamic> account) async {
     final prefs = await SharedPreferences.getInstance();
     final accounts = await getAccounts();
-    accounts.removeWhere((a) => a['userLogin'] == account['userLogin']);
+
+    accounts.removeWhere((a) =>
+    a['userLogin'] == account['userLogin'] &&
+        a['url'] == account['url'] &&
+        a['database'] == account['database']);
+
     if (!account.containsKey('image')) {
       account['image'] = '';
     }

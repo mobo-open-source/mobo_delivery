@@ -144,6 +144,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     attachmentAndNotes.initializeOdooClient();
   }
 
+  String safeString(dynamic value) =>
+      value is String ? value : '';
+
   /// Core method: Load or refresh user profile data
   ///   - Online: fetch from Odoo → save to storage + Hive
   ///   - Offline: use cached data from storage
@@ -178,19 +181,20 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           profileImage = null;
         }
         profile = Profile(
-            name: userDetails?['name'],
-            email: userDetails?['email'],
-            phone: userDetails?['phone'],
-            mobile: mobile,
-            company: userDetails?['company_id'] != null &&
-                (userDetails!['company_id'] as List).isNotEmpty
-                ? userDetails['company_id'][1].toString()
-                : '',
-            website: userDetails?['website'],
-            jobTitle: userDetails?['position'],
-            profileImage: profileImage,
-            mapToken: (await storageService.getSessionData())['mapToken']
-                ?.toString() ?? ''
+          name: safeString(userDetails?['name']),
+          email: safeString(userDetails?['email']),
+          phone: safeString(userDetails?['phone']),
+          mobile: mobile,
+          company: userDetails?['company_id'] != null &&
+              (userDetails!['company_id'] as List).isNotEmpty
+              ? userDetails['company_id'][1].toString()
+              : '',
+          website: safeString(userDetails?['website']),
+          jobTitle: safeString(userDetails?['position']),
+          profileImage: profileImage,
+          mapToken: (await storageService.getSessionData())['mapToken']
+              ?.toString() ??
+              '',
         );
 
         await HiveProfileService().saveProfile(profile);
@@ -209,8 +213,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           : null;
 
       emit(state.copyWith(
-        userName: userDetails['name'],
-        mail: userDetails['email'],
+        userName: safeString(userDetails['name']),
+        mail: safeString(userDetails['email']),
         profilePicBytes: profilePicBytes,
       ));
     }
