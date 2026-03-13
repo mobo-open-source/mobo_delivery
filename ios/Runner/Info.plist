@@ -32,10 +32,6 @@
 	<string>This app requires location access in the background to track delivery routes even when the screen is off.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app uses your location to track and manage delivery routes.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app requires access to your photo library to attach images to deliveries and orders.</string>
 	<key>UIApplicationSceneManifest</key>
