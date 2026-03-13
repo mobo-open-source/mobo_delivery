@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import '../models/profile.dart';
 
 /// Service responsible for persisting and retrieving the user's [Profile]

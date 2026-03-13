@@ -8,7 +8,7 @@ part of 'partner.dart';
 
 class PartnerAdapter extends TypeAdapter<Partner> {
   @override
-  final int typeId = 3;
+  final typeId = 3;
 
   @override
   Partner read(BinaryReader reader) {
@@ -16,10 +16,7 @@ class PartnerAdapter extends TypeAdapter<Partner> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Partner(
-      id: fields[0] as int,
-      name: fields[1] as String,
-    );
+    return Partner(id: (fields[0] as num).toInt(), name: fields[1] as String);
   }
 
   @override

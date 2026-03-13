@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import '../../CreateNewPicking/models/Hive/pending_creates.dart';
 import '../models/operation_type.dart';
 import '../models/partner.dart';

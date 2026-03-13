@@ -7,7 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';

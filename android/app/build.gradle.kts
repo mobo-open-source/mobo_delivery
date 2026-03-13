@@ -8,13 +8,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
-
-
 
 android {
     namespace = "com.cybrosys.mobo_delivery"
@@ -39,6 +43,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: ""
     }
 
     signingConfigs {

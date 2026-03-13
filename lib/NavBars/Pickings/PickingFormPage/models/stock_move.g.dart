@@ -8,7 +8,7 @@ part of 'stock_move.dart';
 
 class StockMoveAdapter extends TypeAdapter<StockMove> {
   @override
-  final int typeId = 5;
+  final typeId = 5;
 
   @override
   StockMove read(BinaryReader reader) {
@@ -17,11 +17,11 @@ class StockMoveAdapter extends TypeAdapter<StockMove> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return StockMove(
-      id: fields[0] as int,
+      id: (fields[0] as num).toInt(),
       productId: (fields[1] as List?)?.cast<dynamic>(),
-      productUomQty: fields[2] as double,
-      productUomId: fields[8] as int?,
-      quantity: fields[3] as double,
+      productUomQty: (fields[2] as num).toDouble(),
+      productUomId: (fields[8] as num?)?.toInt(),
+      quantity: (fields[3] as num).toDouble(),
       pickingId: (fields[4] as List?)?.cast<dynamic>(),
       locationId: (fields[5] as List?)?.cast<dynamic>(),
       lotId: (fields[6] as List?)?.cast<dynamic>(),

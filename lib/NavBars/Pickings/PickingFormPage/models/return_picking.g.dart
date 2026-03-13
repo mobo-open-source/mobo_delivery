@@ -8,7 +8,7 @@ part of 'return_picking.dart';
 
 class ReturnPickingAdapter extends TypeAdapter<ReturnPicking> {
   @override
-  final int typeId = 14;
+  final typeId = 14;
 
   @override
   ReturnPicking read(BinaryReader reader) {
@@ -17,10 +17,10 @@ class ReturnPickingAdapter extends TypeAdapter<ReturnPicking> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return ReturnPicking(
-      id: fields[0] as int,
-      pickingId: fields[1] as int,
+      id: (fields[0] as num).toInt(),
+      pickingId: fields[1] == null ? 0 : (fields[1] as num).toInt(),
       name: fields[2] as String,
-      partnerId: fields[3] as int,
+      partnerId: (fields[3] as num).toInt(),
       scheduledDate: fields[4] as String,
       origin: fields[5] as String,
       state: fields[6] as String,

@@ -165,7 +165,7 @@ class ReviewService {
     // Show a small snackbar so the user knows the code is working
     scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
-        content: const Text('Requesting Google Play review...'),
+        content: const Text('Requesting Store review...'),
         duration: const Duration(seconds: 2),
         backgroundColor: Colors.blue[700],
       ),

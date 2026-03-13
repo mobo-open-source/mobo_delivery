@@ -8,7 +8,7 @@ part of 'product.dart';
 
 class ProductAdapter extends TypeAdapter<Product> {
   @override
-  final int typeId = 2;
+  final typeId = 2;
 
   @override
   Product read(BinaryReader reader) {
@@ -17,9 +17,9 @@ class ProductAdapter extends TypeAdapter<Product> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Product(
-      id: fields[0] as int,
+      id: (fields[0] as num).toInt(),
       name: fields[1] as String,
-      uom_id: fields[2] as int,
+      uom_id: (fields[2] as num).toInt(),
     );
   }
 

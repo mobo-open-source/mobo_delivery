@@ -1,4 +1,4 @@
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 
 part 'picking_form.g.dart';
 

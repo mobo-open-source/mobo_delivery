@@ -51,17 +51,17 @@ class ProfileRepository {
             mobile = (userDetails['mobile_phone'] is String) ? userDetails['mobile_phone'] : '';
           }
           final profile = Profile(
-            name: userDetails['name'] ?? '',
-            email: userDetails['email'] ?? '',
-            phone: userDetails['phone'] ?? '',
-            company: (userDetails['company_id'] != null && (userDetails['company_id'] as List).isNotEmpty)
-                ? userDetails['company_id'][1]
+            name: userDetails['name'] is String ? userDetails['name'] : '',
+            email: userDetails['email'] is String ? userDetails['email'] : '',
+            phone: userDetails['phone'] is String ? userDetails['phone'] : '',
+            company: (userDetails['company_id'] is List && (userDetails['company_id'] as List).isNotEmpty)
+                ? userDetails['company_id'][1].toString()
                 : '',
             mobile: mobile,
-            website: userDetails['website'] ?? '',
-            jobTitle: userDetails['position'] ?? '',
-            profileImage: userDetails['image_1920'] ?? '',
-              mapToken: (await storageService.getSessionData())['mapToken']?.toString() ?? ''
+            website: userDetails['website'] is String ? userDetails['website'] : '',
+            jobTitle: userDetails['job_title'] is String ? userDetails['job_title'] : '',
+            profileImage: userDetails['image_1920'] is String ? userDetails['image_1920'] : '',
+            mapToken: (await storageService.getSessionData())['mapToken']?.toString() ?? '',
           );
           await hiveService.saveProfile(profile);
           return profile;

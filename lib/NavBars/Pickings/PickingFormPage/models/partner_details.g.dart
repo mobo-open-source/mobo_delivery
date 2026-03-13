@@ -8,7 +8,7 @@ part of 'partner_details.dart';
 
 class PartnerDetailsAdapter extends TypeAdapter<PartnerDetails> {
   @override
-  final int typeId = 12;
+  final typeId = 12;
 
   @override
   PartnerDetails read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class PartnerDetailsAdapter extends TypeAdapter<PartnerDetails> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PartnerDetails(
-      id: fields[0] as int,
+      id: (fields[0] as num).toInt(),
       address: fields[1] as String?,
       imageBase64: fields[2] as String?,
     );

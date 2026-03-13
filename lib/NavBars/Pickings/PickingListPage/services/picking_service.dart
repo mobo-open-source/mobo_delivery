@@ -1,7 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 
 import '../../../../core/company/session/company_session_manager.dart';
 import '../models/picking_model.dart';

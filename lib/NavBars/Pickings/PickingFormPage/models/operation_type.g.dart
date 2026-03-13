@@ -8,7 +8,7 @@ part of 'operation_type.dart';
 
 class OperationTypeAdapter extends TypeAdapter<OperationType> {
   @override
-  final int typeId = 10;
+  final typeId = 10;
 
   @override
   OperationType read(BinaryReader reader) {
@@ -17,10 +17,10 @@ class OperationTypeAdapter extends TypeAdapter<OperationType> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return OperationType(
-      id: fields[0] as int,
+      id: (fields[0] as num).toInt(),
       name: fields[1] as String,
-      defaultLocationSrcId: fields[2] as int?,
-      defaultLocationDestId: fields[3] as int?,
+      defaultLocationSrcId: (fields[2] as num?)?.toInt(),
+      defaultLocationDestId: (fields[3] as num?)?.toInt(),
     );
   }
 

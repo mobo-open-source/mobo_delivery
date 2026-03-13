@@ -167,7 +167,8 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
   Future<void> _loadCompanyData() async {
     final companyDetails = await odooService.getCompanyDetails(companyId ?? 1);
     if (companyDetails != null &&
-        companyDetails['x_map_key_encrypted'] != null) {
+        companyDetails['x_map_key_encrypted'] is String &&
+        (companyDetails['x_map_key_encrypted'] as String).isNotEmpty) {
       final decryptedKey = encryptionService.decryptText(
         companyDetails['x_map_key_encrypted'] as String,
       );
