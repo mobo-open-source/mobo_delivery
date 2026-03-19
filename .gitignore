@@ -43,6 +43,7 @@ ios/Flutter/Flutter.framework
 ios/Flutter/App.framework
 ios/Flutter/engine/
 ios/ServiceDefinitions.json
+ios/Flutter/Config.xcconfig
 
 # Xcode user data (VERY IMPORTANT)
 ios/Runner.xcworkspace/xcuserdata/

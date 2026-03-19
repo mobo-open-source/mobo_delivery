@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../Rating/review_service.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
@@ -113,6 +114,11 @@ class _CancelledDeliveryListState extends State<CancelledDeliveryList> {
         context,
         'Offline cancelled deliveries synced successfully!',
       );
+      ReviewService().trackSignificantEvent();
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        ReviewService().checkAndShowRating(context);
+      });
     } catch (e) {
       setState(() => isSyncing = false);
       CustomSnackbar.showError(

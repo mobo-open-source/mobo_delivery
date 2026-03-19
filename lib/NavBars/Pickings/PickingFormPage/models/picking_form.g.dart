@@ -8,7 +8,7 @@ part of 'picking_form.dart';
 
 class PickingFormAdapter extends TypeAdapter<PickingForm> {
   @override
-  final int typeId = 1;
+  final typeId = 1;
 
   @override
   PickingForm read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class PickingFormAdapter extends TypeAdapter<PickingForm> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PickingForm(
-      id: fields[0] as int,
+      id: (fields[0] as num).toInt(),
       name: fields[1] as String,
       partnerId: (fields[2] as List?)?.cast<dynamic>(),
       pickingTypeId: (fields[3] as List?)?.cast<dynamic>(),
@@ -32,12 +32,12 @@ class PickingFormAdapter extends TypeAdapter<PickingForm> {
       userId: (fields[12] as List?)?.cast<dynamic>(),
       groupId: (fields[13] as List?)?.cast<dynamic>(),
       companyId: (fields[14] as List?)?.cast<dynamic>(),
-      returnCount: fields[15] as int,
+      returnCount: (fields[15] as num).toInt(),
       returnIds: (fields[16] as List?)?.cast<int>(),
       showCheckAvailability: fields[17] as bool,
       pickingTypeCode: fields[18] as String?,
-      locationIdInt: fields[19] as int?,
-      locationDestIdInt: fields[20] as int?,
+      locationIdInt: (fields[19] as num?)?.toInt(),
+      locationDestIdInt: (fields[20] as num?)?.toInt(),
     );
   }
 

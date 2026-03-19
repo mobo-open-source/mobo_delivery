@@ -8,7 +8,7 @@ part of 'pending_creates.dart';
 
 class PendingCreatesAdapter extends TypeAdapter<PendingCreates> {
   @override
-  final int typeId = 8;
+  final typeId = 8;
 
   @override
   PendingCreates read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class PendingCreatesAdapter extends TypeAdapter<PendingCreates> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PendingCreates(
-      pickingId: fields[0] as int,
+      pickingId: (fields[0] as num).toInt(),
       pickingData: (fields[1] as Map).cast<String, dynamic>(),
     );
   }

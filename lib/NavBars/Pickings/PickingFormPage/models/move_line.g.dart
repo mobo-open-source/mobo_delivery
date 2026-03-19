@@ -8,7 +8,7 @@ part of 'move_line.dart';
 
 class MoveLineAdapter extends TypeAdapter<MoveLine> {
   @override
-  final int typeId = 13;
+  final typeId = 13;
 
   @override
   MoveLine read(BinaryReader reader) {
@@ -17,8 +17,8 @@ class MoveLineAdapter extends TypeAdapter<MoveLine> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return MoveLine(
-      id: fields[0] as int,
-      pickingId: fields[1] as int,
+      id: (fields[0] as num).toInt(),
+      pickingId: (fields[1] as num).toInt(),
       data: (fields[2] as Map).cast<String, dynamic>(),
     );
   }

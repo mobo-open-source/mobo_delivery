@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odoo_delivery_app/shared/utils/memory_page_manager.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:path_provider/path_provider.dart';
@@ -37,8 +38,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Hive for offline storage
-  final appDocumentDir = await getApplicationDocumentsDirectory();
-  Hive.init(appDocumentDir.path);
+  await Hive.initFlutter();
 
   // Register all Hive adapters
   Hive.registerAdapter(PickingAdapter());

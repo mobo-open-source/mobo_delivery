@@ -70,6 +70,8 @@ class OdooDashboardService {
         'email',
         'phone',
         'company_id',
+        'website',
+        'job_title',
         mobile,
       ];
       final userDetails = await CompanySessionManager.callKwWithCompany({

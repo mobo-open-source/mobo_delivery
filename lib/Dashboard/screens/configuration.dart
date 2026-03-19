@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/profile/pages/profile_page.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/settings/pages/settings_page.dart';
@@ -9,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../LoginPage/models/session_model.dart';
 import '../../LoginPage/services/storage_service.dart';
+import '../../core/company/session/company_session_manager.dart';
 import '../../core/providers/motion_provider.dart';
 import '../../shared/utils/app_theme.dart';
 import '../../shared/utils/globals.dart';
@@ -58,6 +60,8 @@ class _ConfigurationState extends State<Configuration> {
   int? companyId;
   bool? isSystem;
   late OdooDashboardService odooService;
+  String? currentUrl;
+  String? currentDatabase;
 
   /// Initializes storage services and sets up Odoo client session.
   ///
@@ -68,6 +72,23 @@ class _ConfigurationState extends State<Configuration> {
     storageService = DashboardStorageService();
     loginStorageService = StorageService();
     _initializeOdooClient();
+    _loadStoredAccounts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadStoredAccounts();
+  }
+
+  /// Loads the list of stored accounts from SharedPreferences.
+  Future<void> _loadStoredAccounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      currentUrl = prefs.getString('url')??"";
+      currentDatabase = prefs.getString('selectedDatabase')??"";
+      setState(() {});
+    } catch (_) {}
   }
 
   /// Initializes Odoo client using stored session data.
@@ -111,6 +132,30 @@ class _ConfigurationState extends State<Configuration> {
     });
   }
 
+
+  /// Checks if base64 string represents an SVG image
+  bool isSvgBase64(String data) {
+    try {
+      final decoded = utf8.decode(base64Decode(data), allowMalformed: true);
+      return decoded.contains('<svg');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Checks if bytes represent an SVG image (looks for `<svg` tag)
+  bool isSvgBytes(Uint8List bytes) {
+    final str = utf8.decode(bytes, allowMalformed: true);
+    return str.contains('<svg');
+  }
+
+  String safeString(dynamic value, {String fallback = "Unknown"}) {
+    if (value is String && value.isNotEmpty) {
+      return value;
+    }
+    return fallback;
+  }
+
   /// Builds the Configuration screen UI.
   ///
   /// Includes:
@@ -123,6 +168,7 @@ class _ConfigurationState extends State<Configuration> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final motionProvider = Provider.of<MotionProvider>(context, listen: false);
+    final imageData = profile?['image_1920'];
 
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
@@ -182,29 +228,53 @@ class _ConfigurationState extends State<Configuration> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundImage:
-                          (profile?['image_1920'] is String &&
-                              (profile!['image_1920'] as String).isNotEmpty)
-                          ? MemoryImage(
-                              base64Decode(profile?['image_1920'] as String),
-                            )
-                          : (widget.profileImageBytes != null
-                                ? MemoryImage(widget.profileImageBytes!)
-                                : null),
-
-                      child:
-                          ((profile?['image_1920'] == null ||
-                                  !(profile?['image_1920'] is String) ||
-                                  (profile?['image_1920'] as String).isEmpty) &&
-                              widget.profileImageBytes == null)
-                          ? const Icon(
-                              Icons.person,
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: (imageData != null && imageData is String && imageData.isNotEmpty)
+                              ? isSvgBase64(imageData)
+                              ? SvgPicture.memory(
+                            base64Decode(imageData),
+                            fit: BoxFit.cover,
+                          )
+                              : Image.memory(
+                            base64Decode(imageData),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              HugeIcons.strokeRoundedUser,
+                              color: Colors.white,
                               size: 30,
-                              color: AppStyle.primaryColor,
-                            )
-                          : null,
+                            ),
+                          )
+                              : widget.profileImageBytes != null
+                              ? isSvgBytes(widget.profileImageBytes!)
+                              ? SvgPicture.memory(
+                            widget.profileImageBytes!,
+                            fit: BoxFit.cover,
+                          )
+                              : Image.memory(
+                            widget.profileImageBytes!,
+                            fit: BoxFit.cover,
+                          )
+                              : const Icon(
+                            HugeIcons.strokeRoundedUser,
+                            size: 30,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -223,8 +293,7 @@ class _ConfigurationState extends State<Configuration> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            profile?['email'] ?? widget.mail ?? "Unknown",
-                            style: TextStyle(
+                            safeString(profile?['email'], fallback: widget.mail ?? "Unknown"),                            style: TextStyle(
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
@@ -246,11 +315,18 @@ class _ConfigurationState extends State<Configuration> {
             ),
 
             const SizedBox(height: 24),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[850] : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
               child: Column(
                 children: [
                   ListTile(
@@ -352,14 +428,21 @@ class _ConfigurationState extends State<Configuration> {
                                 ),
                               );
                             }
-                            final otherAccounts = accounts
-                                .where(
-                                  (user) =>
-                                      user['userId'] != profile?['id'] &&
-                                      user['userName'] != null &&
-                                      (user['userName'] as String).isNotEmpty,
-                                )
-                                .toList();
+
+                            final otherAccounts = accounts.where((user) {
+                              final userUrl = user['url'] ?? '';
+                              final userDatabase = user['database'] ?? '';
+                              final userName = user['userName'] ?? '';
+                              final userId = user['userId'] ?? '';
+
+                              final isSameAccount =
+                                  userUrl == currentUrl &&
+                                      userDatabase == currentDatabase &&
+                                      userId ==  profile?['id'];
+
+                              return !isSameAccount &&
+                                  userName.isNotEmpty;
+                            }).toList();
 
                             return Column(
                               children: [
@@ -395,56 +478,137 @@ class _ConfigurationState extends State<Configuration> {
                                       ],
                                     ),
                                   ),
+
                                 ...otherAccounts.map((user) {
                                   Uint8List? avatar;
-                                  if (user['image'] != null &&
-                                      (user['image'] as String).isNotEmpty) {
-                                    try {
+                                  try {
+                                    if (user['image'] != null &&
+                                        (user['image'] as String).isNotEmpty) {
                                       avatar = base64Decode(user['image']);
-                                    } catch (_) {}
-                                  }
+                                    }
+                                  } catch (_) {}
 
-                                  return ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundImage: avatar != null
-                                          ? MemoryImage(avatar)
-                                          : null,
-                                      child: avatar == null
-                                          ? const Icon(Icons.person)
-                                          : null,
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF434242) : Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.08),
+                                          offset: const Offset(0, -2),
+                                          blurRadius: 6,
+                                        ),
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.08),
+                                          offset: const Offset(0, 3),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
                                     ),
-                                    title: Text(
-                                      user['userName']!,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 16,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black87,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      user['userLogin'] ?? "",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 13,
-                                        color: isDark
-                                            ? Colors.grey[400]!
-                                            : Colors.grey[600]!,
-                                      ),
-                                    ),
-                                    trailing: TextButton(
-                                      onPressed: () async {
-                                        await switchAccount(user);
-                                      },
-                                      child: Text(
-                                        "Switch",
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white
-                                              : AppTheme.primaryColor,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 14,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      child: ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: AppStyle.primaryColor,
+                                          child: avatar == null
+                                              ? const Icon(
+                                            HugeIcons.strokeRoundedUser,
+                                            color: Colors.white,
+                                          )
+                                              : isSvgBytes(avatar)
+                                              ? ClipOval(
+                                            child: SvgPicture.memory(
+                                              avatar,
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                              : ClipOval(
+                                            child: Image.memory(
+                                              avatar,
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        title: Builder(
+                                          builder: (_) {
+                                            final name = user['userName'] ?? '';
+                                            final url = user['url'] ?? '';
+                                            final db = user['database'] ?? '';
+
+                                            String suffix = "";
+
+                                            if (url != currentUrl) {
+                                              suffix = " ($url)";
+                                            } else if (db != currentDatabase) {
+                                              suffix = " ($db)";
+                                            }
+
+                                            return Text.rich(
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: name,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w500,
+                                                      fontSize: 16,
+                                                      color: isDark ? Colors.white : Colors.black87,
+                                                    ),
+                                                  ),
+                                                  if (suffix.isNotEmpty)
+                                                    TextSpan(
+                                                      text: suffix,
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.w400,
+                                                        fontSize: 13,
+                                                        color: Colors.blue[700],
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        subtitle: Text(
+                                          user['userLogin'] ?? "",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w400,
+                                            fontSize: 13,
+                                            color: isDark
+                                                ? Colors.grey[400]!
+                                                : Colors.grey[600]!,
+                                          ),
+                                        ),
+                                        trailing: OutlinedButton(
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                            minimumSize: const Size(50, 28),
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            side: BorderSide(
+                                              color: isDark ? Colors.white : AppStyle.primaryColor,
+                                              width: 1,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          onPressed: () async {
+                                            await switchAccount(user);
+                                          },
+                                          child: Text(
+                                            "Switch",
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.primaryColor,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 14,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -453,7 +617,7 @@ class _ConfigurationState extends State<Configuration> {
 
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
+                                    vertical: 8, horizontal: 16
                                   ),
                                   child: SizedBox(
                                     width: double.infinity,
@@ -469,6 +633,8 @@ class _ConfigurationState extends State<Configuration> {
                                             prefs.getString(
                                                 'selectedDatabase') ??
                                                 '';
+                                        final session = await CompanySessionManager.getCurrentSession();
+
                                         Navigator.pop(context);
                                         Navigator.push(
                                           context,
@@ -482,6 +648,7 @@ class _ConfigurationState extends State<Configuration> {
                                                     ServerUrlScreen(
                                                       serverUrl: url,
                                                       database: database,
+                                                      session: session!,
                                                     ),
                                             transitionDuration:
                                                 motionProvider.reduceMotion
@@ -626,7 +793,7 @@ class _ConfigurationState extends State<Configuration> {
       isLoggedIn: true,
       database: user['database'],
       url: user['url'],
-      password: user['password'],
+      password: user['password']??"",
     );
 
     if (context.mounted) {

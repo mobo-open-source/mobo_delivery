@@ -78,6 +78,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     odooService = OdooDashboardService(sessionData['url'], session);
   }
+
   @override
   void initState() {
     super.initState();
@@ -126,7 +127,10 @@ class _SettingsPageState extends State<SettingsPage> {
           await prefs.setBool('biometricEnabled', true);
         }
       } else {
-        CustomSnackbar.showError(context, 'Biometric authentication not supported on this device.');
+        CustomSnackbar.showError(
+          context,
+          'Biometric authentication not supported on this device.',
+        );
         setState(() => _biometricEnabled = false);
         await prefs.setBool('biometricEnabled', false);
       }
@@ -137,9 +141,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (mounted) {
       _biometricEnabled
-          ? CustomSnackbar.showSuccess(context, 'Biometric authentication enabled.')
-          : CustomSnackbar.showError(context, 'Biometric authentication disabled.');
-
+          ? CustomSnackbar.showSuccess(
+              context,
+              'Biometric authentication enabled.',
+            )
+          : CustomSnackbar.showError(
+              context,
+              'Biometric authentication disabled.',
+            );
     }
   }
 
@@ -211,8 +220,12 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 _buildAppearanceSection(context, state),
                 _buildSecuritySection(context, state),
-                if(isOnline)
-                  _buildLanguageAndRegionSection(context, state, uniqueCurrencyItems),
+                if (isOnline)
+                  _buildLanguageAndRegionSection(
+                    context,
+                    state,
+                    uniqueCurrencyItems,
+                  ),
                 _buildDataAndStorageSection(context),
                 _buildHelpAndSupportSection(context, isDark),
                 _buildAboutSection(context, isDark),
@@ -238,7 +251,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -293,15 +306,21 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 FlutterSwitch(
                   width: 60,
-                  activeColor: isDark ? Colors.grey[400]! : AppStyle.primaryColor,
+                  activeColor: isDark
+                      ? Colors.grey[400]!
+                      : AppStyle.primaryColor,
                   inactiveColor: isDark ? Colors.black : Colors.white,
                   value: state.isDarkMode,
                   onToggle: (value) {
-                    context.read<SettingsBloc>().add(ToggleDarkModeEvent(value));
+                    context.read<SettingsBloc>().add(
+                      ToggleDarkModeEvent(value),
+                    );
                     themeProvider.toggleTheme();
                   },
                   activeToggleColor: isDark ? Colors.black : Colors.white,
-                  inactiveToggleColor: isDark ? Colors.grey[400]! : AppStyle.primaryColor,
+                  inactiveToggleColor: isDark
+                      ? Colors.grey[400]!
+                      : AppStyle.primaryColor,
                   showOnOff: false,
                   switchBorder: Border.all(
                     color: isDark ? Colors.grey[400]! : AppStyle.primaryColor,
@@ -346,16 +365,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 FlutterSwitch(
                   width: 60,
-                  activeColor: isDark ? Colors.grey[400]! : AppStyle.primaryColor,
+                  activeColor: isDark
+                      ? Colors.grey[400]!
+                      : AppStyle.primaryColor,
                   inactiveColor: isDark ? Colors.black : Colors.white,
                   value: state.reduceMotion,
                   onToggle: (val) {
-                    context.read<SettingsBloc>().add(ToggleReduceMotionEvent(val));
-                    Provider.of<MotionProvider>(context, listen: false)
-                        .setReduceMotion(val);
+                    context.read<SettingsBloc>().add(
+                      ToggleReduceMotionEvent(val),
+                    );
+                    Provider.of<MotionProvider>(
+                      context,
+                      listen: false,
+                    ).setReduceMotion(val);
                   },
                   activeToggleColor: isDark ? Colors.black : Colors.white,
-                  inactiveToggleColor: isDark ? Colors.grey[400]! : AppStyle.primaryColor,
+                  inactiveToggleColor: isDark
+                      ? Colors.grey[400]!
+                      : AppStyle.primaryColor,
                   showOnOff: false,
                   switchBorder: Border.all(
                     color: isDark ? Colors.grey[400]! : AppStyle.primaryColor,
@@ -381,7 +408,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -430,15 +457,13 @@ class _SettingsPageState extends State<SettingsPage> {
                         overflow: TextOverflow.visible,
                         style: TextStyle(
                           fontWeight: FontWeight.normal,
-                          color: isDark
-                              ? Colors.grey[400]!
-                              : Colors.grey[600]!,
+                          color: isDark ? Colors.grey[400]! : Colors.grey[600]!,
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(width: 10,),
+                SizedBox(width: 10),
                 FlutterSwitch(
                   width: 60,
                   activeColor: isDark
@@ -479,21 +504,23 @@ class _SettingsPageState extends State<SettingsPage> {
   ///
   /// Values are fetched dynamically from server settings.
   Widget _buildLanguageAndRegionSection(
-      BuildContext context, SettingsState state, List<Map<String, dynamic>> uniqueCurrencyItems) {
+    BuildContext context,
+    SettingsState state,
+    List<Map<String, dynamic>> uniqueCurrencyItems,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     String? localLanguageCode = state.languages.isNotEmpty
         ? state.languages.firstWhere(
-          (lang) => lang['name'] == state.language,
-      orElse: () => {'code': 'en_US'},
-    )['code']
+            (lang) => lang['name'] == state.language,
+            orElse: () => {'code': 'en_US'},
+          )['code']
         : 'en_US';
-
 
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -525,7 +552,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   size: 20,
                 ),
                 onPressed: () {
-                  context.read<SettingsBloc>().add(RefreshLanguageAndRegionEvent());
+                  context.read<SettingsBloc>().add(
+                    RefreshLanguageAndRegionEvent(),
+                  );
                 },
               ),
             ],
@@ -542,7 +571,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onChanged: (selectedName) {
               if (selectedName != null) {
                 final selectedLang = state.languages.firstWhere(
-                      (lang) => lang['name'] == selectedName,
+                  (lang) => lang['name'] == selectedName,
                   orElse: () => {},
                 );
                 if (selectedLang.isNotEmpty) {
@@ -579,12 +608,16 @@ class _SettingsPageState extends State<SettingsPage> {
             onChanged: (selectedName) {
               if (selectedName != null) {
                 final selectedTz = state.timezones.firstWhere(
-                      (tz) => tz['name'] == selectedName,
+                  (tz) => tz['name'] == selectedName,
                   orElse: () => {},
                 );
                 if (selectedTz.isNotEmpty) {
                   context.read<SettingsBloc>().add(
-                    UpdateTimezoneEvent(selectedName, selectedTz['code'], localLanguageCode!),
+                    UpdateTimezoneEvent(
+                      selectedName,
+                      selectedTz['code'],
+                      localLanguageCode!,
+                    ),
                   );
                 }
               }
@@ -605,7 +638,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -643,9 +676,12 @@ class _SettingsPageState extends State<SettingsPage> {
               future: _getCacheSize(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return Text('Calculating...');
-                final sizeInMB = (snapshot.data! / (1024 * 1024)).toStringAsFixed(2);
+                final sizeInMB = (snapshot.data! / (1024 * 1024))
+                    .toStringAsFixed(2);
                 return Text(
-                  sizeInMB == '0.00' ? 'No cache data' : '$sizeInMB MB • Free up space by clearing temporary data',
+                  sizeInMB == '0.00'
+                      ? 'No cache data'
+                      : '$sizeInMB MB • Free up space by clearing temporary data',
                   style: TextStyle(
                     fontWeight: FontWeight.normal,
                     color: isDark ? Colors.grey[400]! : Colors.grey[600]!,
@@ -674,7 +710,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -715,7 +751,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: isDark ? Colors.grey[400]! : Colors.grey[600]!,
               ),
             ),
-            onTap: () => _launchUrl(context, "https://www.odoo.com/documentation"),
+            onTap: () =>
+                _launchUrl(context, "https://www.odoo.com/documentation"),
           ),
           ListTile(
             leading: Icon(
@@ -759,7 +796,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: isDark ? Colors.grey[400]! : Colors.grey[600]!,
               ),
             ),
-            onTap: () => _launchUrl(context, "https://www.odoo.com/forum/help-1"),
+            onTap: () =>
+                _launchUrl(context, "https://www.odoo.com/forum/help-1"),
           ),
         ],
       ),
@@ -778,7 +816,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -890,7 +928,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   context,
                   'assets/facebook.png',
                   const Color(0xFF1877F2),
-                      () => _launchUrlSmart(
+                  () => _launchUrlSmart(
                     context,
                     'https://www.facebook.com/cybrosystechnologies',
                     title: 'Facebook',
@@ -901,7 +939,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   context,
                   'assets/linkedin.png',
                   const Color(0xFF0077B5),
-                      () => _launchUrlSmart(
+                  () => _launchUrlSmart(
                     context,
                     'https://www.linkedin.com/company/cybrosys/',
                     title: 'LinkedIn',
@@ -912,7 +950,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   context,
                   'assets/instagram.png',
                   const Color(0xFFE4405F),
-                      () => _launchUrlSmart(
+                  () => _launchUrlSmart(
                     context,
                     'https://www.instagram.com/cybrosystech/',
                     title: 'Instagram',
@@ -923,7 +961,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   context,
                   'assets/youtube.png',
                   const Color(0xFFFF0000),
-                      () => _launchUrlSmart(
+                  () => _launchUrlSmart(
                     context,
                     'https://www.youtube.com/channel/UCKjWLm7iCyOYINVspCSanjg',
                     title: 'YouTube',
@@ -952,7 +990,11 @@ class _SettingsPageState extends State<SettingsPage> {
   ///
   /// Used in About section for social links.
   Widget _buildSocialButton(
-      BuildContext context, String assetPath, Color underlineColor, VoidCallback onPressed) {
+    BuildContext context,
+    String assetPath,
+    Color underlineColor,
+    VoidCallback onPressed,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
@@ -962,16 +1004,14 @@ class _SettingsPageState extends State<SettingsPage> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(.8) : AppStyle.primaryColor.withOpacity(0.1),
+            color: isDark
+                ? Colors.white.withOpacity(.8)
+                : AppStyle.primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(24),
           ),
           child: IconButton(
             onPressed: onPressed,
-            icon: Image.asset(
-              assetPath,
-              width: 24,
-              height: 24,
-            ),
+            icon: Image.asset(assetPath, width: 24, height: 24),
           ),
         ),
         const SizedBox(height: 4),
@@ -1000,7 +1040,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// Attempts to launch URL externally.
   ///
   /// If external launch fails, opens URL in in-app web view.
-  Future<void> _launchUrlSmart(BuildContext context, String url, {String? title}) async {
+  Future<void> _launchUrlSmart(
+    BuildContext context,
+    String url, {
+    String? title,
+  }) async {
     final Uri uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -1012,16 +1056,23 @@ class _SettingsPageState extends State<SettingsPage> {
   /// Opens URL inside the app using in-app web view.
   ///
   /// Applies transition animation based on motion settings.
-  Future<void> _openInAppWebPage(BuildContext context, Uri url, {String? title}) async {
+  Future<void> _openInAppWebPage(
+    BuildContext context,
+    Uri url, {
+    String? title,
+  }) async {
     final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     try {
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => InAppWebPage(url: url, title: title),
-          transitionDuration:
-          motionProvider.reduceMotion ? Duration.zero : const Duration(milliseconds: 300),
-          reverseTransitionDuration:
-          motionProvider.reduceMotion ? Duration.zero : const Duration(milliseconds: 300),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              InAppWebPage(url: url, title: title),
+          transitionDuration: motionProvider.reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
+          reverseTransitionDuration: motionProvider.reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             if (motionProvider.reduceMotion) return child;
             return FadeTransition(opacity: animation, child: child);

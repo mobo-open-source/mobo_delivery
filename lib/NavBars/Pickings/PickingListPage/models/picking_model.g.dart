@@ -8,7 +8,7 @@ part of 'picking_model.dart';
 
 class PickingAdapter extends TypeAdapter<Picking> {
   @override
-  final int typeId = 0;
+  final typeId = 0;
 
   @override
   Picking read(BinaryReader reader) {
@@ -25,7 +25,7 @@ class PickingAdapter extends TypeAdapter<Picking> {
       partner: fields[5] as String,
       origin: fields[6] as String,
       moveIds: (fields[7] as List)
-          .map((dynamic e) => (e as Map).cast<String, dynamic>())
+          .map((e) => (e as Map).cast<String, dynamic>())
           .toList(),
       warehouseName: fields[8] as String,
       partnerId: fields[9] as String,

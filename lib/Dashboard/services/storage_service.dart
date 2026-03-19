@@ -126,7 +126,10 @@ class DashboardStorageService {
     final prefs = await SharedPreferences.getInstance();
     final accounts = await getAccounts();
 
-    accounts.removeWhere((a) => a['userLogin'] == account['userLogin']);
+    accounts.removeWhere((a) =>
+    a['userLogin'] == account['userLogin'] &&
+        a['url'] == account['url'] &&
+        a['database'] == account['database']);
 
     if (!account.containsKey('image')) {
       account['image'] = '';
@@ -161,5 +164,25 @@ class DashboardStorageService {
     await prefs.setBool('hasSeenGetStarted', hasSeenGetStarted);
 
     await _hiveService.clearAllData();
+  }
+
+  Future<void> removeAccount({
+    required String userLogin,
+    required String userName,
+    required int userId,
+    required String url,
+    required String database,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final accounts = await getAccounts();
+
+    accounts.removeWhere((a) =>
+    a['userLogin'] == userLogin &&
+        a['userName'] == userName &&
+        a['userId'] == userId &&
+        a['url'] == url &&
+        a['database'] == database);
+
+    await prefs.setString(_accountsKey, jsonEncode(accounts));
   }
 }

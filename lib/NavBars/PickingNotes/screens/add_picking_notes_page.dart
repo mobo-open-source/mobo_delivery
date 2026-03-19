@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/NavBars/PickingNotes/screens/picking_notes_page.dart';
 import 'package:provider/provider.dart';
+import '../../../Rating/review_service.dart';
 import '../../../core/providers/motion_provider.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -124,6 +125,11 @@ class _AddPickingNotesPageState extends State<AddPickingNotesPage> {
         context,
         'Note added successfully to $selectedPickingName',
       );
+      ReviewService().trackSignificantEvent();
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        ReviewService().checkAndShowRating(context);
+      });
     } else {
       CustomSnackbar.showError(
         context,

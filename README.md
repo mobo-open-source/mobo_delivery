@@ -85,7 +85,7 @@ poor connectivity.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mobo-open-source/mobo_delivery.git
+   git clone https://github.com/mobo-suite/mobo_delivery.git
    cd mobo_delivery
    ```
 
@@ -140,5 +140,5 @@ See the [LICENSE](LICENSE) file for the main license and [THIRD_PARTY_LICENSES.m
 
 ##  Maintainers
 **Team Mobo at Cybrosys Technologies**
-- Email: [mobo@cybrosys.com](mailto:mobo@cybrosys.com)
+- Email: [cybroplay@gmail.com](mailto:cybroplay@gmail.com)
 - Website: [cybrosys.com](https://www.cybrosys.com)

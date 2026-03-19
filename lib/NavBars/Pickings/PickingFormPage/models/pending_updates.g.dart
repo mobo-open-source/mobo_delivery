@@ -8,7 +8,7 @@ part of 'pending_updates.dart';
 
 class PendingUpdatesAdapter extends TypeAdapter<PendingUpdates> {
   @override
-  final int typeId = 7;
+  final typeId = 7;
 
   @override
   PendingUpdates read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class PendingUpdatesAdapter extends TypeAdapter<PendingUpdates> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PendingUpdates(
-      pickingId: fields[0] as int,
+      pickingId: (fields[0] as num).toInt(),
       pickingData: (fields[1] as Map).cast<String, dynamic>(),
     );
   }

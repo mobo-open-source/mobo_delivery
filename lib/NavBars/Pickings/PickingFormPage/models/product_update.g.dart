@@ -8,7 +8,7 @@ part of 'product_update.dart';
 
 class ProductUpdatesAdapter extends TypeAdapter<ProductUpdates> {
   @override
-  final int typeId = 9;
+  final typeId = 9;
 
   @override
   ProductUpdates read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class ProductUpdatesAdapter extends TypeAdapter<ProductUpdates> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return ProductUpdates(
-      pickingId: fields[0] as int,
+      pickingId: (fields[0] as num).toInt(),
       productData: (fields[1] as Map).cast<String, dynamic>(),
       pickingName: fields[2] as String?,
     );

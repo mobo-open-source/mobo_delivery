@@ -8,7 +8,7 @@ part of 'pending_validation.dart';
 
 class PendingValidationAdapter extends TypeAdapter<PendingValidation> {
   @override
-  final int typeId = 6;
+  final typeId = 6;
 
   @override
   PendingValidation read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class PendingValidationAdapter extends TypeAdapter<PendingValidation> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return PendingValidation(
-      pickingId: fields[0] as int,
+      pickingId: (fields[0] as num).toInt(),
       pickingData: (fields[1] as Map).cast<String, dynamic>(),
     );
   }

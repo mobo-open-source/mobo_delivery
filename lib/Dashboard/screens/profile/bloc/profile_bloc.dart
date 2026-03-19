@@ -69,19 +69,19 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           }
         }
         profile = Profile(
-            name: userDetails?['name'],
-            email: userDetails?['email'],
-            phone: userDetails?['phone'],
+            name: userDetails?['name'] is String ? userDetails!['name'] : '',
+            email: userDetails?['email'] is String ? userDetails!['email'] : '',
+            phone: userDetails?['phone'] is String ? userDetails!['phone'] : '',
             mobile: mobile,
-            company: userDetails?['company_id'] != null &&
+            company: userDetails?['company_id'] is List &&
                 (userDetails!['company_id'] as List).isNotEmpty
                 ? userDetails['company_id'][1].toString()
                 : '',
-            website: userDetails?['website'],
-            jobTitle: userDetails?['position'],
+            website: userDetails?['website'] is String ? userDetails!['website'] : '',
+            jobTitle: userDetails?['job_title'] is String ? userDetails!['job_title'] : '',
             profileImage: profileImage,
             mapToken: (await storageService.getSessionData())['mapToken']
-                ?.toString() ?? ''
+                ?.toString() ?? '',
         );
 
         // Persist fresh data locally
