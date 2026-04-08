@@ -1,0 +1,6 @@
+# Copy this file to android/local.properties and fill in your values.
+# local.properties is gitignored and must never be committed.
+
+sdk.dir=/path/to/your/Android/Sdk
+flutter.sdk=/path/to/your/flutter
+MAPBOX_ACCESS_TOKEN=YOUR_MAPBOX_PUBLIC_ACCESS_TOKEN_HERE
