@@ -16,7 +16,7 @@ import 'dart:typed_data';
 /// final manager = MemoryPageManager();
 /// final page1 = manager.allocatePage();
 /// final page2 = manager.allocatePage();
-/// // ... write data into page1, page2 ...
+///
 /// manager.clear();
 /// ```
 class MemoryPageManager {

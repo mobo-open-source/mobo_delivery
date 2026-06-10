@@ -73,8 +73,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   Future<void> _loadMapToken() async {
-    // Show locally cached token immediately for responsiveness.
-    // _fetchUserProfile() will overwrite with the latest server value once it completes.
     final sessionData = await DashboardStorageService().getSessionData();
     if (mounted) {
       setState(() {
@@ -96,7 +94,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     super.dispose();
   }
 
-  // ─── Data helpers ───
 
   String _normalizeForEdit(dynamic value) {
     if (value == null) return '';
@@ -143,7 +140,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     return parts.join(', ');
   }
 
-  // ─── Fetch profile ───
 
   Future<void> _fetchUserProfile({bool forceRefresh = false}) async {
     if (!mounted) return;
@@ -206,7 +202,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             _mapTokenController.text = _isEditMode ? _loadedMapToken : '••••••••••••••••';
           }
         } catch (_) {
-          // Map key not configured yet — expected on first run, ignore silently
         }
 
         if (mounted) {
@@ -239,7 +234,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-  // ─── Countries / States ───
 
   Future<void> _loadCountries() async {
     setState(() => _isLoadingCountries = true);
@@ -281,7 +275,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-  // ─── Loading dialog ───
 
   void _showLoadingDialog(BuildContext context, String message) {
     if (_isShowingLoadingDialog || !mounted) return;
@@ -331,7 +324,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-  // ─── Save ───
 
   Future<void> _saveAllChanges() async {
     if (!_formKey.currentState!.validate()) {
@@ -419,12 +411,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             'kwargs': {},
           });
         } catch (_) {
-          // Non-fatal: server write failed; key is still saved locally.
         }
 
         await DashboardStorageService().saveMapToken(newMapToken);
         _loadedMapToken = newMapToken;
-        // Clear the map service token cache so the next map session fetches the new key
         OdooMapService().clearTokenCache();
       }
 
@@ -467,7 +457,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-  // ─── Image ───
 
   Future<void> _pickImageFromSource(ImageSource source) async {
     try {
@@ -553,7 +542,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-  // ─── Navigation ───
 
   void _cancelEdit() {
     _updateControllers();
@@ -587,7 +575,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     if (mounted) Navigator.of(context).pop(_saveSuccess);
   }
 
-  // ─── Address dialog ───
 
   void _showEditAddressDialog() {
     if (_userData == null) return;
@@ -754,7 +741,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-  // ─── Related Company picker ───
 
   Future<void> _showRelatedCompanyPicker() async {
     if (_userData == null) return;
@@ -876,7 +862,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-  // ─── BUILD ───
 
   @override
   Widget build(BuildContext context) {
@@ -1042,7 +1027,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-  // ─── UI Helpers ───
 
   Widget _buildCustomTextField(
     BuildContext context,

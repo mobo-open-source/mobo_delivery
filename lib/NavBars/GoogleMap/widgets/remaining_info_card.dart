@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
+import 'package:latlong2/latlong.dart';
 import '../../../shared/utils/globals.dart';
 
 /// A scrollable bottom card that displays remaining route information during navigation.
@@ -25,7 +24,6 @@ class RemainingInfoCard extends StatelessWidget {
   ///   - 'type': String ('start', 'visited_stop', 'stop', 'destination')
   final List<Map<String, dynamic>> remainingLegInfo;
 
-  // Callback triggered when user taps the focus icon on a leg/stop.
   /// Receives the LatLng of the selected stop (or null if unavailable).
   final Function(LatLng?) onFocusPressed;
 

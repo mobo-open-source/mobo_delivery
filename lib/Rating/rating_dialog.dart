@@ -58,7 +58,7 @@ class CustomRatingDialog extends StatefulWidget {
         },
         onBadReview: (rating, comment) async {
           Navigator.pop(context);
-          await ReviewService().postponeReview(const Duration(days: 180)); // 6 months
+          await ReviewService().postponeReview(const Duration(days: 180));
           await ReviewService().sendEmailFeedback(rating, comment);
         },
       ),
@@ -107,7 +107,6 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -151,7 +150,6 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Rating Box
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -181,7 +179,6 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Submit/Continue Button inside the box
                         SizedBox(
                           width: double.infinity,
                           height: 55,
@@ -227,7 +224,6 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                       ],
                     ),
                   ),
-                  // Comment Box (Only show for ratings < 4 stars)
                   Visibility(
                     visible: _rating < 4,
                     child: Padding(
@@ -261,7 +257,6 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
               ),
             ),
 
-            // Footer
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: Row(
@@ -283,7 +278,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                   ),
                   TextButton(
                     onPressed: () async {
-                      await ReviewService().postponeReview(const Duration(days: 30)); // 1 month
+                      await ReviewService().postponeReview(const Duration(days: 30));
                       Navigator.pop(context);
                     },
                     child: Text(

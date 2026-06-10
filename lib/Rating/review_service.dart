@@ -46,7 +46,6 @@ class ReviewService {
   static const String _keyNextAllowedDate = 'review_next_allowed_date';
   static const String _keyNeverAskAgain = 'review_never_ask_again';
 
-  // Thresholds
   static const int _thresholdOpens = 5;
   static const int _thresholdEvents = 5;
   static const int _thresholdDays = 5;
@@ -56,7 +55,6 @@ class ReviewService {
   Future<void> trackAppOpen() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. First Open Date
     if (!prefs.containsKey(_keyFirstOpenDate)) {
       await prefs.setInt(
         _keyFirstOpenDate,
@@ -64,7 +62,6 @@ class ReviewService {
       );
     }
 
-    // 2. Increment Open Count
     int currentOpens = prefs.getInt(_keyOpenCount) ?? 0;
     currentOpens++;
     await prefs.setInt(_keyOpenCount, currentOpens);
@@ -73,7 +70,6 @@ class ReviewService {
   Future<void> trackSignificantEvent() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Increment Event Count
     int currentEvents = prefs.getInt(_keyEventCount) ?? 0;
 
     currentEvents++;
@@ -90,7 +86,6 @@ class ReviewService {
       return;
     }
 
-    // Check if we are past the next allowed date
     int? nextAllowedEpoch = prefs.getInt(_keyNextAllowedDate);
     if (nextAllowedEpoch != null) {
       final nextAllowedDate = DateTime.fromMillisecondsSinceEpoch(
@@ -104,19 +99,16 @@ class ReviewService {
     if (await _inAppReview.isAvailable()) {
       bool shouldRequest = false;
 
-      // Criteria 1: Nth usage (open)
       int openCount = prefs.getInt(_keyOpenCount) ?? 0;
       if (openCount >= _thresholdOpens) {
         shouldRequest = true;
       }
 
-      // Criteria 2: Nth significant event
       int eventCount = prefs.getInt(_keyEventCount) ?? 0;
       if (eventCount >= _thresholdEvents) {
         shouldRequest = true;
       }
 
-      // Criteria 3: N days usage
       int? firstOpenEpoch = prefs.getInt(_keyFirstOpenDate);
       if (firstOpenEpoch != null) {
         final firstOpenDate = DateTime.fromMillisecondsSinceEpoch(
@@ -134,7 +126,6 @@ class ReviewService {
 
           CustomRatingDialog.show(context);
         } else {
-          // If no context, we just wait or skip for now to avoid showing dialog on transition screen
         }
       } else {}
     } else {}
@@ -159,10 +150,8 @@ class ReviewService {
   /// Force a review request. If the native dialog is suppressed by Google Play
   /// (due to quotas), it will fall back to opening the Store Listing directly.
   Future<void> forceRequestReview() async {
-    // Update next allowed date to enforce cooldown period
     await postponeReview(const Duration(days: 30));
 
-    // Show a small snackbar so the user knows the code is working
     scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: const Text('Requesting Store review...'),
@@ -174,7 +163,6 @@ class ReviewService {
     try {
       if (await _inAppReview.isAvailable()) {
         _wasRequestedThisRun = true;
-        // Increase delay to 2.5 seconds to ensure stable activity transition
         await Future.delayed(const Duration(milliseconds: 2500));
         await _inAppReview.requestReview();
       } else {
@@ -197,7 +185,7 @@ class ReviewService {
     try {
       final Uri emailLaunchUri = Uri(
         scheme: 'mailto',
-        path: 'cybroplay@gmail.com', // Updated support email
+        path: 'cybroplay@gmail.com',
         query: encodeQueryParameters(<String, String>{
           'subject':
               'Feedback for Odoo Mobile Community (${rating.toInt()} Stars)',

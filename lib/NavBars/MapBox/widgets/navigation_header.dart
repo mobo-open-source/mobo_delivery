@@ -7,12 +7,10 @@ import '../../../shared/utils/globals.dart';
 /// Displays the current travel mode icon + label, and a close button.
 /// Uses a white/surface style with subtle shadow — no solid brand-color fill.
 class NavigationHeader extends StatelessWidget {
-  final String selectedTravelMode;
   final VoidCallback onClose;
 
   const NavigationHeader({
     super.key,
-    required this.selectedTravelMode,
     required this.onClose,
   });
 
@@ -24,21 +22,8 @@ class NavigationHeader extends StatelessWidget {
     final secondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF70757A);
     final accent = AppStyle.primaryColor;
 
-    IconData modeIcon;
-    String modeLabel;
-    switch (selectedTravelMode) {
-      case 'walking':
-        modeIcon = Icons.directions_walk;
-        modeLabel = 'Walking';
-        break;
-      case 'bicycling':
-        modeIcon = Icons.directions_bike;
-        modeLabel = 'Cycling';
-        break;
-      default:
-        modeIcon = Icons.directions_car_filled;
-        modeLabel = 'Driving';
-    }
+    const modeIcon = Icons.directions_car_filled;
+    const modeLabel = 'Driving';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

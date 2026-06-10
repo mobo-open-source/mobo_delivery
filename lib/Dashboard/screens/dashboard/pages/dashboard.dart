@@ -7,7 +7,8 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/loaders/loading_indicator.dart';
 import '../../../../NavBars/AttachDocument/pages/attach_documents_page.dart';
-import '../../../../NavBars/PickingNotes/screens/picking_notes_page.dart';
+import '../../../../StoreToOffline/pending_sync_service.dart';
+
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
@@ -23,6 +24,7 @@ import '../bloc/dashboard_event.dart';
 import '../bloc/dashboard_state.dart';
 import '../widgets/dashboard_bottom_nav_bar.dart';
 import '../../../../shared/widgets/odoo_avatar.dart';
+import '../../../../core/company/services/connectivity_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 
 /// Main dashboard screen of the delivery / logistics application.
@@ -57,6 +59,21 @@ class _DashboardState extends State<Dashboard> {
         }
       });
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      ConnectivityService.instance.startMonitoring();
+      PendingSyncService.instance.start();
+      final result = await PendingSyncService.instance.syncAll();
+      if (!mounted || result.skipped || result.isEmpty) return;
+      if (result.succeeded > 0) {
+        CustomSnackbar.showSuccess(
+          context,
+          'Synced ${result.succeeded} offline '
+          '${result.succeeded == 1 ? "change" : "changes"}'
+          '${result.failed > 0 ? " — ${result.failed} pending retry" : ""}.',
+        );
+      }
+    });
   }
 
   /// Checks if a given byte array contains SVG content.
@@ -86,7 +103,6 @@ class _DashboardState extends State<Dashboard> {
           builder: (context, state) {
             final bloc = context.read<DashboardBloc>();
 
-          // ── Loading state ────────────────────────────────────────────────
           if (state.isLoading) {
             return Scaffold(
               body: Center(
@@ -103,7 +119,6 @@ class _DashboardState extends State<Dashboard> {
           final showAppBar = currentPage['title'] != 'Route Visualization';
 
           return WillPopScope(
-            // Handle system back button: return to home tab or exit app
             onWillPop: () async {
               final bloc = context.read<DashboardBloc>();
               if (state.currentIndex != 0) {
@@ -115,7 +130,6 @@ class _DashboardState extends State<Dashboard> {
             },
             child: Scaffold(
               backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-              // ── AppBar (hidden on Route Visualization screen) ─────────────
               appBar: showAppBar
                   ? AppBar(
                       forceMaterialTransparency: true,
@@ -211,10 +225,8 @@ class _DashboardState extends State<Dashboard> {
                     )
                   : null,
 
-              // ── Main content ─────────────────────────────────────────────────
               body: Column(
                 children: [
-                  // Offline banner — shown when server is unreachable
                   if (!state.isServerReachable)
                     _OfflineBanner(
                       onRetry: () => bloc.add(RefreshUserProfile()),
@@ -233,7 +245,6 @@ class _DashboardState extends State<Dashboard> {
                 ],
               ),
 
-              // ── Bottom Navigation ────────────────────────────────────────────
               bottomNavigationBar: DashboardBottomNavBar(
                 currentIndex: state.currentIndex,
                 pages: state.pages,
@@ -242,10 +253,8 @@ class _DashboardState extends State<Dashboard> {
                   final page = state.pages[index];
 
                   if (page['route'] != null) {
-                    // Normal tab → change page
                     bloc.add(ChangeTab(index));
                   } else {
-                    // "More" / "+" tab → show bottom sheet with extra actions
                     final isDark =
                         Theme.of(context).brightness == Brightness.dark;
                     showModalBottomSheet(
@@ -262,30 +271,6 @@ class _DashboardState extends State<Dashboard> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              ListTile(
-                                leading: Icon(
-                                  HugeIcons.strokeRoundedNote05,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
-                                title: Text(
-                                  'Log Notes',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: isDark
-                                        ? Colors.white
-                                        : Colors.black87,
-                                  ),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const PickingNotesPage(),
-                                    ),
-                                  );
-                                },
-                              ),
                               ListTile(
                                 leading: Icon(
                                   HugeIcons.strokeRoundedLink01,

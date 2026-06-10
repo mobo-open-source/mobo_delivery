@@ -203,6 +203,7 @@ class AuthService {
 
         /// System user permission check (version dependent)
         bool isSystem = false;
+        bool isPortal = false;
         if (majorVersion >= 18) {
           isSystem =
               await callKwWithSession(
@@ -221,6 +222,23 @@ class AuthService {
                 },
               ) ==
               true;
+          isPortal =
+              await callKwWithSession(
+                url: url,
+                sessionId: sessionId,
+                payload: {
+                  "jsonrpc": "2.0",
+                  "method": "call",
+                  "params": {
+                    "model": "res.users",
+                    "method": "has_group",
+                    "args": [userId, "base.group_portal"],
+                    "kwargs": {},
+                  },
+                  "id": 1,
+                },
+              ) ==
+              true;
         } else {
           isSystem =
               await callKwWithSession(
@@ -233,6 +251,23 @@ class AuthService {
                     "model": "res.users",
                     "method": "has_group",
                     "args": ["base.group_system"],
+                    "kwargs": {},
+                  },
+                  "id": 1,
+                },
+              ) ==
+              true;
+          isPortal =
+              await callKwWithSession(
+                url: url,
+                sessionId: sessionId,
+                payload: {
+                  "jsonrpc": "2.0",
+                  "method": "call",
+                  "params": {
+                    "model": "res.users",
+                    "method": "has_group",
+                    "args": ["base.group_portal"],
                     "kwargs": {},
                   },
                   "id": 1,
@@ -282,6 +317,7 @@ class AuthService {
           companyId: company?['id'],
           companyName: company?['name'],
           isSystem: isSystem,
+          isPortal: isPortal,
           allowedCompanyIds: allowedCompanyIds,
         );
       } else {
@@ -304,6 +340,7 @@ class AuthService {
           final int majorVersion = parseMajorVersion(session.serverVersion);
 
           bool isSystem = false;
+          bool isPortal = false;
 
           if (majorVersion >= 18) {
             isSystem = await client.callKw({
@@ -312,11 +349,23 @@ class AuthService {
               'args': [session.userId, 'base.group_system'],
               'kwargs': {},
             });
+            isPortal = await client.callKw({
+              'model': 'res.users',
+              'method': 'has_group',
+              'args': [session.userId, 'base.group_portal'],
+              'kwargs': {},
+            });
           } else {
             isSystem = await client.callKw({
               'model': 'res.users',
               'method': 'has_group',
               'args': ['base.group_system'],
+              'kwargs': {},
+            });
+            isPortal = await client.callKw({
+              'model': 'res.users',
+              'method': 'has_group',
+              'args': ['base.group_portal'],
               'kwargs': {},
             });
           }
@@ -353,6 +402,7 @@ class AuthService {
                 ? userData[0]['company_id'][1]
                 : null,
             isSystem: isSystem,
+            isPortal: isPortal,
             version: majorVersion,
             allowedCompanyIds: allowedCompanyIds,
           );

@@ -34,7 +34,6 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    // Initialize authentication controller with required services
     _authController = AuthController(
       authService: AuthService(),
       storageService: StorageService(),

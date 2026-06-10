@@ -75,7 +75,6 @@ class DashboardBottomNavBar extends StatelessWidget {
       if (icon is IconData) {
         return Icon(icon, color: color);
       }
-      // Assuming icon is from HugeIcons
       return HugeIcon(
         icon: icon,
         color: color ?? (isDark ? Colors.white : Colors.black54),

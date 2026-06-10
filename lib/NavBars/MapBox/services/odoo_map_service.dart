@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/company/session/company_session_manager.dart';
@@ -42,28 +42,29 @@ class OdooMapService {
     companyId = prefs.getInt('companyId') ?? session.companyId ?? 1;
   }
 
-  /// Checks if the device has internet access **and** can reach the Odoo server.
+  /// Checks if the device actually has internet access.
   ///
-  /// First checks general connectivity via `connectivity_plus`.
-  /// Then performs a quick GET request to `$url/web` with 5-second timeout.
-  /// Returns `true` only if both conditions are satisfied.
+  /// Uses `connectivity_plus` for the radio state, then a short DNS lookup
+  /// to confirm packets really leave the device. Avoids HTTP-pinging the
+  /// Odoo `/web` endpoint because Odoo redirects, slow responses, custom
+  /// paths, or session quirks would all falsely report "offline" even when
+  /// the device has a working internet connection.
   Future<bool> checkNetworkConnectivity() async {
-    final prefs = await SharedPreferences.getInstance();
-    url = prefs.getString('url') ?? '';
-    final connectivityResult = await Connectivity().checkConnectivity();
-
-    if (connectivityResult.any((r) => r != ConnectivityResult.none)) {
-      try {
-        final response = await http
-            .get(Uri.parse('$url/web'))
-            .timeout(const Duration(seconds: 5));
-
-        return response.statusCode == 200;
-      } catch (e) {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (!connectivityResult.any((r) => r != ConnectivityResult.none)) {
         return false;
       }
+      final result = await InternetAddress.lookup('example.com')
+          .timeout(const Duration(seconds: 3));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    } on TimeoutException {
+      return false;
+    } catch (_) {
+      return false;
     }
-    return false;
   }
 
   /// Decrypts AES-CBC encrypted text (used for Google Maps API key).
@@ -79,7 +80,6 @@ class OdooMapService {
     try {
       final fullBytes = base64Decode(base64Text);
 
-      // Check if it has at least the IV (16 bytes). If not, it's not our AES format.
       if (fullBytes.length <= 16) {
         return base64Text;
       }
@@ -104,7 +104,6 @@ class OdooMapService {
       );
       return decrypted;
     } catch (e) {
-      // If it fails to parse as base64 or fails to decrypt, assume it's a plain text API key
       return base64Text;
     }
   }
@@ -135,9 +134,8 @@ class OdooMapService {
         'kwargs': {},
       });
 
-      if ((existingField ?? 0) > 0) return; // already exists
+      if ((existingField ?? 0) > 0) return;
 
-      // Get res.company model ID
       final modelResult = await CompanySessionManager.callKwWithCompany({
         'model': 'ir.model',
         'method': 'search_read',
@@ -168,7 +166,6 @@ class OdooMapService {
         'kwargs': {},
       });
     } catch (_) {
-      // Non-fatal — field creation failure is handled upstream
     }
   }
 
@@ -185,7 +182,6 @@ class OdooMapService {
     final cid = companyId ?? prefs.getInt('companyId') ?? 1;
 
     try {
-      // Ensure field exists before reading it (first-run safe)
       await _ensureMapKeyField();
 
       final result = await CompanySessionManager.callKwWithCompany({
@@ -218,12 +214,10 @@ class OdooMapService {
       final decryptedKey = decryptText(encryptedValue.toString());
       _cachedToken = decryptedKey;
 
-      // Keep local secure storage in sync for offline use
       await const FlutterSecureStorage().write(key: 'mapToken', value: decryptedKey);
 
       return decryptedKey;
     } catch (e) {
-      // Fallback: use locally cached token (works offline or when field missing)
       const storage = FlutterSecureStorage();
       final local = await storage.read(key: 'mapToken');
       if (local != null && local.isNotEmpty) {

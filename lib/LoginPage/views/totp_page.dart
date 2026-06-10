@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -234,6 +235,79 @@ class _TotpPageState extends State<TotpPage> {
     );
   }
 
+  /// Displays dialog informing user they are a portal user and cannot access this app.
+  void showPortalUserDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+        title: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedUserBlock01,
+              color: AppStyle.primaryColor,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Access Restricted',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Your account is a portal user and does not have access to this delivery app. Please contact your administrator to grant the necessary permissions.',
+          style: GoogleFonts.manrope(
+            fontSize: 15,
+            color: Colors.black87,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyle.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+              child: Text(
+                'Back to Login',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Displays dialog when required "Inventory" module is not installed.
   void showModuleMissingDialog(BuildContext context) {
     showDialog(
@@ -341,28 +415,25 @@ class _TotpPageState extends State<TotpPage> {
     );
     if (!input) return "totp_input_not_found";
     
-    // Set value and dispatch full input events
     input.focus();
     input.value = '$totp';
     ['input', 'change', 'keydown', 'keyup', 'keypress'].forEach(eventType => {
       input.dispatchEvent(new KeyboardEvent(eventType, {key: 'Enter', bubbles: true, cancelable: true}));
     });
     
-    // Handle trust device if present
     const trustCheckbox = document.querySelector('input[name="trust_device"], input[type="checkbox"], [name="trust"]');
     if (trustCheckbox && !trustCheckbox.checked) {
       trustCheckbox.checked = true;
       trustCheckbox.dispatchEvent(new Event('change', {bubbles: true}));
     }
     
-    // Submit form
     const form = input.closest('form') || document.querySelector('form[action*="/web/login"]');
     if (form) {
       const btn = form.querySelector('button[type="submit"], button.btn-primary, button[name="submit"], button.btn-block');
       if (btn) {
         btn.click();
       } else {
-        form.submit();  // Fallback to native submit
+        form.submit();
       }
       return "totp_submitted";
     }
@@ -450,6 +521,24 @@ class _TotpPageState extends State<TotpPage> {
       }
 
       if (mounted) {
+        final currentSession = await CompanySessionManager.getCurrentSession();
+        if (currentSession != null && currentSession.isPortal) {
+          final prefs = await SharedPreferences.getInstance();
+          List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];
+          bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
+          await prefs.clear();
+          await prefs.setStringList('urlHistory', urlHistory);
+          await prefs.setBool('hasSeenGetStarted', isGetStarted);
+          await _hiveService.clearAllData();
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/login',
+            (route) => false,
+          );
+          if (mounted) showPortalUserDialog(context);
+          return;
+        }
+
         final checker = AppInstallCheck();
         final isInstalled = await checker.checkRequiredModules();
 
@@ -558,7 +647,7 @@ class _TotpPageState extends State<TotpPage> {
           userLogin: widget.username.trim(),
           password: widget.password.trim(),
           session_Id: sessionId,
-        );
+        ).timeout(const Duration(seconds: 20));
         await _saveUrlHistory(
           protocol: widget.protocol,
           url: widget.serverUrl,

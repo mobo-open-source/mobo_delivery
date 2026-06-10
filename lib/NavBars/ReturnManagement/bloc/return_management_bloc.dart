@@ -26,15 +26,12 @@ class ReturnManagementBloc
     on<CreateReturn>(_onCreateReturn);
     on<HighlightPicking>(_onHighlightPicking);
 
-    // Search is handled inline (debounced in UI) but triggers fetch
     on<SearchPickings>((event, emit) async {
       try {
-        // Count matching items (used for pagination total)
         final filteredCount = await odooService.StockCount(
           searchText: event.query,
         );
 
-        // Client-side filter for instant feedback (while fetching full page)
         final filtered = state.pickings.where((p) {
           final name = p['name']?.toString().toLowerCase() ?? '';
           final location = (p['partner_id'] != null && p['partner_id'] is List)
@@ -44,7 +41,6 @@ class ReturnManagementBloc
           return name.contains(searchLower) || location.contains(searchLower);
         }).toList();
 
-        // Adjust displayed count based on page size
         final displayedCount =
             filteredCount > OdooReturnManagementService.itemsPerPage
             ? filtered.length.clamp(0, OdooReturnManagementService.itemsPerPage)
@@ -59,7 +55,6 @@ class ReturnManagementBloc
           ),
         );
 
-        // Trigger full paginated fetch with search applied
         add(
           FetchStockPickings(
             0,
@@ -82,10 +77,8 @@ class ReturnManagementBloc
     try {
       emit(state.copyWith(isLoading: true));
 
-      // Ensure Odoo client is ready
       odooService.initializeClient();
 
-      // Fetch fresh data immediately (no Hive fallback)
       add(FetchStockPickings(0));
     } catch (e) {
       emit(
@@ -108,20 +101,17 @@ class ReturnManagementBloc
         state.copyWith(isFetchingMore: true),
       );
 
-      // Get total count for pagination UI
       final count = await odooService.StockCount(
         searchText: event.searchText,
         filters: event.filters,
       );
 
-      // Fetch current page
       final items = await odooService.fetchStockPickings(
         event.currentPage,
         searchText: event.searchText,
         filters: event.filters,
       );
 
-      // Apply client-side search filter for instant UI feedback
       final searchLower = event.searchText?.toLowerCase() ?? '';
       final filtered = searchLower.isNotEmpty
           ? items.where((p) {
@@ -135,7 +125,6 @@ class ReturnManagementBloc
             }).toList()
           : items;
 
-      // Build grouped data if grouping is active
       Map<String, List<Map<String, dynamic>>> grouped = {};
       Map<String, bool> expanded = {};
 
@@ -148,7 +137,6 @@ class ReturnManagementBloc
         }
       }
 
-      // Calculate new displayed count (handles pagination append/prepend)
       final newDisplayedCount = event.currentPage == 0
           ? filtered
                 .length
@@ -209,23 +197,32 @@ class ReturnManagementBloc
     return value?.toString() ?? 'Unknown';
   }
 
-  /// Creates a new return picking from selected move lines
+  /// Creates a new return picking from selected move lines. Errors are
+  /// surfaced via `state.error` for the UI to show.
   Future<void> _onCreateReturn(
     CreateReturn event,
     Emitter<ReturnManagementState> emit,
   ) async {
     try {
+      emit(state.copyWith(error: null));
       await odooService.createReturn(event.pickingId, event.returnLines);
-
-      // Refresh current page to show updated list
       add(FetchStockPickings(state.currentPage));
-
-      // Highlight the new return briefly
       add(HighlightPicking(event.pickingId));
-
     } catch (e) {
-      emit(state.copyWith(error: 'Failed to create return: $e'));
+      emit(state.copyWith(error: _formatReturnError(e)));
     }
+  }
+
+  /// Maps low-level RPC/wizard errors to a user-friendly message.
+  String _formatReturnError(Object e) {
+    final raw = e.toString();
+    if (raw.contains('404')) {
+      return 'This picking can no longer be returned. It may already have a return in progress, or the source moves are no longer available.';
+    }
+    if (raw.contains('Session expired') || raw.contains('SessionExpired')) {
+      return 'Session expired. Please log in again to create a return.';
+    }
+    return 'Failed to create return: $raw';
   }
 
   /// Temporarily highlights a picking (e.g. after return creation)

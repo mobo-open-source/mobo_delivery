@@ -63,12 +63,22 @@ class StockMove {
   /// Handles safe parsing with fallbacks for missing/invalid fields.
   /// Converts numeric fields to double safely.
   factory StockMove.fromJson(Map<String, dynamic> json) {
+    // product_uom is a Many2one returned as [id, name]; extract the int id.
+    // Falls back to reading the legacy product_uom_id key (used by toJson/Hive).
+    int? extractUomId(dynamic raw) {
+      if (raw is List && raw.isNotEmpty && raw.first is int) return raw.first as int;
+      if (raw is int) return raw;
+      return null;
+    }
+
     return StockMove(
       id: json['id'] is int ? json['id'] : 0,
       productId: json['product_id'] is List ? json['product_id'] : null,
       productUomQty: (json['product_uom_qty'] is num ? json['product_uom_qty'] : 0).toDouble(),
-      productUomId: json['product_uom_id'] is int ? json['product_uom_id'] : 0,
-      quantity: (json['quantity'] is num ? json['quantity'] : 0).toDouble(),
+      productUomId: extractUomId(json['product_uom']) ?? extractUomId(json['product_uom_id']),
+      quantity: (json['quantity'] is num
+          ? json['quantity']
+          : (json['quantity_done'] is num ? json['quantity_done'] : 0)).toDouble(),
       pickingId: json['picking_id'] is List ? json['picking_id'] : null,
       locationId: json['location_id'] is List ? json['location_id'] : null,
       lotId: json['lot_id'] is List ? json['lot_id'] : null,

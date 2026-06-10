@@ -122,7 +122,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       final admin = await hasGroup('base.group_system');
       if (mounted) setState(() => isAdmin = admin);
     } catch (_) {
-      // Admin check is non-critical; default to non-admin if it fails.
     }
   }
 
@@ -257,7 +256,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
             subtitle: 'App preferences and system configuration',
             icon: HugeIcons.strokeRoundedSettings02,
             onTap: () {
-              // Standard settings logic if any
               CustomSnackbar.show(
                 context: context,
                 title: 'Settings',

@@ -36,6 +36,7 @@ class StorageService {
     await prefs.setInt('companyId', session.companyId ?? 1);
     await prefs.setString('company_name', session.companyName ?? '');
     await prefs.setBool('isSystem', session.isSystem);
+    await prefs.setBool('isPortal', session.isPortal);
     await prefs.setInt('version', session.version??0);
   }
 
@@ -85,7 +86,5 @@ class StorageService {
     await prefs.remove('isLoggedIn');
     await prefs.remove('sessionId');
     await prefs.remove('userId');
-    // Keep URL and database for easier re-login if desired,
-    // or clear them if a full reset is needed.
   }
 }

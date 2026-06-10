@@ -28,25 +28,16 @@ class Product {
 
   Product({required this.id, required this.name, required this.uom_id});
 
-  /// Creates a `Product` instance from Odoo JSON response (search_read result)
-  ///
-  /// Handles safe parsing with fallbacks:
-  /// - `id`: defaults to 0
-  /// - `name`: defaults to empty string
-  /// - `uom_id`: extracts ID from many2one list `[id, name]` or defaults to 0
-  ///
-  /// Expected minimal JSON shape:
-  /// ```json
-  /// {
-  ///   "id": 8923,
-  ///   "name": "USB-C Cable 2m",
-  ///   "uom_id": [1, "Units"]
-  /// }
-  /// ```
+  /// Creates a `Product` instance from Odoo JSON. Prefers `display_name`
+  /// over `name` so variants render with their attribute suffix.
   factory Product.fromJson(Map<String, dynamic> json) {
+    String pickName(dynamic v) =>
+        (v is String && v.isNotEmpty && v.toLowerCase() != 'false') ? v : '';
+    final displayName = pickName(json['display_name']);
+    final rawName = pickName(json['name']);
     return Product(
       id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      name: displayName.isNotEmpty ? displayName : rawName,
       uom_id: (json['uom_id'] != null && json['uom_id'] is List && json['uom_id'].isNotEmpty)
           ? json['uom_id'][0] as int
           : 0,

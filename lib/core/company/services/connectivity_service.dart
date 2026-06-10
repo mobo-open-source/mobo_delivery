@@ -27,12 +27,22 @@ class ConnectivityService {
   bool _lastServerReachable = true;
   String? _currentServerUrl;
 
+  bool _monitoring = false;
+
   Stream<bool> get onInternetChanged => _internetController.stream;
 
   Stream<bool> get onServerChanged => _serverController.stream;
 
   /// Starts listening to connectivity changes and probes network + server.
+  /// Safe to call repeatedly — only the first invocation wires up the
+  /// underlying `connectivity_plus` listener.
   void startMonitoring() {
+    if (_monitoring) {
+      _probeInternet();
+      _probeServer();
+      return;
+    }
+    _monitoring = true;
     _probeInternet();
     _probeServer();
     _connectivity.onConnectivityChanged.listen((
@@ -57,7 +67,6 @@ class ConnectivityService {
     final url = _currentServerUrl;
     if (url == null) return;
 
-    // If no internet, server is unreachable
     if (!_lastInternetReachable) {
       if (_lastServerReachable != false) {
         _lastServerReachable = false;

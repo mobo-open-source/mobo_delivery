@@ -134,7 +134,7 @@ class ErrorStateWidget extends StatelessWidget {
   String _getLottieAsset() {
     switch (errorType) {
       case ErrorType.network:
-        return 'assets/lotties/error_404.json'; // Placeholder for network error
+        return 'assets/lotties/error_404.json';
       case ErrorType.server:
         return 'assets/lotties/error_404.json';
       case ErrorType.general:

@@ -945,7 +945,20 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                   ),
                   Expanded(
                     child: BlocConsumer<AttachDocumentsBloc, AttachDocumentsState>(
-                      listener: (context, state) {},
+                      // Transient errors (upload failure, refresh failure,
+                      // paginate-more failure) surface as a snackbar — the
+                      // existing list stays on screen. Only emit the page-
+                      // level error widget when there is truly nothing to
+                      // show (initial fetch failed with no cached data).
+                      listenWhen: (prev, curr) =>
+                          curr is AttachDocumentsError &&
+                          curr.pickings.isNotEmpty &&
+                          prev != curr,
+                      listener: (context, state) {
+                        if (state is AttachDocumentsError) {
+                          CustomSnackbar.showError(context, state.message);
+                        }
+                      },
                       builder: (context, state) {
                         if (state is AttachDocumentsLoading) {
                           return ListView.builder(
@@ -974,7 +987,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                           );
                         }
 
-                        if (state is AttachDocumentsError) {
+                        if (state is AttachDocumentsError &&
+                            state.pickings.isEmpty) {
                           return ErrorStateWidget(
                             title: 'Something went wrong',
                             message: state.message,
@@ -991,11 +1005,15 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             ? state.pickings
                             : state is AttachDocumentsFileUploaded
                             ? state.pickings
+                            : state is AttachDocumentsError
+                            ? state.pickings
                             : [];
 
                         final isFetchingMore = state is AttachDocumentsLoaded
                             ? state.isFetchingMore
                             : state is AttachDocumentsFileUploaded
+                            ? state.isFetchingMore
+                            : state is AttachDocumentsError
                             ? state.isFetchingMore
                             : false;
 
@@ -1003,11 +1021,15 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             ? state.currentPage
                             : state is AttachDocumentsFileUploaded
                             ? state.currentPage
+                            : state is AttachDocumentsError
+                            ? state.currentPage
                             : 0;
 
                         final totalCount = state is AttachDocumentsLoaded
                             ? state.totalCount
                             : state is AttachDocumentsFileUploaded
+                            ? state.totalCount
+                            : state is AttachDocumentsError
                             ? state.totalCount
                             : 0;
 

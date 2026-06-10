@@ -44,7 +44,6 @@ class FilterBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Local mutable state for modal (won't affect parent until Apply)
     DateTime? modalScheduledDate = initialScheduleDate;
     DateTime? modalDeadlineDate = initialDeadlineDate;
     String? modalStateLabel = initialStateLabel;
@@ -66,7 +65,6 @@ class FilterBottomSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Drag handle
                   Center(
                     child: Container(
                       width: 40,
@@ -81,7 +79,6 @@ class FilterBottomSheet extends StatelessWidget {
                     ),
                   ),
 
-                  // Header + Clear button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -113,7 +110,6 @@ class FilterBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Scheduled Date Picker
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
@@ -144,7 +140,6 @@ class FilterBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // State Dropdown
                   DropdownButtonFormField<String>(
                     value: modalStateLabel,
                     decoration: const InputDecoration(
@@ -172,7 +167,6 @@ class FilterBottomSheet extends StatelessWidget {
                     },
                   ),
 
-                  // Type filter (only visible when online)
                   if (!isDataFromHive) ...[
                     const SizedBox(height: 16),
                     const Text(
@@ -208,7 +202,6 @@ class FilterBottomSheet extends StatelessWidget {
                   ],
                   const SizedBox(height: 16),
 
-                  // Apply Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(

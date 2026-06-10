@@ -24,9 +24,6 @@ class PickingService {
   int? userId;
   bool isDataFromHive = false;
 
-  // ───────────────────────────────────────────────
-  //  In-memory state for UI & pagination
-  // ───────────────────────────────────────────────
   Map<String, List<Map<String, dynamic>>> allPickingsByLocation = {};
   Map<String, List<Map<String, dynamic>>> previousPickingsByLocation = {};
   Map<String, int> currentPage = {};
@@ -56,9 +53,6 @@ class PickingService {
     return '$start-$end';
   }
 
-  // ───────────────────────────────────────────────
-  //  Initialization & Connectivity
-  // ───────────────────────────────────────────────
 
   /// Ensures Odoo session is active — call before any RPC
   Future<void> initializeOdooClient() async {
@@ -88,9 +82,6 @@ class PickingService {
     return false;
   }
 
-  // ───────────────────────────────────────────────
-  //  Main Fetch Entry Point
-  // ───────────────────────────────────────────────
 
   /// Primary method to load pickings — combines online + offline paths
   ///
@@ -110,7 +101,6 @@ class PickingService {
     final isConnected = await checkNetworkConnectivity();
     isDataFromHive = !isConnected;
 
-    // Online fetch only
     await stockPickings(
       scheduledDate: scheduledDate,
       deadlineDate: deadlineDate,
@@ -122,9 +112,6 @@ class PickingService {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Pagination Helpers (used in UI)
-  // ───────────────────────────────────────────────
 
   void appendPage(String location, List<Map<String, dynamic>> newPickings) {
     final current = allPickingsByLocation[location] ?? [];
@@ -256,9 +243,6 @@ class PickingService {
     return domain;
   }
 
-  // ───────────────────────────────────────────────
-  //  Online Fetch (Odoo RPC)
-  // ───────────────────────────────────────────────
 
   /// Fetches paginated pickings from Odoo, grouped by warehouse
   ///
@@ -279,7 +263,6 @@ class PickingService {
       final prefs = await SharedPreferences.getInstance();
       int version = prefs.getInt('version') ?? 0;
 
-      // Fetch all warehouses
       final warehouseItems = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.warehouse',
         'method': 'search_read',
@@ -296,10 +279,13 @@ class PickingService {
         totalPickingsCount.clear();
       }
 
-      // Base domain (filters + search)
       List<dynamic> baseDomain = [];
       final session = await CompanySessionManager.getCurrentSession();
       final uid = session!.userId;
+
+      final hasExplicitTypeChip = filters != null &&
+          filters.any((f) =>
+              f == 'receipt' || f == 'deliveries' || f == 'internal');
 
       if (filters != null && filters.isNotEmpty) {
         baseDomain.addAll(buildFilterDomain(filters, uid!));
@@ -307,96 +293,130 @@ class PickingService {
       if (searchTerm != null && searchTerm.isNotEmpty) {
         baseDomain.add(['name', 'ilike', searchTerm]);
       }
-      if (type != null && type.isNotEmpty) {
+      if (!hasExplicitTypeChip && type != null && type.isNotEmpty) {
         baseDomain.add(['picking_type_code', '=', type]);
       }
 
+      final warehouseTasks = <Future<void>>[];
       for (var warehouse in warehouseItems ?? []) {
-        String warehouseName = warehouse['name'];
-        int warehouseId = warehouse['id'] is int
+        final String warehouseName = warehouse['name'];
+        final int warehouseId = warehouse['id'] is int
             ? warehouse['id']
             : int.parse(warehouse['id'].toString());
 
-        if (pageOverrides != null && !pageOverrides.containsKey(warehouseName))
+        if (pageOverrides != null &&
+            !pageOverrides.containsKey(warehouseName)) {
           continue;
+        }
 
-        int page =
+        final int page =
             pageOverrides?[warehouseName] ?? currentPage[warehouseName] ?? 0;
-        int offset = page * pageSize;
+        final int offset = page * pageSize;
         currentPage[warehouseName] = page;
 
-        try {
-          // Get picking types for this warehouse
-          final pickingTypes = await CompanySessionManager.callKwWithCompany({
-            'model': 'stock.picking.type',
-            'method': 'search_read',
-            'args': [
-              [
-                ['warehouse_id', '=', warehouseId],
-                if (type != null && type.isNotEmpty) ['code', '=', type],
-              ],
-            ],
-            'kwargs': {
-              'fields': ['id'],
-            },
-          });
+        warehouseTasks.add(_fetchWarehousePickings(
+          warehouseName: warehouseName,
+          warehouseId: warehouseId,
+          page: page,
+          offset: offset,
+          baseDomain: baseDomain,
+          type: type,
+          hasExplicitTypeChip: hasExplicitTypeChip,
+          version: version,
+        ));
+      }
 
-          List<int> pickingTypeIds =
-              (pickingTypes as List?)
-                  ?.map((e) => int.parse(e['id'].toString()))
-                  .toList() ??
-              [];
-          if (pickingTypeIds.isEmpty) {
-            allPickingsByLocation[warehouseName] = [];
-            hasNextPage[warehouseName] = false;
-            totalPickingsCount[warehouseName] = 0;
-            continue;
-          }
+      await Future.wait(warehouseTasks);
+    } on OdooSessionExpiredException {
+      rethrow;
+    } catch (_) {}
+  }
 
-          // Final domain for this warehouse
-          List<dynamic> domain = List.from(baseDomain)
-            ..add(['picking_type_id', 'in', pickingTypeIds]);
+  /// Fetches one warehouse's pickings — picking types first, then count
+  /// and search_read in parallel. Writes its slice of state into
+  /// `allPickingsByLocation`, `totalPickingsCount`, `hasNextPage` on
+  /// completion. Per-warehouse failures degrade to empty state without
+  /// blocking other warehouses; session expiry is rethrown so the caller
+  /// can log the user out.
+  Future<void> _fetchWarehousePickings({
+    required String warehouseName,
+    required int warehouseId,
+    required int page,
+    required int offset,
+    required List<dynamic> baseDomain,
+    required String? type,
+    required bool hasExplicitTypeChip,
+    required int version,
+  }) async {
+    try {
+      final pickingTypes = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking.type',
+        'method': 'search_read',
+        'args': [
+          [
+            ['warehouse_id', '=', warehouseId],
+            if (!hasExplicitTypeChip && type != null && type.isNotEmpty)
+              ['code', '=', type],
+          ],
+        ],
+        'kwargs': {
+          'fields': ['id'],
+        },
+      });
 
-          // Total count for pagination
-          final pickingCount = await CompanySessionManager.callKwWithCompany({
-            'model': 'stock.picking',
-            'method': 'search_count',
-            'args': [domain],
-            'kwargs': {},
-          });
-          totalPickingsCount[warehouseName] = pickingCount ?? 0;
+      final List<int> pickingTypeIds = (pickingTypes as List?)
+              ?.map((e) => int.parse(e['id'].toString()))
+              .toList() ??
+          [];
+      if (pickingTypeIds.isEmpty) {
+        allPickingsByLocation[warehouseName] = [];
+        hasNextPage[warehouseName] = false;
+        totalPickingsCount[warehouseName] = 0;
+        return;
+      }
 
-          // Fields to fetch
-          List<String> fields = [
-            'id',
-            'name',
-            'scheduled_date',
-            'date_deadline',
-            'picking_type_code',
-            'partner_id',
-            'state',
-            'move_type',
-            'user_id',
-            'location_id',
-            'location_dest_id',
-            'products_availability',
-            'origin',
-            'show_check_availability',
-            'picking_type_id',
-          ];
-          if (version < 19) fields.add('group_id');
+      final List<dynamic> domain = List.from(baseDomain)
+        ..add(['picking_type_id', 'in', pickingTypeIds]);
 
-          // Fetch page of pickings
-          final pickingItems = await CompanySessionManager.callKwWithCompany({
-            'model': 'stock.picking',
-            'method': 'search_read',
-            'args': [domain],
-            'kwargs': {'fields': fields, 'limit': pageSize, 'offset': offset},
-          });
+      final List<String> fields = [
+        'id',
+        'name',
+        'scheduled_date',
+        'date_deadline',
+        'picking_type_code',
+        'partner_id',
+        'state',
+        'move_type',
+        'user_id',
+        'location_id',
+        'location_dest_id',
+        'products_availability',
+        'origin',
+        'show_check_availability',
+        'picking_type_id',
+      ];
+      if (version < 19) fields.add('group_id');
 
-          // Flatten for UI
-          final List<Map<String, dynamic>> mappedPickings =
-              (pickingItems as List?)?.map((picking) {
+      final results = await Future.wait<dynamic>([
+        CompanySessionManager.callKwWithCompany({
+          'model': 'stock.picking',
+          'method': 'search_count',
+          'args': [domain],
+          'kwargs': {},
+        }),
+        CompanySessionManager.callKwWithCompany({
+          'model': 'stock.picking',
+          'method': 'search_read',
+          'args': [domain],
+          'kwargs': {'fields': fields, 'limit': pageSize, 'offset': offset},
+        }),
+      ]);
+      final pickingCount = results[0];
+      final pickingItems = results[1];
+      totalPickingsCount[warehouseName] = pickingCount ?? 0;
+
+      final List<Map<String, dynamic>> mappedPickings =
+          (pickingItems as List?)?.map((picking) {
                 return {
                   'id': picking['id'].toString(),
                   'item': picking['name'],
@@ -425,37 +445,24 @@ class PickingService {
               }).toList() ??
               [];
 
-          allPickingsByLocation[warehouseName] = mappedPickings;
-          hasNextPage[warehouseName] =
-              (pickingCount ?? 0) > (page + 1) * pageSize;
-
-          allPickingsByLocation[warehouseName] = mappedPickings;
-          hasNextPage[warehouseName] =
-              (pickingCount ?? 0) > (page + 1) * pageSize;
-        } on OdooSessionExpiredException {
-          rethrow;
-        } catch (e) {
-          // Ensure at least an empty list so filtering doesn't crash
-          allPickingsByLocation[warehouseName] = [];
-          totalPickingsCount[warehouseName] = 0;
-          hasNextPage[warehouseName] = false;
-        }
-      }
+      allPickingsByLocation[warehouseName] = mappedPickings;
+      hasNextPage[warehouseName] =
+          (pickingCount ?? 0) > (page + 1) * pageSize;
     } on OdooSessionExpiredException {
       rethrow;
-    } catch (_) {}
+    } catch (_) {
+      allPickingsByLocation[warehouseName] = [];
+      totalPickingsCount[warehouseName] = 0;
+      hasNextPage[warehouseName] = false;
+    }
   }
 
-  // ───────────────────────────────────────────────
-  //  Offline / Hive Loading
-  // ───────────────────────────────────────────────
 
   /// Loads and filters pickings from Hive when offline or as fast baseline
   ///
   /// Applies search, state, date, type filters directly on cached `Picking` objects.
   /// Groups results by `warehouseName` and updates pagination state for offline mode.
   Future<void> clearLocalCache() async {
-    // Clear in-memory state
     allPickingsByLocation.clear();
     totalPickingsCount.clear();
     hasNextPage.clear();
@@ -463,8 +470,6 @@ class PickingService {
     warehouseOffsets.clear();
     previousPickingsByLocation.clear();
 
-    // Hive boxes are no longer used for persistence here, but we clear them
-    // to ensure no stale data remains from previous versions.
     if (Hive.isBoxOpen('pickings')) {
       await Hive.box<Picking>('pickings').clear();
     }

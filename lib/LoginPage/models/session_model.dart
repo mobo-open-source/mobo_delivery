@@ -22,6 +22,7 @@ class SessionModel {
   final int? companyId;
   final String? companyName;
   final bool isSystem;
+  final bool isPortal;
   final int? version;
   final List<int> allowedCompanyIds;
 
@@ -37,6 +38,7 @@ class SessionModel {
     this.companyId,
     this.companyName,
     this.isSystem = false,
+    this.isPortal = false,
     this.version,
     this.allowedCompanyIds = const [],
   });

@@ -19,22 +19,17 @@ class ProductModel extends Equatable {
     required this.uom_id,
   });
 
-  /// Creates a `ProductModel` from Odoo `search_read` result.
-  ///
-  /// Expected JSON shape (minimal fields):
-  /// ```json
-  /// {
-  ///   "id": 8923,
-  ///   "name": "USB-C Cable 2m",
-  ///   "uom_id": [1, "Units"]
-  /// }
-  /// ```
-  /// Assumes `uom_id` is returned as a list `[id, display_name]`.
-  /// Throws if any required field is missing or has incorrect type.
+  /// Creates a `ProductModel` from Odoo `search_read` result. Prefers
+  /// `display_name` over `name` so variants render with their attribute
+  /// suffix.
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    String pickName(dynamic v) =>
+        (v is String && v.isNotEmpty && v.toLowerCase() != 'false') ? v : '';
+    final displayName = pickName(json['display_name']);
+    final rawName = pickName(json['name']);
     return ProductModel(
       id: json['id'] as int,
-      name: json['name'] as String,
+      name: displayName.isNotEmpty ? displayName : rawName,
       uom_id: json['uom_id'][0] as int,
     );
   }

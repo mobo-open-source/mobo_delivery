@@ -39,7 +39,7 @@ class Partner {
   factory Partner.fromJson(Map<String, dynamic> json) {
     return Partner(
       id: json['id'] ?? 0,
-      name: json['name'] ?? '',
+      name: json['display_name'] ?? json['name'] ?? '',
     );
   }
 

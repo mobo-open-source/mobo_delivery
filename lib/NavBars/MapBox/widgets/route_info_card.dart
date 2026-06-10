@@ -8,7 +8,6 @@ import '../../../shared/utils/globals.dart';
 /// scrollable leg list, and Start / Add Stop action buttons.
 /// Uses a standard white/surface card style (no solid brand-color fill).
 class RouteInfoCard extends StatelessWidget {
-  final String selectedTravelMode;
   final String routeDuration;
   final String routeDistance;
 
@@ -17,24 +16,15 @@ class RouteInfoCard extends StatelessWidget {
 
   final VoidCallback? onStartPressed;
   final VoidCallback onAddStopPressed;
-  final Function(String) onTravelModeChanged;
 
   const RouteInfoCard({
     super.key,
-    required this.selectedTravelMode,
     required this.routeDuration,
     required this.routeDistance,
     required this.legInfo,
     this.onStartPressed,
     required this.onAddStopPressed,
-    required this.onTravelModeChanged,
   });
-
-  static const _modes = [
-    {'mode': 'driving', 'icon': Icons.directions_car_filled, 'label': 'Drive'},
-    {'mode': 'bicycling', 'icon': Icons.directions_bike, 'label': 'Bike'},
-    {'mode': 'walking', 'icon': Icons.directions_walk, 'label': 'Walk'},
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +51,6 @@ class RouteInfoCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Drag handle ──────────────────────────────────────────────────
           const SizedBox(height: 10),
           Container(
             width: 36,
@@ -73,60 +62,8 @@ class RouteInfoCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Travel mode chips ─────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: _modes.map((m) {
-                final selected = selectedTravelMode == m['mode'];
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onTravelModeChanged(m['mode'] as String),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? accent.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: selected
-                              ? accent
-                              : (isDark ? Colors.white24 : Colors.grey[300]!),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            m['icon'] as IconData,
-                            color: selected ? accent : secondary,
-                            size: 20,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            m['label'] as String,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight:
-                                  selected ? FontWeight.w600 : FontWeight.w400,
-                              color: selected ? accent : secondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
           const SizedBox(height: 14),
 
-          // ── Duration + Distance summary ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -157,7 +94,6 @@ class RouteInfoCard extends StatelessWidget {
           const SizedBox(height: 10),
           Divider(height: 1, color: dividerColor, indent: 20, endIndent: 20),
 
-          // ── Leg list ──────────────────────────────────────────────────────
           if (legInfo.isNotEmpty)
             Flexible(
               child: ListView.separated(
@@ -173,7 +109,6 @@ class RouteInfoCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     child: Row(
                       children: [
-                        // Numbered circle
                         Container(
                           width: 30,
                           height: 30,
@@ -228,7 +163,6 @@ class RouteInfoCard extends StatelessWidget {
               ),
             ),
 
-          // ── Action buttons ────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
             child: Row(

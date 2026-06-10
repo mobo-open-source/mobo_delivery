@@ -52,7 +52,6 @@ class RemainingInfoCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Drag handle ──────────────────────────────────────────────────
           const SizedBox(height: 10),
           Container(
             width: 36,
@@ -63,7 +62,6 @@ class RemainingInfoCard extends StatelessWidget {
             ),
           ),
 
-          // ── Remaining summary ─────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
             child: Row(
@@ -107,7 +105,6 @@ class RemainingInfoCard extends StatelessWidget {
           ),
           Divider(height: 1, color: dividerColor, indent: 20, endIndent: 20),
 
-          // ── Stop list (timeline style) ────────────────────────────────────
           Flexible(
             child: ListView.builder(
               shrinkWrap: true,
@@ -143,7 +140,6 @@ class RemainingInfoCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Timeline indicator
                       SizedBox(
                         width: 32,
                         child: Column(
@@ -169,7 +165,6 @@ class RemainingInfoCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Content
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 12, top: 2),
@@ -221,7 +216,6 @@ class RemainingInfoCard extends StatelessWidget {
             ),
           ),
 
-          // ── Add Stop button ───────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             child: SizedBox(

@@ -52,15 +52,10 @@ class InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // ───────────────────────────────────────────────
-    //  Display value normalization logic
-    // ───────────────────────────────────────────────
     String displayValue;
     if (label == 'Note' && value is String) {
-      // Strip HTML tags from notes (Odoo often sends formatted text)
       displayValue = value.replaceAll(RegExp(r'<[^>]*>'), '');
     } else if (value is List && value.length > 1) {
-      // Many2one fields → take display name (index 1)
       displayValue = value[1].toString();
     } else if (value == null ||
         value == false ||
@@ -71,8 +66,11 @@ class InfoRow extends StatelessWidget {
       displayValue = value.toString();
     }
 
-    // Sync controller text when not editing (prevents stale values)
-    if (!isEditing && controller != null && controller!.text != displayValue) {
+    if (isEditing && controller != null) {
+      if (controller!.text == "None" || controller!.text == "false") {
+        controller!.text = "";
+      }
+    } else if (!isEditing && controller != null && controller!.text != displayValue) {
       controller!.text = displayValue;
     }
     return Padding(

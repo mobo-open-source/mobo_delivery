@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +13,15 @@ class CompanyProvider extends ChangeNotifier {
   bool _loading = false;
   bool _switching = false;
   String? _error;
+
+  /// Prevents a thundering herd if `initialize()` is called multiple times
+  /// while the first invocation is in-flight (e.g. widget rebuilds).
+  Future<void>? _initializeFuture;
+
+  /// Tracks whether we've already scheduled the one-shot retry after an
+  /// empty/failed first attempt. Reset when we get a valid response or
+  /// when [refreshCompaniesList] is called explicitly.
+  bool _didAutoRetry = false;
 
   List<Map<String, dynamic>> get companies => _companies;
   int? get selectedCompanyId => _selectedCompanyId;
@@ -54,7 +65,18 @@ class CompanyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> initialize() async {
+  /// De-duplicated entry point. Multiple concurrent callers share the same
+  /// in-flight future; on completion, `_initializeFuture` is reset so the
+  /// next caller triggers a fresh fetch (important for retry-after-failure).
+  Future<void> initialize() {
+    if (_initializeFuture != null) return _initializeFuture!;
+    _initializeFuture = _initialize().whenComplete(() {
+      _initializeFuture = null;
+    });
+    return _initializeFuture!;
+  }
+
+  Future<void> _initialize() async {
     _loading = true;
     _error = null;
     notifyListeners();
@@ -77,7 +99,7 @@ class CompanyProvider extends ChangeNotifier {
           ['company_id', 'company_ids'],
         ],
         'kwargs': {},
-      });
+      }).timeout(const Duration(seconds: 15));
 
       List<int> companyIds = [];
       int? currentCompanyId;
@@ -113,7 +135,7 @@ class CompanyProvider extends ChangeNotifier {
           'fields': ['id', 'name'],
           'order': 'name asc',
         },
-      });
+      }).timeout(const Duration(seconds: 15));
 
       final serverCompanies = (companiesRes is List)
           ? companiesRes.cast<Map<String, dynamic>>()
@@ -197,6 +219,20 @@ class CompanyProvider extends ChangeNotifier {
     } finally {
       _loading = false;
       notifyListeners();
+    }
+
+    // Auto-retry once if the list is still empty after the first attempt.
+    // Covers transient failures at app start: session refresh racing with
+    // other early RPCs, DNS not warmed up, brief connectivity blip, etc.
+    if (_companies.isEmpty && !_didAutoRetry) {
+      _didAutoRetry = true;
+      Timer(const Duration(seconds: 3), () {
+        if (_companies.isEmpty) {
+          initialize();
+        }
+      });
+    } else if (_companies.isNotEmpty) {
+      _didAutoRetry = false;
     }
   }
 

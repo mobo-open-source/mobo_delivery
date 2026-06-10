@@ -28,7 +28,6 @@ class ProductTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Build rows dynamically for each product
     List<Widget> productRows = [];
     for (var product in moveProducts) {
       productRows.add(
@@ -78,7 +77,6 @@ class ProductTable extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header row
             Padding(
               padding: EdgeInsets.all(8.0),
               child: Row(
@@ -118,11 +116,9 @@ class ProductTable extends StatelessWidget {
             ),
             const Divider(),
 
-            // Product rows
             ...productRows,
             const SizedBox(height: 12),
 
-            // Add line button
             GestureDetector(
               onTap: onAddLine,
               child: Text(

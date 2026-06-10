@@ -12,16 +12,15 @@ import 'dart:async';
 ///
 /// Example:
 /// ```dart
-/// // Listen somewhere (e.g. in a provider or widget)
+///
 /// ProfileRefreshBus.onProfileRefresh.listen((_) {
-///   // reload profile data
+///
 /// });
 ///
-/// // Trigger refresh after update
+///
 /// ProfileRefreshBus.notifyProfileRefresh();
 /// ```
 class ProfileRefreshBus {
-  // Broadcast stream controller allows multiple listeners
   static final _profileController = StreamController<void>.broadcast();
 
   /// Stream that emits an event whenever the profile should be refreshed.

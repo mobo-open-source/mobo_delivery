@@ -182,11 +182,88 @@ class OdooReturnManagementService {
         'model': 'stock.picking',
         'method': 'search_read',
         'args': [domain],
-        'kwargs': {'fields': [], 'limit': itemsPerPage, 'offset': offset},
+        'kwargs': {
+          'fields': [
+            'id',
+            'name',
+            'state',
+            'origin',
+            'partner_id',
+            'scheduled_date',
+            'picking_type_id',
+            'picking_type_code',
+            'return_count',
+          ],
+          'limit': itemsPerPage,
+          'offset': offset,
+        },
       });
       return List<Map<String, dynamic>>.from(pickingItems ?? []);
     } catch (e) {
       throw Exception('Failed to fetch stock pickings: $e');
+    }
+  }
+
+  /// Fetches the returnable moves for a picking using Odoo's
+  /// `stock.return.picking` wizard as the calculator. The wizard's
+  /// onchange/compute on `picking_id` populates `product_return_moves`
+  /// with the correct returnable quantity per line — already accounting
+  /// for previously-returned units, pending reservations, cancelled
+  /// moves, etc. — so the bottom sheet pre-fills match Odoo's web UI.
+  ///
+  /// Returns line maps shaped as `{id, product_id, quantity, move_id, uom_id}`.
+  /// Throws on failure.
+  Future<List<Map<String, dynamic>>> fetchReturnableMoves(
+    int pickingId,
+  ) async {
+    try {
+      final createResult = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.return.picking',
+        'method': 'create',
+        'args': [
+          {'picking_id': pickingId},
+        ],
+        'kwargs': {},
+      });
+
+      final int wizardId;
+      if (createResult is int) {
+        wizardId = createResult;
+      } else if (createResult is List && createResult.isNotEmpty) {
+        wizardId = createResult.first as int;
+      } else {
+        throw Exception('Failed to create return wizard.');
+      }
+
+      final wizardRows = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.return.picking',
+        'method': 'read',
+        'args': [
+          [wizardId],
+          ['product_return_moves'],
+        ],
+        'kwargs': {},
+      });
+
+      if (wizardRows is! List || wizardRows.isEmpty) return [];
+      final lineIds = (wizardRows.first as Map<String, dynamic>)[
+              'product_return_moves'] as List? ??
+          const [];
+      if (lineIds.isEmpty) return [];
+
+      final lines = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.return.picking.line',
+        'method': 'read',
+        'args': [
+          List<int>.from(lineIds),
+          ['id', 'product_id', 'quantity', 'move_id', 'uom_id'],
+        ],
+        'kwargs': {},
+      });
+
+      return List<Map<String, dynamic>>.from(lines ?? const []);
+    } catch (e) {
+      throw Exception('Failed to fetch returnable moves: $e');
     }
   }
 
@@ -222,58 +299,62 @@ class OdooReturnManagementService {
     }
   }
 
-  /// Creates a new return picking using Odoo's return wizard
-  ///
-  /// Steps:
-  /// 1. Creates `stock.return.picking` wizard record
-  /// 2. Writes return move lines (product + quantity)
-  /// 3. Triggers return creation (method differs pre/post Odoo 18)
-  ///
-  /// Throws exception if no lines provided or RPC fails.
+  /// Creates a new return picking via Odoo's `stock.return.picking`
+  /// wizard. Replaces the wizard's auto-populated lines with the
+  /// user-supplied ones, then triggers return creation (method differs
+  /// pre/post Odoo 18). Throws on RPC / wizard failure.
   Future<void> createReturn(
     int pickingId,
     List<List<Object>> returnLines,
   ) async {
+    if (returnLines.isEmpty) {
+      throw Exception('No quantity specified for return.');
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    int version = prefs.getInt('version') ?? 0;
-    try {
-      if (returnLines.isEmpty) {
-        throw Exception('No quantity specified for return.');
-      }
+    final int version = prefs.getInt('version') ?? 0;
 
-      final wizardId = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.return.picking',
-        'method': 'create',
-        'args': [
-          {'picking_id': pickingId},
-        ],
-        'kwargs': {},
-      });
+    final createResult = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.return.picking',
+      'method': 'create',
+      'args': [
+        {'picking_id': pickingId},
+      ],
+      'kwargs': {},
+    });
 
-      await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.return.picking',
-        'method': 'write',
-        'args': [
-          wizardId,
-          {'product_return_moves': returnLines},
-        ],
-        'kwargs': {},
-      });
-      if (version < 18) {
-        await CompanySessionManager.callKwWithCompany({
-          'model': 'stock.return.picking',
-          'method': 'create_returns',
-          'args': [wizardId],
-          'kwargs': {},
-        });
-      } else {
-        await CompanySessionManager.callKwWithCompany({
-          'model': 'stock.return.picking',
-          'method': 'action_create_returns',
-          'args': [wizardId],
-          'kwargs': {},
-        });
-      }
-    } catch (_) {}
+    final int wizardId;
+    if (createResult is int) {
+      wizardId = createResult;
+    } else if (createResult is List && createResult.isNotEmpty) {
+      wizardId = createResult.first as int;
+    } else {
+      throw Exception('Failed to create return wizard.');
+    }
+
+    final List<dynamic> replacementLines = [
+      [5, 0, 0],
+      ...returnLines,
+    ];
+
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.return.picking',
+      'method': 'write',
+      'args': [
+        [wizardId],
+        {'product_return_moves': replacementLines},
+      ],
+      'kwargs': {},
+    });
+
+    final method = version < 18 ? 'create_returns' : 'action_create_returns';
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.return.picking',
+      'method': method,
+      'args': [
+        [wizardId],
+      ],
+      'kwargs': {},
+    });
   }
 }

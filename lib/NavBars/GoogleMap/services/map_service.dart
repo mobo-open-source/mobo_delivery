@@ -39,7 +39,6 @@ class MapService {
         );
       }
     } catch (_) {
-      // Non-critical; return empty list on failure.
     }
     return [];
   }
@@ -64,12 +63,10 @@ class MapService {
       final json = jsonDecode(response.body);
       if (json['features'] != null &&
           (json['features'] as List).isNotEmpty) {
-        // Mapbox center is [longitude, latitude]
         final center = json['features'][0]['center'] as List;
         return LatLng(center[1] as double, center[0] as double);
       }
     } catch (_) {
-      // Non-critical; caller handles null return.
     }
     return null;
   }

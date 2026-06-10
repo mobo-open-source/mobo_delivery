@@ -75,8 +75,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   LatLng? _sourceLatLng;
   List<Polyline> _polylines = [];
 
-  /// Current Mapbox style ID (streets-v11, satellite-v9, outdoors-v11, satellite-streets-v11).
-  String _currentMapStyle = 'streets-v11';
+  /// Current TomTom map style: basic/main, sat/main, basic/night, hybrid/main.
+  String _currentMapStyle = 'basic/main';
   bool _showOtherFABs = true;
   String _routeDuration = '';
   String _routeDistance = '';
@@ -113,7 +113,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   @override
   void initState() {
     super.initState();
-    _apiKey = dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? '';
+    _apiKey = dotenv.env['TOMTOM_API_KEY'] ?? '***REMOVED-SEE-SECURITY-NOTICE***';
     _initializeServices();
     _setInitialLocation();
     _loadCustomMarker();
@@ -121,29 +121,43 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   }
 
   /// Initializes Odoo client, checks connectivity, fetches pickings.
-  /// Overrides the Mapbox token with an Odoo-configured value if available.
+  ///
+  /// Internet status (`isOnline`) is driven purely by the DNS-based
+  /// connectivity check — Odoo session / RPC failures do NOT flip
+  /// `isOnline` because the map itself works without picking data.
+  /// Backend errors surface as a snackbar instead of the full-page
+  /// "No Internet" overlay.
   Future<void> _initializeServices() async {
-    isOnline = await odooService.checkNetworkConnectivity();
-    await odooService.initializeOdooClient();
-    pickings = await odooService.fetchStockPickings();
+    bool online;
     try {
-      final token = await odooService.getMapToken();
-      if (token.isNotEmpty) _apiKey = token;
+      online = await odooService.checkNetworkConnectivity();
     } catch (_) {
-      // Use .env token as fallback; non-critical.
+      online = false;
     }
-    if (_apiKey.isEmpty && mounted) {
-      CustomSnackbar.showError(
-        context,
-        'Mapbox token not configured. Set MAPBOX_ACCESS_TOKEN in .env or Profile settings.',
-      );
+
+    if (!online) {
+      if (mounted) setState(() => isOnline = false);
+      return;
     }
-    if (mounted) setState(() {});
+    if (mounted) setState(() => isOnline = true);
+
+    try {
+      await odooService.initializeOdooClient();
+      final fetched = await odooService.fetchStockPickings();
+      if (mounted) setState(() => pickings = fetched);
+    } catch (e) {
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Could not load pickings from Odoo. Map navigation still works.',
+        );
+      }
+    }
   }
 
   /// Listens to gyroscope events to detect phone rotation (used for bearing updates).
   void _listenToGyroscope() {
-    _gyroscopeSubscription = gyroscopeEvents.listen((GyroscopeEvent event) {
+    _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
       _isPhoneRotated = event.z.abs() > 0.5;
     });
   }
@@ -184,24 +198,74 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     if (mounted) setState(() {});
   }
 
-  /// Maps internal travel mode string to the corresponding Mapbox routing profile.
-  String _getMapboxProfile(String travelMode) {
+  /// Maps internal travel mode string to the corresponding TomTom travel mode.
+  /// Sorts intermediate stops by nearest-neighbor from [_sourceLatLng],
+  /// always keeping the last stop (final destination) fixed at the end.
+  ///
+  /// Example: Source → [Ramanattukara, Kozhikode] → Thamarassery
+  /// If Ramanattukara is closer to Source, order stays; otherwise swaps.
+  void _applySortedStopOrder() {
+    if (_sourceLatLng == null || _stops.length < 2) return;
+
+    final finalStop = _stops.last;
+    final finalCtrl = _stopSearchControllers.last;
+
+    final intermediate = _stops.sublist(0, _stops.length - 1);
+    final intermediateCtrls =
+        _stopSearchControllers.sublist(0, _stopSearchControllers.length - 1);
+
+    final remaining = List<int>.generate(intermediate.length, (i) => i);
+    final sortedIndices = <int>[];
+    LatLng current = _sourceLatLng!;
+
+    while (remaining.isNotEmpty) {
+      int bestIdx = remaining[0];
+      double bestDist =
+          mapService.distanceBetweenPoints(current, intermediate[bestIdx]);
+      for (final i in remaining) {
+        final d = mapService.distanceBetweenPoints(current, intermediate[i]);
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+      sortedIndices.add(bestIdx);
+      remaining.remove(bestIdx);
+      current = intermediate[bestIdx];
+    }
+
+    _stops
+      ..clear()
+      ..addAll(sortedIndices.map((i) => intermediate[i]))
+      ..add(finalStop);
+
+    _stopSearchControllers
+      ..clear()
+      ..addAll(sortedIndices.map((i) => intermediateCtrls[i]))
+      ..add(finalCtrl);
+
+    _stopSuggestions
+      ..clear()
+      ..addAll(List.generate(_stops.length, (_) => <String>[]));
+  }
+
+  String _getTomTomTravelMode(String travelMode) {
     switch (travelMode) {
       case 'walking':
-        return 'walking';
+        return 'pedestrian';
       case 'bicycling':
-        return 'cycling';
+        return 'bicycle';
       default:
-        return 'driving-traffic';
+        return 'car';
     }
   }
 
-  /// Calculates route using Mapbox Directions API.
+  /// Calculates route using TomTom Routing API.
   ///
   /// Flow:
-  ///   1. Builds coordinates string: origin + ordered stops (lng,lat format)
-  ///   2. Calls Mapbox Directions API with polyline geometry
-  ///   3. Decodes polyline → draws route overlay
+  ///   1. Builds coordinates string: origin + ordered stops (lat,lon format)
+  ///   2. Calls TomTom Calculate Route API
+  ///   3. Parses route points → draws route overlay
   ///   4. Computes total distance/duration + leg-by-leg info
   ///   5. Places start/stop markers on the map
   ///   6. Fits camera bounds to show entire route
@@ -209,42 +273,88 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
-      // Guard: token must be present.
       if (_apiKey.isEmpty) {
         CustomSnackbar.showError(context,
-            'Mapbox token is missing. Check .env or Profile settings.');
+            'TomTom API key is missing. Check .env or Profile settings.');
         return;
       }
 
-      // Guard: source + at least one stop required.
       if (_sourceLatLng == null) {
+        if (_currentLatLng != null) {
+          _sourceLatLng = _currentLatLng;
+          sourceController.text = 'Your Location';
+        } else if (sourceController.text.trim().isNotEmpty &&
+            sourceController.text != 'Your Location') {
+          _sourceLatLng = await mapService.getLatLngFromPlace(
+              sourceController.text, _apiKey,
+              proximity: _currentLatLng);
+        }
+      }
+
+      if (_sourceLatLng == null) {
+        if (!mounted) return;
         CustomSnackbar.showError(
             context, 'Source location not set. Enable GPS or enter manually.');
         return;
       }
+
+      final filledCtrls = _stopSearchControllers
+          .where((c) => c.text.trim().isNotEmpty)
+          .toList();
+      if (filledCtrls.isNotEmpty && _stops.length != filledCtrls.length) {
+        final resolved = <LatLng>[];
+        for (final ctrl in filledCtrls) {
+          final latlng = await mapService.getLatLngFromPlace(
+              ctrl.text, _apiKey,
+              proximity: _currentLatLng);
+          if (latlng != null) {
+            resolved.add(latlng);
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _stops
+              ..clear()
+              ..addAll(resolved);
+          });
+        }
+      }
+
       if (_stops.isEmpty) {
+        if (!mounted) return;
         CustomSnackbar.showError(
-            context, 'No stops found. Select a picking or add a stop manually.');
+            context, 'Could not resolve any stop locations. Try selecting from suggestions.');
         return;
       }
 
-      // Mapbox coordinates: longitude first, semicolon-separated.
-      final allCoords = [
-        '${_sourceLatLng!.longitude},${_sourceLatLng!.latitude}',
-        ..._stops.map((s) => '${s.longitude},${s.latitude}'),
-      ];
-      final profile = _getMapboxProfile(_selectedTravelMode);
-      final url =
-          'https://api.mapbox.com/directions/v5/mapbox/$profile/${allCoords.join(';')}'
-          '?geometries=polyline&overview=full&steps=false&access_token=$_apiKey';
+      if (_stops.length >= 2) _applySortedStopOrder();
 
-      debugPrint('[MapBox] Directions URL: $url');
+      final allCoords = [
+        '${_sourceLatLng!.latitude},${_sourceLatLng!.longitude}',
+        ..._stops.map((s) => '${s.latitude},${s.longitude}'),
+      ];
+      final travelMode = _getTomTomTravelMode(_selectedTravelMode);
+      final url =
+          'https://api.tomtom.com/routing/1/calculateRoute/${allCoords.join(':')}/json'
+          '?travelMode=$travelMode&key=$_apiKey';
+
+      debugPrint('[TomTom] Routing URL: $url');
 
       final response = await http.get(Uri.parse(url));
-      debugPrint('[MapBox] Directions response (${response.statusCode}): ${response.body.substring(0, response.body.length.clamp(0, 300))}');
+      debugPrint('[TomTom] Routing response (${response.statusCode}): ${response.body.substring(0, response.body.length.clamp(0, 300))}');
 
       if (response.statusCode != 200) {
-        if (mounted) {
+        if (!mounted) return;
+        try {
+          final errJson = jsonDecode(response.body);
+          final msg = errJson['detailedError']?['message']
+              ?? errJson['message']
+              ?? 'HTTP ${response.statusCode}';
+          CustomSnackbar.showError(context,
+              travelMode == 'bicycle'
+                  ? 'Bike routing unavailable for this route. Try a shorter distance or Drive mode. ($msg)'
+                  : 'Route request failed: $msg');
+        } catch (_) {
           CustomSnackbar.showError(
               context, 'Route request failed (HTTP ${response.statusCode}).');
         }
@@ -253,27 +363,24 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
       final json = jsonDecode(response.body);
 
-      if (json['code'] == 'Ok' &&
-          json['routes'] != null &&
+      if (json['routes'] != null &&
           (json['routes'] as List).isNotEmpty) {
         final route = json['routes'][0];
-        final polylinePoints =
-            mapService.decodePolyline(route['geometry'] as String);
+        final legs = route['legs'] as List;
+        final polylinePoints = mapService.parseRoutePoints(legs);
 
         if (polylinePoints.isEmpty) {
           if (mounted) {
-            CustomSnackbar.showError(context, 'Route geometry could not be decoded.');
+            CustomSnackbar.showError(context, 'Route geometry could not be parsed.');
           }
           return;
         }
-
-        final legs = route['legs'] as List;
 
         double totalDistance = 0;
         int totalDuration = 0;
         final List<Map<String, String>> legInfo = [];
 
-        // First leg: source → stop 0.
+        final leg0Summary = legs[0]['summary'];
         legInfo.add({
           'start_address': sourceController.text.isEmpty
               ? 'Your Location'
@@ -283,18 +390,17 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               ? _stopSearchControllers[0].text
               : 'Stop 1',
           'distance':
-              mapService.formatDistance((legs[0]['distance'] as num).toDouble()),
+              mapService.formatDistance((leg0Summary['lengthInMeters'] as num).toDouble()),
           'duration':
-              mapService.formatDuration((legs[0]['duration'] as num).toInt()),
+              mapService.formatDuration((leg0Summary['travelTimeInSeconds'] as num).toInt()),
         });
-        totalDistance += (legs[0]['distance'] as num).toDouble() / 1000;
-        totalDuration += (legs[0]['duration'] as num).toInt();
+        totalDistance += (leg0Summary['lengthInMeters'] as num).toDouble() / 1000;
+        totalDuration += (leg0Summary['travelTimeInSeconds'] as num).toInt();
 
-        // Subsequent legs.
         for (int i = 1; i < legs.length; i++) {
-          final leg = legs[i];
-          totalDistance += (leg['distance'] as num).toDouble() / 1000;
-          totalDuration += (leg['duration'] as num).toInt();
+          final legSummary = legs[i]['summary'];
+          totalDistance += (legSummary['lengthInMeters'] as num).toDouble() / 1000;
+          totalDuration += (legSummary['travelTimeInSeconds'] as num).toInt();
           legInfo.add({
             'start_address': i - 1 < _stopSearchControllers.length &&
                     _stopSearchControllers[i - 1].text.isNotEmpty
@@ -305,9 +411,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                 ? _stopSearchControllers[i].text
                 : 'Stop ${i + 1}',
             'distance':
-                mapService.formatDistance((leg['distance'] as num).toDouble()),
+                mapService.formatDistance((legSummary['lengthInMeters'] as num).toDouble()),
             'duration':
-                mapService.formatDuration((leg['duration'] as num).toInt()),
+                mapService.formatDuration((legSummary['travelTimeInSeconds'] as num).toInt()),
           });
         }
 
@@ -351,10 +457,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         });
         _moveCameraToFitAllMarkers();
       } else {
-        // API returned an error code — show it to the user.
-        final errorCode = json['code'] ?? 'Unknown';
-        final errorMsg = json['message'] ?? 'No route found between these locations.';
-        debugPrint('[MapBox] Directions error: code=$errorCode, message=$errorMsg');
+        final errorMsg = json['detailedError']?['message']
+            ?? json['message']
+            ?? 'No route found between these locations.';
+        debugPrint('[TomTom] Routing error: $errorMsg');
         if (mounted) {
           CustomSnackbar.showError(context, 'Route error: $errorMsg');
           setState(() {
@@ -366,7 +472,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         }
       }
     } catch (e, stack) {
-      debugPrint('[MapBox] _getOptimizedRoute exception: $e\n$stack');
+      debugPrint('[TomTom] _getOptimizedRoute exception: $e\n$stack');
       if (mounted) {
         CustomSnackbar.showError(context, 'Failed to get route: $e');
       }
@@ -469,29 +575,30 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       return;
     }
 
-    final profile = _getMapboxProfile(_selectedTravelMode);
+    final travelMode = _getTomTomTravelMode(_selectedTravelMode);
     final allCoords = [
-      '${_currentLatLng!.longitude},${_currentLatLng!.latitude}',
-      ...remainingPoints.map((s) => '${s.longitude},${s.latitude}'),
+      '${_currentLatLng!.latitude},${_currentLatLng!.longitude}',
+      ...remainingPoints.map((s) => '${s.latitude},${s.longitude}'),
     ];
     final url =
-        'https://api.mapbox.com/directions/v5/mapbox/$profile/${allCoords.join(';')}'
-        '?geometries=polyline&overview=full&access_token=$_apiKey';
+        'https://api.tomtom.com/routing/1/calculateRoute/${allCoords.join(':')}/json'
+        '?travelMode=$travelMode&key=$_apiKey';
 
     try {
       final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) return;
       final json = jsonDecode(response.body);
 
-      if (json['code'] == 'Ok' && (json['routes'] as List).isNotEmpty) {
+      if (json['routes'] != null && (json['routes'] as List).isNotEmpty) {
         final legs = json['routes'][0]['legs'] as List;
         double totalDistance = 0;
         int totalDuration = 0;
         final List<Map<String, dynamic>> remainingLegInfo = [];
 
         for (int i = 0; i < legs.length; i++) {
-          final leg = legs[i];
-          totalDistance += (leg['distance'] as num).toDouble() / 1000;
-          totalDuration += (leg['duration'] as num).toInt();
+          final legSummary = legs[i]['summary'];
+          totalDistance += (legSummary['lengthInMeters'] as num).toDouble() / 1000;
+          totalDuration += (legSummary['travelTimeInSeconds'] as num).toInt();
 
           final name = remainingNames[
               i < remainingNames.length ? i : remainingNames.length - 1];
@@ -502,21 +609,22 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           remainingLegInfo.add({
             'name': name,
             'distance': mapService.formatDistance(
-                (leg['distance'] as num).toDouble()),
+                (legSummary['lengthInMeters'] as num).toDouble()),
             'duration': mapService.formatDuration(
-                (leg['duration'] as num).toInt()),
+                (legSummary['travelTimeInSeconds'] as num).toInt()),
             'latlng': latlng,
             'type': isVisited ? 'visited_stop' : 'stop',
           });
         }
 
         if (nextPointIndex > 0 && legs.isNotEmpty) {
+          final firstLegSummary = legs[0]['summary'];
           remainingLegInfo.insert(0, {
             'name': 'Current Location',
             'distance': mapService.formatDistance(
-                (legs[0]['distance'] as num).toDouble()),
+                (firstLegSummary['lengthInMeters'] as num).toDouble()),
             'duration': mapService.formatDuration(
-                (legs[0]['duration'] as num).toInt()),
+                (firstLegSummary['travelTimeInSeconds'] as num).toInt()),
             'latlng': _currentLatLng,
             'type': 'start',
           });
@@ -539,7 +647,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         }
       }
     } catch (e) {
-      debugPrint('[MapBox] _updateRemainingDistanceAndTime error: $e');
+      debugPrint('[TomTom] _updateRemainingDistanceAndTime error: $e');
       if (mounted) {
         setState(() {
           _remainingDistance = '--';
@@ -649,6 +757,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     bool isDropdownActive = false;
 
+    bool popCalled = false;
+    bool needsAutoRoute = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -658,8 +769,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       ),
       builder: (BuildContext context) {
         bool isFetchingStops = false;
-        // Guard: only add new stop field ONCE when popup opens, not on every
-        // StatefulBuilder rebuild (which would create duplicate empty fields).
         bool didAddStopField = false;
 
         return StatefulBuilder(
@@ -696,7 +805,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                      // Drag handle
                       Container(
                         width: 40,
                         height: 4,
@@ -719,7 +827,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Pickings multi-select dropdown.
                       DropdownSearch<Map<String, dynamic>>.multiSelection(
                         popupProps: PopupPropsMultiSelection.menu(
                           showSearchBox: true,
@@ -746,7 +853,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           return true;
                         },
                         items: pickings,
-                        itemAsString: (item) => item?['name'] ?? '',
+                        itemAsString: (item) => item['name'] ?? '',
                         selectedItems: pickings
                             .where((p) => selectedPickings.contains(p['id']))
                             .toList(),
@@ -773,23 +880,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 _stopSearchControllers.add(
                                     TextEditingController(text: dest));
                                 _stopSuggestions.add([]);
-                                try {
-                                  final stopLatLng =
-                                      await mapService.getLatLngFromPlace(
-                                          dest, _apiKey,
-                                          proximity: _currentLatLng);
-                                  if (stopLatLng != null) {
-                                    _stops.add(stopLatLng);
-                                  }
-                                } catch (_) {
-                                  if (context.mounted) {
-                                    Navigator.of(context).pop(true);
-                                    setState(() => selectedPickings.clear());
-                                    CustomSnackbar.showError(
-                                      context,
-                                      'Could not fetch location. Check Mapbox token or server.',
-                                    );
-                                  }
+                                final stopLatLng =
+                                    await mapService.getLatLngFromPlace(
+                                        dest, _apiKey,
+                                        proximity: _currentLatLng);
+                                if (stopLatLng != null) {
+                                  _stops.add(stopLatLng);
                                 }
                               }
                             }
@@ -802,13 +898,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                               _stopSuggestions.add([]);
                             }
                           } catch (_) {
-                            if (context.mounted) {
-                              Navigator.of(context).pop(true);
-                              CustomSnackbar.showError(
-                                context,
-                                'Something went wrong while choosing pickings.',
-                              );
-                            }
                           } finally {
                             setState(() {});
                             sheetSetState(() {
@@ -839,21 +928,29 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
                       const SizedBox(height: 12),
 
-                      // Source location field with Mapbox autocomplete.
-                      TextField(
-                        controller: sourceController,
-                        style: TextStyle(fontSize: 14, color: onSurface),
-                        decoration: _fieldDecoration(
-                            isDark, 'Source Location'),
-                        onChanged: (value) async {
-                          final suggestions = await mapService
-                              .fetchSuggestions(value, _apiKey,
-                                  proximity: _currentLatLng);
-                          sheetSetState(() => _sourceSuggestions = [
-                                'Your Location',
-                                ...suggestions,
-                              ]);
+                      Focus(
+                        onFocusChange: (hasFocus) async {
+                          if (!hasFocus) {
+                            await Future.delayed(
+                                const Duration(milliseconds: 150));
+                            sheetSetState(() => _sourceSuggestions.clear());
+                          }
                         },
+                        child: TextField(
+                          controller: sourceController,
+                          style: TextStyle(fontSize: 14, color: onSurface),
+                          decoration: _fieldDecoration(
+                              isDark, 'Source Location'),
+                          onChanged: (value) async {
+                            final suggestions = await mapService
+                                .fetchSuggestions(value, _apiKey,
+                                    proximity: _currentLatLng);
+                            sheetSetState(() => _sourceSuggestions = [
+                                  'Your Location',
+                                  ...suggestions,
+                                ]);
+                          },
+                        ),
                       ),
                       if (_sourceSuggestions.isNotEmpty)
                         Container(
@@ -933,37 +1030,47 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           ),
                         ),
 
-                      // Stop fields with Mapbox autocomplete.
-                      if (selectedPickings.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        ...List.generate(_stopSearchControllers.length, (index) {
+                      const SizedBox(height: 12),
+                      ...List.generate(_stopSearchControllers.length, (index) {
                           return Column(
                             children: [
-                              TextField(
-                                controller: _stopSearchControllers[index],
-                                style: TextStyle(
-                                    fontSize: 14, color: onSurface),
-                                decoration: _fieldDecoration(
-                                  isDark,
-                                  _stopSearchControllers[index]
-                                          .text
-                                          .trim()
-                                          .isEmpty
-                                      ? 'Add your stop'
-                                      : 'Stop ${index + 1}',
-                                ),
-                                onChanged: (value) async {
-                                  final suggestions = await mapService
-                                      .fetchSuggestions(value, _apiKey,
-                                          proximity: _currentLatLng);
-                                  sheetSetState(() {
-                                    if (_stopSuggestions.length <= index) {
-                                      _stopSuggestions.add(suggestions);
-                                    } else {
-                                      _stopSuggestions[index] = suggestions;
+                              Focus(
+                                onFocusChange: (hasFocus) async {
+                                  if (!hasFocus) {
+                                    await Future.delayed(
+                                        const Duration(milliseconds: 150));
+                                    if (index < _stopSuggestions.length) {
+                                      sheetSetState(() =>
+                                          _stopSuggestions[index].clear());
                                     }
-                                  });
+                                  }
                                 },
+                                child: TextField(
+                                  controller: _stopSearchControllers[index],
+                                  style: TextStyle(
+                                      fontSize: 14, color: onSurface),
+                                  decoration: _fieldDecoration(
+                                    isDark,
+                                    _stopSearchControllers[index]
+                                            .text
+                                            .trim()
+                                            .isEmpty
+                                        ? 'Add your stop'
+                                        : 'Stop ${index + 1}',
+                                  ),
+                                  onChanged: (value) async {
+                                    final suggestions = await mapService
+                                        .fetchSuggestions(value, _apiKey,
+                                            proximity: _currentLatLng);
+                                    sheetSetState(() {
+                                      if (_stopSuggestions.length <= index) {
+                                        _stopSuggestions.add(suggestions);
+                                      } else {
+                                        _stopSuggestions[index] = suggestions;
+                                      }
+                                    });
+                                  },
+                                ),
                               ),
                               if (_stopSuggestions[index].isNotEmpty)
                                 Container(
@@ -991,6 +1098,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                         borderRadius:
                                             BorderRadius.circular(12),
                                         onTap: () async {
+                                          final nav = Navigator.of(context);
                                           _stopSearchControllers[index]
                                                   .text =
                                               _stopSuggestions[index][si];
@@ -1010,31 +1118,28 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                 _stops[index] = stopLatLng;
                                               } else if (fromAddStop &&
                                                   _stops.isNotEmpty) {
-                                                final insertAt =
-                                                    _stops.length - 1;
-                                                _stops.insert(
-                                                    insertAt, stopLatLng);
+                                                _stops.insert(0, stopLatLng);
                                                 final ctrl =
                                                     _stopSearchControllers
                                                         .removeAt(index);
+                                                _stopSearchControllers
+                                                    .insert(0, ctrl);
                                                 final sugg =
                                                     _stopSuggestions
                                                         .removeAt(index);
-                                                _stopSearchControllers
-                                                    .insert(
-                                                        _stopSearchControllers
-                                                                .length -
-                                                            1,
-                                                        ctrl);
                                                 _stopSuggestions.insert(
-                                                    _stopSuggestions
-                                                            .length -
-                                                        1,
-                                                    sugg);
+                                                    0, sugg);
                                               } else {
                                                 _stops.add(stopLatLng);
                                               }
                                             });
+
+                                            if (fromAddStop && mounted &&
+                                                !popCalled) {
+                                              needsAutoRoute = true;
+                                              popCalled = true;
+                                              nav.pop();
+                                            }
                                           }
                                         },
                                         child: Padding(
@@ -1075,7 +1180,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                             ],
                           );
                         }),
-                      ],
 
                       const SizedBox(height: 16),
                       Row(
@@ -1114,14 +1218,22 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 elevation: 0,
                               ),
                               onPressed: () async {
-                                if (selectedPickings.isEmpty) {
+                                if (!fromAddStop && selectedPickings.isEmpty) {
                                   setState(
                                       () => shouldValidate = true);
-                                  Navigator.of(context).pop(true);
+                                  if (!popCalled) {
+                                    popCalled = true;
+                                    Navigator.of(context).pop(true);
+                                  }
                                   _showEnterRootPopup();
                                   return;
                                 }
-                                Navigator.of(context).pop(true);
+                                needsAutoRoute = false;
+                                if (!popCalled) {
+                                  popCalled = true;
+                                  Navigator.of(context).pop(true);
+                                }
+                                if (!mounted) return;
                                 setState(() {
                                   _showLocationNames = true;
                                   _showOtherFABs = false;
@@ -1135,7 +1247,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                       sourceController.text;
                                 });
                                 await _getOptimizedRoute();
-                                setState(() {});
+                                if (mounted) setState(() {});
                               },
                               icon: const Icon(
                                   HugeIcons.strokeRoundedNavigation03,
@@ -1160,7 +1272,22 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      if (!needsAutoRoute || !mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _showLocationNames = true;
+          _showOtherFABs = false;
+          _showLayer = false;
+          _showStopLocationFields = true;
+          _infoCard = false;
+          _isNavigationStarted = false;
+          sourceSearchController.text = sourceController.text;
+        });
+        _getOptimizedRoute();
+      });
+    });
   }
 
   /// Returns a consistent [InputDecoration] for text fields in the bottom sheet.
@@ -1207,7 +1334,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           ? const LoadingOverlay()
           : Stack(
               children: [
-                // ── Mapbox tile map ──────────────────────────────────────────
                 FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
@@ -1222,9 +1348,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   children: [
                     TileLayer(
                       key: ValueKey(_currentMapStyle),
-                      urlTemplate:
-                          'https://api.mapbox.com/styles/v1/mapbox/$_currentMapStyle'
-                          '/tiles/256/{z}/{x}/{y}@2x?access_token=$_apiKey',
+                      urlTemplate: _currentMapStyle == 'sat/main'
+                          ? 'https://api.tomtom.com/map/1/tile/$_currentMapStyle/{z}/{x}/{y}.jpg?key=$_apiKey'
+                          : 'https://api.tomtom.com/map/1/tile/$_currentMapStyle/{z}/{x}/{y}.png?key=$_apiKey',
                       userAgentPackageName: 'com.cybrosys.mobo_delivery',
                     ),
                     if (_polylines.isNotEmpty)
@@ -1236,7 +1362,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   ],
                 ),
 
-                // ── Offline warning ──────────────────────────────────────────
                 if (!isOnline)
                   ErrorStateWidget(
                     title: 'No Internet Connection',
@@ -1244,12 +1369,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     onRetry: _initializeServices,
                   ),
 
-                // ── Route planning overlays ──────────────────────────────────
                 if (!_infoCard && _showLocationNames) ...[
                   Positioned(
                     top: 40,
                     left: 16,
-                    right: 80,
+                    right: 72,
                     child: SearchInputs(
                       sourceController: sourceSearchController,
                       stopControllers: _stopSearchControllers,
@@ -1288,7 +1412,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     left: 16,
                     right: 16,
                     child: RouteInfoCard(
-                      selectedTravelMode: _selectedTravelMode,
                       routeDuration: _routeDuration,
                       routeDistance: _routeDistance,
                       legInfo: _legInfo,
@@ -1300,22 +1423,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         setState(() => _showStopLocationFields = true);
                         _showEnterRootPopup(fromAddStop: true);
                       },
-                      onTravelModeChanged: (mode) {
-                        setState(() => _selectedTravelMode = mode);
-                        _getOptimizedRoute();
-                      },
                     ),
                   ),
                 ],
 
-                // ── Active navigation overlays ───────────────────────────────
                 if (_isNavigationStarted) ...[
                   Positioned(
                     top: 40,
                     left: 16,
                     right: 16,
                     child: NavigationHeader(
-                      selectedTravelMode: _selectedTravelMode,
                       onClose: _resetNavigation,
                     ),
                   ),
@@ -1346,7 +1463,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   ),
                 ],
 
-                // ── Loading overlay ──────────────────────────────────────────
                 if (_isLoading)
                   Container(
                     color: Colors.black.withValues(alpha: 0.5),
@@ -1360,13 +1476,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               ],
             ),
 
-      // ── FABs ──────────────────────────────────────────────────────────────
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (_showOtherFABs) ...[
             FloatingActionButton(
+              heroTag: 'routeEnterRoot',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
               foregroundColor: AppStyle.primaryColor,
               elevation: 4,
@@ -1375,6 +1491,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             ),
             const SizedBox(height: 10),
             FloatingActionButton(
+              heroTag: 'routeRecenterInitial',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
               foregroundColor: AppStyle.primaryColor,
               elevation: 4,
@@ -1392,7 +1509,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Style buttons slide in from right when popup is open
                 if (!_showOtherFABs)
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
@@ -1408,13 +1524,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildMapTypeIcon('streets-v11',
+                        _buildMapTypeIcon('basic/main',
                             HugeIcons.strokeRoundedMaps, 'Normal'),
-                        _buildMapTypeIcon('satellite-v9',
+                        _buildMapTypeIcon('sat/main',
                             HugeIcons.strokeRoundedSatellite02, 'Satellite'),
-                        _buildMapTypeIcon('outdoors-v11',
-                            HugeIcons.strokeRoundedMountain, 'Terrain'),
-                        _buildMapTypeIcon('satellite-streets-v11',
+                        _buildMapTypeIcon('basic/night',
+                            HugeIcons.strokeRoundedMountain, 'Night'),
+                        _buildMapTypeIcon('hybrid/main',
                             HugeIcons.strokeRoundedGlobe02, 'Hybrid'),
                         const SizedBox(width: 8),
                       ],
@@ -1436,6 +1552,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           if (_isNavigationStarted) ...[
             const SizedBox(height: 10),
             FloatingActionButton(
+              heroTag: 'routeToggleRemainingInfo',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
               foregroundColor: AppStyle.primaryColor,
               elevation: 4,
@@ -1451,6 +1568,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             if (_isMapManuallyMoved && _currentLatLng != null) ...[
               const SizedBox(height: 10),
               FloatingActionButton(
+                heroTag: 'routeRecenterCurrent',
                 backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
                 foregroundColor: const Color(0xFF1A73E8),
                 elevation: 4,
@@ -1525,7 +1643,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         bearing = mapService.calculateBearing(lastPosition!, currentLatLng);
       }
 
-      // Off-route detection.
       if (currentPolylinePoints.isNotEmpty) {
         final distance = mapService.distanceToPolyline(
             currentLatLng, currentPolylinePoints);
@@ -1534,6 +1651,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             _sourceLatLng = currentLatLng;
             sourceController.text = 'Your Location';
           });
+          await _getOptimizedRoute();
           currentPolylinePoints =
               _polylines.isNotEmpty ? _polylines.first.points : [];
           if (_polylines.isEmpty) {
@@ -1542,7 +1660,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         }
       }
 
-      // Update live navigation marker with bearing rotation.
       setState(() {
         _movingMarker = Marker(
           point: currentLatLng,

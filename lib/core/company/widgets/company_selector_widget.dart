@@ -40,7 +40,7 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
         }
 
         if (provider.companies.isEmpty) {
-          return _buildEmptyState(context);
+          return _buildEmptyState(context, provider);
         }
 
         return _buildCompactDropdown(context, provider);
@@ -87,36 +87,43 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, CompanyProvider provider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.white,
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.black.withOpacity(0.06),
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        provider.initialize();
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withOpacity(0.08)
+                : Colors.black.withOpacity(0.06),
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.apartment_rounded,
-            size: 14,
-            color: isDark ? Colors.white70 : Colors.black54,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'No companies',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white70 : Colors.black87,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.refresh_rounded,
+              size: 14,
+              color: isDark ? Colors.white70 : Colors.black54,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              'Tap to retry',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

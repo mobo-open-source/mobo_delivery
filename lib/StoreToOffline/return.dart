@@ -48,7 +48,6 @@ class ReturnToOffline {
 
       await _hiveService.saveTotalCount(pickingCount);
 
-      // Fetch all done pickings
       final pickingItems = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking',
         'method': 'search_read',

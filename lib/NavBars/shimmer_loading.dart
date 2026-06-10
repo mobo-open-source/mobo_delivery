@@ -25,7 +25,6 @@ class GridViewShimmer extends StatelessWidget {
       itemCount: 20,
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
-          // Base & highlight colors optimized for both themes
           baseColor: isDark ? Color(0xFF2A2A2A) : Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Card(
@@ -34,20 +33,17 @@ class GridViewShimmer extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: ListTile(
-              // Title placeholder (e.g. picking reference)
               title: Container(
                 height: 16,
                 width: 100,
                 color: Colors.white,
               ),
-              // Subtitle placeholder (e.g. scheduled date / partner)
               subtitle: Container(
                 margin: const EdgeInsets.only(top: 8),
                 height: 14,
                 width: 150,
                 color: Colors.white,
               ),
-              // Trailing placeholder (e.g. state badge or count)
               trailing: Container(
                 height: 20,
                 width: 60,

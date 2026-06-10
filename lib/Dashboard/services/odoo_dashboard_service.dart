@@ -1,7 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/company/session/company_session_manager.dart';
 
@@ -24,32 +25,30 @@ class OdooDashboardService {
     client = OdooClient(url, sessionId: session);
   }
 
-  /// Checks if the device is online **and** the Odoo server is reachable.
+  /// Checks if the device actually has internet access.
   ///
-  /// Returns `true` only if:
-  ///   1. Device has network connectivity (Wi-Fi/mobile)
-  ///   2. HTTP GET to `$url/web` returns 200 within 5 seconds
-  ///
-  /// Used before making any RPC calls that require internet.
+  /// Uses `connectivity_plus` for the radio state, then a short DNS lookup
+  /// to confirm packets really leave the device. Does NOT HTTP-ping the
+  /// Odoo `/web` endpoint, which previously caused false "Server unreachable"
+  /// banners whenever Odoo redirected, responded slowly, used custom paths,
+  /// or returned a non-200 status — all of which can happen with a perfectly
+  /// healthy internet connection.
   Future<bool> checkNetworkConnectivity() async {
-    final prefs = await SharedPreferences.getInstance();
-    url = prefs.getString('url') ?? '';
-    final connectivityResults = await Connectivity().checkConnectivity();
-    final hasNetwork =
-        connectivityResults.any((r) => r != ConnectivityResult.none);
-
-    if (hasNetwork) {
-      try {
-        final response = await http
-            .get(Uri.parse('$url/web'))
-            .timeout(const Duration(seconds: 5));
-
-        return response.statusCode == 200;
-      } catch (e) {
+    try {
+      final connectivityResults = await Connectivity().checkConnectivity();
+      if (!connectivityResults.any((r) => r != ConnectivityResult.none)) {
         return false;
       }
+      final result = await InternetAddress.lookup('example.com')
+          .timeout(const Duration(seconds: 3));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    } on TimeoutException {
+      return false;
+    } catch (_) {
+      return false;
     }
-    return false;
   }
 
   /// Fetches current user profile fields from `res.users`.
@@ -61,7 +60,6 @@ class OdooDashboardService {
   /// 2. Read partner-level fields (address, phone, mobile) from res.partner
   Future<Map<String, dynamic>?> getUserProfile(int userId) async {
     try {
-      // Step 1: Read user-level fields only
       final userRes = await CompanySessionManager.callKwWithCompany({
         'model': 'res.users',
         'method': 'read',
@@ -83,7 +81,6 @@ class OdooDashboardService {
       if (userRes is! List || userRes.isEmpty) return null;
       final data = userRes.first as Map<String, dynamic>;
 
-      // Step 2: Read partner-level fields (address, phone, mobile)
       final partner = data['partner_id'];
       if (partner is List && partner.isNotEmpty) {
         try {
@@ -120,7 +117,6 @@ class OdooDashboardService {
             data['country_id'] = pd['country_id'];
           }
         } catch (_) {
-          // Partner read failed — user data is still valid without address
         }
       }
 
@@ -176,7 +172,6 @@ class OdooDashboardService {
   /// then writes the encrypted map token value.
   Future<void> createMapKeyField(int companyId, String encryptedToken) async {
     try {
-      // 1. Get model ID for res.company
       final modelResult = await CompanySessionManager.callKwWithCompany({
         'model': 'ir.model',
         'method': 'search_read',
@@ -191,7 +186,6 @@ class OdooDashboardService {
       if (modelResult != null && modelResult.isNotEmpty) {
         final int modelIdInt = int.parse(modelResult[0]['id'].toString());
 
-        // 2. Check if custom field already exists
         final existingField = await CompanySessionManager.callKwWithCompany({
           'model': 'ir.model.fields',
           'method': 'search_read',
@@ -204,7 +198,6 @@ class OdooDashboardService {
           'kwargs': {},
         });
 
-        // 3. Create field if missing
         if (existingField == null || existingField.isEmpty) {
           await CompanySessionManager.callKwWithCompany({
             'model': 'ir.model.fields',
@@ -224,7 +217,6 @@ class OdooDashboardService {
         }
       }
 
-      // 4. Write encrypted value to company
       await CompanySessionManager.callKwWithCompany({
         'model': 'res.company',
         'method': 'write',

@@ -83,7 +83,6 @@ class RouteInfoCard extends StatelessWidget {
                 context,
               )!;
 
-              // Sync tab changes → travel mode callback
               tabController.addListener(() {
                 if (!tabController.indexIsChanging) {
                   String newMode;

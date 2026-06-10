@@ -98,7 +98,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           function: userDetails?['function'] is String ? userDetails!['function'] : '',
         );
 
-        // Persist fresh data locally
         await HiveProfileService().saveProfile(profile);
       } else {
         profile = await HiveProfileService().getProfile();
@@ -127,7 +126,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final userId = sessionData['userId'];
       final companyId = sessionData['companyId'];
 
-      // Separate mapToken (company-level field, not on res.users)
       final odooData = Map<String, dynamic>.from(event.updateData);
       final mapToken = odooData.remove('mapToken');
 
@@ -140,7 +138,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           await storageService.saveMapToken(mapToken);
         }
 
-        // Reload fresh data to reflect changes
         add(LoadProfile());
       } else {
         emit(const ProfileError("Failed to update profile"));

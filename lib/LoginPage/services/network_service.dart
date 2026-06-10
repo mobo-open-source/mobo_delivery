@@ -45,6 +45,11 @@ class NetworkService {
       httpClient.close();
 
       final jsonResponse = jsonDecode(responseBody);
+      if (jsonResponse.containsKey('error')) {
+        throw Exception(
+          jsonResponse['error']['data']?['message'] ?? 'Odoo Server returned an error',
+        );
+      }
       if (jsonResponse['result'] is List) {
         return (jsonResponse['result'] as List).map((db) => db.toString()).toList();
       }

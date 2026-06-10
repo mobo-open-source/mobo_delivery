@@ -38,13 +38,9 @@ class LoadingWidget extends StatelessWidget {
 
     if (!overlay) return loader;
 
-    // LayoutBuilder guards against unbounded-height parents (e.g. a Column
-    // without tight constraints). ModalBarrier uses ConstrainedBox.expand()
-    // internally and throws if it receives an infinite-height constraint.
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.hasBoundedHeight) {
-          // Unbounded context (e.g. inside a Column) — show spinner only.
           return Center(child: _buildAnimated(resolvedColor, isDark));
         }
         return Stack(

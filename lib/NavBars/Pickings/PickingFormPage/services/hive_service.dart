@@ -23,9 +23,6 @@ import '../models/user.dart';
 /// All save operations typically **clear + rewrite** the entire box (except pending queues).
 /// This is intentional for simplicity in an offline-first mobile app with relatively small datasets.
 class HiveService {
-  // ───────────────────────────────────────────────
-  //  Box names (used as keys for Hive.openBox)
-  // ───────────────────────────────────────────────
   static const String _pickingBoxName = 'stock_picking_box';
   static const String _pickingReturnBoxName = 'stock_picking_return_box';
   static const String _productBoxName = 'product_product_box';
@@ -47,7 +44,6 @@ class HiveService {
   /// Safe to call multiple times — checks if adapter is already registered.
   /// Opens boxes lazily only when needed, but pre-opens most here for simplicity.
   Future<void> initialize() async {
-    // Register adapters only if not already registered
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(PickingFormAdapter());
     if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(ProductAdapter());
     if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(PartnerAdapter());
@@ -60,7 +56,6 @@ class HiveService {
     if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(OperationTypeAdapter());
     if (!Hive.isAdapterRegistered(12)) Hive.registerAdapter(PartnerDetailsAdapter());
 
-    // Open all main boxes
     await Hive.openBox<PickingForm>(_pickingBoxName);
     await Hive.openBox<PickingForm>(_pickingReturnBoxName);
     await Hive.openBox<Product>(_productBoxName);
@@ -78,18 +73,12 @@ class HiveService {
     _totalCountBox = await Hive.openBox<int>('totalCountBox');
   }
 
-  // ───────────────────────────────────────────────
-  //  Total count (used e.g. for badge on sync screen)
-  // ───────────────────────────────────────────────
   Future<void> saveTotalCount(int count) async {
     await _totalCountBox.put('total', count);
   }
 
   int getTotalCount() => _totalCountBox.get('total') ?? 0;
 
-  // ───────────────────────────────────────────────
-  //  Pending VALIDATIONS queue
-  // ───────────────────────────────────────────────
 
   /// Queues a picking validation to be executed when online
   Future<void> savePendingValidation(int pickingId, Map<String, dynamic> pickingData) async {
@@ -119,9 +108,6 @@ class HiveService {
     await box.clear();
   }
 
-  // ───────────────────────────────────────────────
-  //  Pending CANCELLATIONS queue
-  // ───────────────────────────────────────────────
 
   Future<void> savePendingCancellation(int pickingId, Map<String, dynamic> pickingData) async {
     final box = Hive.box<PendingValidation>(_pendingCancellationsBox);
@@ -147,9 +133,6 @@ class HiveService {
     await box.clear();
   }
 
-  // ───────────────────────────────────────────────
-  //  Pending field UPDATES (header changes)
-  // ───────────────────────────────────────────────
 
   Future<void> savePendingUpdates(int pickingId, Map<String, dynamic> pickingData) async {
     final box = Hive.box<PendingUpdates>(_pendingUpdatesBox);
@@ -177,9 +160,6 @@ class HiveService {
     await box.clear();
   }
 
-  // ───────────────────────────────────────────────
-  //  Pending NEW PICKING creations
-  // ───────────────────────────────────────────────
 
   static const String _pendingCreatesCounterBox = 'pending_creates_counter';
 
@@ -226,9 +206,6 @@ class HiveService {
     await box.clear();
   }
 
-  // ───────────────────────────────────────────────
-  //  Pending PRODUCT LINE updates / additions
-  // ───────────────────────────────────────────────
 
   Future<void> savePendingProductUpdates(int localId, Map<String, dynamic> productData, String PickingName) async {
     final box = await Hive.openBox<ProductUpdates>(_productUpdatesBox);
@@ -260,9 +237,6 @@ class HiveService {
     await box.clear();
   }
 
-  // ───────────────────────────────────────────────
-  //  Cached master & picking data
-  // ───────────────────────────────────────────────
 
   /// Replaces entire picking cache with new list
   Future<void> savePickings(List<Map<String, dynamic>> pickings) async {
@@ -283,7 +257,6 @@ class HiveService {
     return box.get('picking_$id');
   }
 
-  // Similar methods for returns, products, partners, users, operation types, moves...
 
   Future<void> savePartnerDetails(PartnerDetails details) async {
     final box = await _getBox<PartnerDetails>(_partnerDetailsBoxName);
@@ -380,9 +353,6 @@ class HiveService {
     return box.values.toList();
   }
 
-  // ───────────────────────────────────────────────
-  //  Utility / cleanup
-  // ───────────────────────────────────────────────
 
   Future<Box<T>> _getBox<T>(String boxName) async {
     if (!Hive.isBoxOpen(boxName)) {

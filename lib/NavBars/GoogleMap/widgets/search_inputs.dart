@@ -25,12 +25,10 @@ class SearchInputs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Count only non-empty stop fields to calculate dynamic height
     final nonEmptyStops = stopControllers
         .where((controller) => controller.text.trim().isNotEmpty)
         .length;
 
-    // Adjust card height based on content (more stops → taller card)
     final cardHeight = (showStopFields && nonEmptyStops > 1) ? 250.0 : 150.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -47,7 +45,6 @@ class SearchInputs extends StatelessWidget {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  // Source location input
                   TextField(
                     controller: sourceController,
                     decoration: InputDecoration(
@@ -64,12 +61,10 @@ class SearchInputs extends StatelessWidget {
                     style: TextStyle(color: Colors.black),
                   ),
 
-                  // Stop location inputs (only shown if enabled)
                   if (showStopFields) ...[
                     ...List.generate(stopControllers.length, (index) {
                       final controller = stopControllers[index];
 
-                      // Skip rendering empty stop fields
                       if (controller.text.trim().isEmpty) {
                         return const SizedBox.shrink();
                       }

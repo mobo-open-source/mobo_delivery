@@ -50,7 +50,6 @@ class ProfileHeaderCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Avatar Section
           SizedBox(
             width: 80,
             height: 80,
@@ -106,7 +105,6 @@ class ProfileHeaderCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          // Info Section
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,7 +154,6 @@ class ProfileHeaderCard extends StatelessWidget {
               ],
             ),
           ),
-          // Arrow Icon
           if (onTap != null)
             Padding(
               padding: const EdgeInsets.only(left: 8),

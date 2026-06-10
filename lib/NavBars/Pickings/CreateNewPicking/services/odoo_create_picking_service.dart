@@ -1,7 +1,9 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/company/session/company_session_manager.dart';
+import '../../PickingFormPage/services/hive_service.dart';
 import '../models/product.dart';
 import '../models/partner.dart';
 import '../models/user.dart';
@@ -51,13 +53,21 @@ class OdooCreatePickingService {
         'model': 'product.product',
         'method': 'search_read',
         'args': [[]],
-        'kwargs': {},
+        'kwargs': {
+          'fields': ['id', 'display_name', 'name', 'uom_id'],
+        },
       });
-      return (productItems as List)
-          .map((item) => ProductModel.fromJson(item as Map<String, dynamic>))
-          .toList();
+      final items = (productItems as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (items.isNotEmpty) {
+        await HiveService().saveProducts(items);
+        return items.map((item) => ProductModel.fromJson(item)).toList();
+      }
+      final cached = await HiveService().getProducts();
+      return cached.map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id)).toList();
     } catch (e) {
-      return [];
+      debugPrint('loadProducts error: $e');
+      final cached = await HiveService().getProducts();
+      return cached.map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id)).toList();
     }
   }
 
@@ -72,7 +82,9 @@ class OdooCreatePickingService {
         'model': 'res.partner',
         'method': 'search_read',
         'args': [[]],
-        'kwargs': {},
+        'kwargs': {
+          'fields': ['id', 'name'],
+        },
       });
       return (partnerItems as List)
           .map((item) => PartnerModel.fromJson(item as Map<String, dynamic>))
@@ -92,7 +104,9 @@ class OdooCreatePickingService {
         'model': 'res.users',
         'method': 'search_read',
         'args': [[]],
-        'kwargs': {},
+        'kwargs': {
+          'fields': ['id', 'name'],
+        },
       });
       return (userItems as List)
           .map((item) => UserModel.fromJson(item as Map<String, dynamic>))
@@ -112,22 +126,37 @@ class OdooCreatePickingService {
       final operationTypeItems = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking.type',
         'method': 'search_read',
-        'args': [[]],
+        'args': [
+          [['active', '=', true]],
+        ],
         'kwargs': {
           'fields': [
             'id',
-            'name',
+            'display_name',
             'default_location_src_id',
             'default_location_dest_id',
+            'company_id',
           ],
         },
       });
-      return (operationTypeItems as List)
-          .map(
-            (item) => OperationTypeModel.fromJson(item as Map<String, dynamic>),
-          )
+
+      final list = (operationTypeItems as List)
+          .map((item) => OperationTypeModel.fromJson(item as Map<String, dynamic>))
           .toList();
+
+      if (list.isNotEmpty) {
+        await HiveService().saveOperationTypes(
+          list.map((o) => {
+            'id': o.id,
+            'name': o.name,
+            'default_location_src_id': o.defaultLocationSrcId,
+            'default_location_dest_id': o.defaultLocationDestId,
+          }).toList(),
+        );
+      }
+      return list;
     } catch (e) {
+      debugPrint('loadOperationTypes error: $e');
       return [];
     }
   }
@@ -203,11 +232,14 @@ class OdooCreatePickingService {
     return {'location_id': locationId, 'location_dest_id': locationDestId};
   }
 
-  /// Creates a single stock move line (`stock.move`) and attaches it to the given picking.
-  /// Handles version-specific differences: Odoo 19+ removed the mandatory `name` field.
+  /// Creates a single stock move line (`stock.move`) and attaches it to the
+  /// given picking. Handles version-specific differences: Odoo 19+ removed
+  /// the mandatory `name` field.
   ///
-  /// Silently ignores errors (empty catch block) — consider improving error handling.
-  /// Quantity, UoM, locations and product must be valid for successful creation.
+  /// Throws on RPC failure so the caller can roll back / surface to the user.
+  /// Previously this swallowed every exception, leaving newly-created
+  /// pickings silently empty when a single move failed (bad UoM, invalid
+  /// location, access right). The caller now decides what to do.
   Future<void> createStockMove({
     required String name,
     required int productId,
@@ -219,36 +251,22 @@ class OdooCreatePickingService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     int version = prefs.getInt('version') ?? 0;
-    try {
-      Map<String, dynamic> payload;
-      if (version >= 19) {
-        payload = {
-          'product_id': productId,
-          'product_uom_qty': productUomQty,
-          'product_uom': productUomId,
-          'picking_id': pickingId,
-          'location_id': locationId,
-          'location_dest_id': locationDestId,
-        };
-      } else {
-        payload = {
-          'name': name,
-          'product_id': productId,
-          'product_uom_qty': productUomQty,
-          'product_uom': productUomId,
-          'picking_id': pickingId,
-          'location_id': locationId,
-          'location_dest_id': locationDestId,
-        };
-      }
+    final payload = <String, dynamic>{
+      if (version < 19) 'name': name,
+      'product_id': productId,
+      'product_uom_qty': productUomQty,
+      'product_uom': productUomId,
+      'picking_id': pickingId,
+      'location_id': locationId,
+      'location_dest_id': locationDestId,
+    };
 
-      await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.move',
-        'method': 'create',
-        'args': [payload],
-        'kwargs': {},
-      });
-    } catch (e) {}
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move',
+      'method': 'create',
+      'args': [payload],
+      'kwargs': {},
+    });
   }
 
   /// Fetches detailed information about a newly created picking using `search_read`

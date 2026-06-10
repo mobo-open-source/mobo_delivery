@@ -34,7 +34,6 @@ class ProfileShimmer extends StatelessWidget {
 
     return Column(
       children: [
-        // Profile picture placeholder
         Shimmer.fromColors(
           baseColor: isDark ? Color(0xFF2A2A2A) : Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
@@ -44,7 +43,6 @@ class ProfileShimmer extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        // fields
 
         _shimmerBox(isDark,height: 50),
         const SizedBox(height: 12),
@@ -61,7 +59,6 @@ class ProfileShimmer extends StatelessWidget {
         _shimmerBox(isDark,height: 50),
         const SizedBox(height: 20),
 
-        // Map Token field
         _shimmerBox(isDark, height: 45, radius: 12),
       ],
     );

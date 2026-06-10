@@ -262,7 +262,6 @@ class PickingFormToOffline {
     final box = await Hive.openBox<ReturnPicking>('return_pickings');
 
     try {
-      // Step 1: Get all pickings and their return_ids
       final returnData = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking',
         'method': 'search_read',
@@ -279,7 +278,6 @@ class PickingFormToOffline {
         final List<dynamic> returnIds = picking['return_ids'] ?? [];
         if (returnIds.isEmpty) continue;
 
-        // Step 2: Fetch details of return pickings
         final returnFilteredData =
             await CompanySessionManager.callKwWithCompany({
               'model': 'stock.picking',
@@ -316,7 +314,6 @@ class PickingFormToOffline {
             data: data,
           );
 
-          // Key by original picking ID (overwrites if multiple returns)
           await box.put('${pickingId}', returnPicking);
         }
       }

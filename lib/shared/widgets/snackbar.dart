@@ -36,7 +36,6 @@ class CustomSnackbar {
     Duration duration = const Duration(seconds: 3),
   }) {
     try {
-      // Prevent crashes if context is already unmounted
       if (!context.mounted) {
         return;
       }
@@ -104,6 +103,10 @@ class CustomSnackbar {
       } catch (e) {}
 
       try {
+        FocusManager.instance.primaryFocus?.unfocus();
+      } catch (e) {}
+
+      try {
         messenger.showSnackBar(
           SnackBar(
             content: Row(
@@ -144,9 +147,9 @@ class CustomSnackbar {
               ],
             ),
             backgroundColor: colors.backgroundColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+            behavior: SnackBarBehavior.fixed,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             duration: duration,
             elevation: 8,
@@ -198,9 +201,6 @@ class CustomSnackbar {
     }
   }
 
-  // ────────────────────────────────────────────────
-  // Convenience methods (most common usage)
-  // ────────────────────────────────────────────────
   static void showSuccess(BuildContext context, String message) {
     show(
       context: context,

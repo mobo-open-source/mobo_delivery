@@ -30,6 +30,7 @@ class InfoRow<T> extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTapEditing;
   final IconData? prefixIcon;
+  final String Function(T)? itemAsString;
 
   const InfoRow({
     Key? key,
@@ -45,15 +46,21 @@ class InfoRow<T> extends StatelessWidget {
     this.readOnly = false,
     this.onTapEditing,
     this.prefixIcon,
+    this.itemAsString,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     String displayValue = value?.toString() ?? "None";
 
-    // Auto-populate controller with current display value if empty
-    if (controller != null && controller!.text.isEmpty) {
-      controller!.text = displayValue;
+    if (controller != null) {
+      if (controller!.text.isEmpty) {
+        if (displayValue != "None" && displayValue != "false") {
+          controller!.text = displayValue;
+        }
+      } else if (controller!.text == "None" || controller!.text == "false") {
+        controller!.text = "";
+      }
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
@@ -83,7 +90,7 @@ class InfoRow<T> extends StatelessWidget {
                         ),
                       ),
                       items: dropdownItems!,
-                      itemAsString: (item) => (item as dynamic).name ?? '',
+                      itemAsString: itemAsString ?? (item) => (item as dynamic).name ?? '',
                       selectedItem: selectedId != null
                           ? dropdownItems!.firstWhere(
                               (element) =>

@@ -149,7 +149,6 @@ class _LogoutDialogState extends State<LogoutDialog> {
   Future<void> _performLogout(BuildContext context) async {
     setState(() => isLogoutLoading = true);
 
-    // Show non-dismissible loading overlay
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -193,32 +192,25 @@ class _LogoutDialogState extends State<LogoutDialog> {
       },
     );
 
-    // Simulate processing delay (in real app, this could include API logout call)
     await Future.delayed(const Duration(seconds: 2));
 
     final prefs = await SharedPreferences.getInstance();
 
-    // Preserve important non-session data
     List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];
     bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
     bool _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
 
-    // Clear everything
     await prefs.clear();
 
-    // Restore preserved keys
     await prefs.setStringList('urlHistory', urlHistory);
     await prefs.setBool('hasSeenGetStarted', isGetStarted);
     await prefs.setBool('biometricEnabled', _biometricEnabled);
 
-    // Clear Hive (offline data, pickings, etc.)
     await _hiveService.clearAllData();
 
     if (context.mounted) {
-      // Close loading dialog
       Navigator.pop(context);
 
-      // Navigate to login and remove all previous routes
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
 
       CustomSnackbar.showSuccess(context, "Logged out successfully");

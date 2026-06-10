@@ -92,7 +92,6 @@ class pickingListToOffline {
         domain.add(['date_deadline', '<=', dateStrEnd]);
       }
 
-      // Fields to fetch from stock.picking
       List<String> pickingFields = [
         'id',
         'name',
@@ -115,7 +114,6 @@ class pickingListToOffline {
         pickingFields.addAll(['group_id']);
       }
 
-      // Get total count (useful for pagination UI later)
       final pickingCount = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking',
         'method': 'search_count',
@@ -125,7 +123,6 @@ class pickingListToOffline {
 
       await _hiveService.saveTotalCount(pickingCount);
 
-      // Fetch pickings
       final pickingItems = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking',
         'method': 'search_read',
@@ -137,7 +134,6 @@ class pickingListToOffline {
           (pickingItems as List?)?.map((picking) => picking['id']).toList() ??
           [];
 
-      // Fetch related stock moves
       final moveItems = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.move',
         'method': 'search_read',
@@ -158,7 +154,6 @@ class pickingListToOffline {
         },
       });
 
-      // Fetch picking types (for warehouse mapping)
       final pickingTypeIds = pickingItems
           ?.map(
             (item) =>
@@ -200,7 +195,6 @@ class pickingListToOffline {
         });
       }
 
-      // Enrich and group pickings
       for (var picking in pickingItems ?? []) {
         int pickingId = picking['id'];
         int pickingTypeId = picking['picking_type_id'][0];

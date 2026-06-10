@@ -14,12 +14,16 @@ class OperationTypeModel extends Equatable {
   final String name;
   final int? defaultLocationSrcId;
   final int? defaultLocationDestId;
+  final int? companyId;
+  final String? companyName;
 
   const OperationTypeModel({
     required this.id,
     required this.name,
     this.defaultLocationSrcId,
     this.defaultLocationDestId,
+    this.companyId,
+    this.companyName,
   });
 
   /// Creates an `OperationTypeModel` instance from Odoo RPC response data.
@@ -38,14 +42,27 @@ class OperationTypeModel extends Equatable {
   /// }
   /// ```
   factory OperationTypeModel.fromJson(Map<String, dynamic> json) {
+    final displayName = json['display_name'];
+    final name = json['name'];
+    final resolvedName = (displayName is String && displayName.isNotEmpty)
+        ? displayName
+        : (name is String && name.isNotEmpty)
+            ? name
+            : 'Unknown';
     return OperationTypeModel(
       id: json['id'],
-      name: json['name'],
+      name: resolvedName,
       defaultLocationSrcId: (json['default_location_src_id'] != null && json['default_location_src_id'] is List && json['default_location_src_id'].isNotEmpty)
           ? json['default_location_src_id'][0]
           : null,
       defaultLocationDestId: (json['default_location_dest_id'] != null && json['default_location_dest_id'] is List && json['default_location_dest_id'].isNotEmpty)
           ? json['default_location_dest_id'][0]
+          : null,
+      companyId: (json['company_id'] != null && json['company_id'] is List && json['company_id'].isNotEmpty)
+          ? json['company_id'][0]
+          : null,
+      companyName: (json['company_id'] != null && json['company_id'] is List && json['company_id'].isNotEmpty)
+          ? json['company_id'][1]
           : null,
     );
   }
@@ -54,5 +71,5 @@ class OperationTypeModel extends Equatable {
   ///
   /// Thanks to `Equatable`, objects are compared by value instead of reference.
   @override
-  List<Object?> get props => [id, name, defaultLocationSrcId, defaultLocationDestId];
+  List<Object?> get props => [id, name, defaultLocationSrcId, defaultLocationDestId, companyId, companyName];
 }

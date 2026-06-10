@@ -4,114 +4,97 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
-/// Utility service for Mapbox-related operations in the route visualization flow.
+/// Utility service for TomTom-related operations in the route visualization flow.
 ///
 /// Responsibilities:
-///   - Place autocomplete suggestions & geocoding via Mapbox Geocoding API
-///   - Polyline decoding (Google-compatible format returned by Mapbox Directions API)
+///   - Place autocomplete suggestions & geocoding via TomTom Search API
+///   - Route point parsing from TomTom Routing API responses
 ///   - Bearing calculation, distance utilities (point-to-point, point-to-segment/polyline)
 ///   - Audio feedback for reaching stops or going off-route
 ///   - Human-readable duration and distance formatting
 ///
-/// All Mapbox API calls require a valid public access token.
+/// All TomTom API calls require a valid API key.
 class MapService {
   final AudioPlayer audioPlayer = AudioPlayer();
 
-  /// Fetches place autocomplete suggestions from Mapbox Geocoding API.
+  /// Fetches place autocomplete suggestions from TomTom Search API.
   ///
   /// Used in search fields for source and stop locations.
-  /// Returns a list of human-readable place name strings.
+  /// Returns a list of human-readable address strings.
   ///
   /// Returns empty list on error or invalid response.
   Future<List<String>> fetchSuggestions(
-      String input, String accessToken,
+      String input, String apiKey,
       {LatLng? proximity}) async {
     if (input.trim().isEmpty) return [];
     final encoded = Uri.encodeComponent(input);
     final proximityParam = proximity != null
-        ? '&proximity=${proximity.longitude},${proximity.latitude}'
+        ? '&lat=${proximity.latitude}&lon=${proximity.longitude}'
         : '';
     final url =
-        'https://api.mapbox.com/geocoding/v5/mapbox.places/$encoded.json'
-        '?autocomplete=true$proximityParam&access_token=$accessToken';
+        'https://api.tomtom.com/search/2/search/$encoded.json'
+        '?typeahead=true&limit=5$proximityParam&key=$apiKey';
     try {
       final response = await http.get(Uri.parse(url));
       final json = jsonDecode(response.body);
-      if (json['features'] != null) {
+      if (json['results'] != null) {
         return List<String>.from(
-          (json['features'] as List).map((f) => f['place_name'] as String),
-        );
+          (json['results'] as List).map(
+              (r) => r['address']?['freeformAddress'] as String? ?? ''),
+        ).where((s) => s.isNotEmpty).toList();
       }
     } catch (_) {
-      // Non-critical; return empty list on failure.
     }
     return [];
   }
 
   /// Converts a place name/description to geographic coordinates ([LatLng]).
   ///
-  /// Uses Mapbox Geocoding API to resolve address → latitude/longitude.
-  /// Note: Mapbox returns coordinates as [longitude, latitude] — this method
-  /// correctly maps them to [LatLng(latitude, longitude)].
+  /// Uses TomTom Search API to resolve address → latitude/longitude.
   ///
   /// Returns `null` if no results or API error.
   Future<LatLng?> getLatLngFromPlace(
-      String placeDescription, String accessToken,
+      String placeDescription, String apiKey,
       {LatLng? proximity}) async {
     final encoded = Uri.encodeComponent(placeDescription);
     final proximityParam = proximity != null
-        ? '&proximity=${proximity.longitude},${proximity.latitude}'
+        ? '&lat=${proximity.latitude}&lon=${proximity.longitude}'
         : '';
     final url =
-        'https://api.mapbox.com/geocoding/v5/mapbox.places/$encoded.json'
-        '?access_token=$accessToken$proximityParam';
+        'https://api.tomtom.com/search/2/search/$encoded.json'
+        '?limit=1$proximityParam&key=$apiKey';
     try {
       final response = await http.get(Uri.parse(url));
       final json = jsonDecode(response.body);
-      if (json['features'] != null &&
-          (json['features'] as List).isNotEmpty) {
-        // Mapbox center is [longitude, latitude].
-        final center = json['features'][0]['center'] as List;
-        return LatLng(center[1] as double, center[0] as double);
+      if (json['results'] != null &&
+          (json['results'] as List).isNotEmpty) {
+        final pos = json['results'][0]['position'];
+        return LatLng(
+          (pos['lat'] as num).toDouble(),
+          (pos['lon'] as num).toDouble(),
+        );
       }
     } catch (_) {
-      // Non-critical; caller handles null return.
     }
     return null;
   }
 
-  /// Decodes a Google-compatible encoded polyline string into a list of [LatLng] points.
+  /// Parses TomTom route leg points into a list of [LatLng].
   ///
-  /// Mapbox Directions API returns the same polyline encoding format when
-  /// `geometries=polyline` is requested, making this decoder reusable.
-  List<LatLng> decodePolyline(String encoded) {
-    final List<LatLng> polyline = [];
-    int index = 0;
-    final int len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int b, shift = 0, result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      lat += ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      lng += ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-
-      polyline.add(LatLng(lat / 1E5, lng / 1E5));
+  /// TomTom returns route points as `[{latitude, longitude}, ...]` objects
+  /// in each leg of the route response.
+  List<LatLng> parseRoutePoints(List<dynamic> legs) {
+    final List<LatLng> points = [];
+    for (final leg in legs) {
+      final legPoints = leg['points'] as List? ?? [];
+      for (final p in legPoints) {
+        points.add(LatLng(
+          (p['latitude'] as num).toDouble(),
+          (p['longitude'] as num).toDouble(),
+        ));
+      }
     }
-
-    return polyline;
+    return points;
   }
 
   /// Calculates the initial bearing (heading in degrees) from [start] to [end].

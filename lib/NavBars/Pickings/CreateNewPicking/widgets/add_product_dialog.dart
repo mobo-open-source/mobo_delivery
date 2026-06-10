@@ -74,7 +74,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Product selection
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -151,7 +150,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Quantity input
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -203,7 +201,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Error message (shown below fields)
               if (_errorMessage.isNotEmpty)
                 Text(
                   _errorMessage,
@@ -218,7 +215,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
         ),
       ),
 
-      // Action buttons
       actions: [
         Row(
           children: [

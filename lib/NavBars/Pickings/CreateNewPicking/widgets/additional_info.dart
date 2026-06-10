@@ -45,7 +45,6 @@ class AdditionalInfo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Shipping Policy Row
           Text(
             "Shipping Policy ",
             style: TextStyle(
@@ -76,11 +75,11 @@ class AdditionalInfo extends StatelessWidget {
               items: const [
                 DropdownMenuItem(
                   value: 'direct',
-                  child: Text("When all products are ready"),
+                  child: Text("As soon as possible"),
                 ),
                 DropdownMenuItem(
                   value: 'one',
-                  child: Text("As soon as possible"),
+                  child: Text("When all products are ready"),
                 ),
               ],
               onChanged: (value) {
@@ -101,7 +100,6 @@ class AdditionalInfo extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Responsible User Row (reuses InfoRow)
 
           Text(
             'Responsible',

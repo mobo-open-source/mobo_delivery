@@ -29,8 +29,8 @@ class UserModel extends Equatable {
   /// Throws if `id` or `name` are missing or have incorrect type.
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
+      id: json['id'] as int? ?? 0,
+      name: (json['display_name'] ?? json['name'] ?? '') as String,
     );
   }
 

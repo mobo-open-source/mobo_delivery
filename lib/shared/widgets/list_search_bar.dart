@@ -77,7 +77,6 @@ class _ListSearchBarState extends State<ListSearchBar> {
                   fontWeight: FontWeight.w400,
                   fontSize: 14,
                 ),
-                // Filter icon as prefix — tappable
                 prefixIcon: GestureDetector(
                   onTap: widget.onFilterTap,
                   child: Padding(
@@ -95,7 +94,6 @@ class _ListSearchBarState extends State<ListSearchBar> {
                   minWidth: 48,
                   minHeight: 48,
                 ),
-                // Clear button when text is present
                 suffixIcon: widget.controller.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(

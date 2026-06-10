@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:shimmer/shimmer.dart';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
@@ -88,23 +90,122 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
 
   /// Loads dropdown data (products, partners, users, operation types) either online or from Hive cache.
   ///
-  /// Sets `isLoading = false` when complete.
-  /// Shows error message if offline data fails to load.
+  /// Online path: loads from Odoo. For any list that comes back empty (silent RPC failure),
+  /// falls back to the Hive cache so the form is still usable.
+  /// Offline path: loads entirely from Hive cache.
+  /// Shows an error if critical dropdowns (partner + operation type) couldn't be populated at all.
   Future<void> _initializeData() async {
-    final isOnline = await odooPickingFormService.checkNetworkConnectivity();
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getInt('userId') ?? 0;
-    if (isOnline) {
-      products = await odooService.loadProducts();
-      partnerList = await odooService.loadPartners();
-      users = await odooService.loadUsers();
-      operationTypes = await odooService.loadOperationTypes();
-    } else {
+    try {
+      // 1. Always load offline data first as a robust baseline
       await _loadOfflineData();
+
+      final initResults = await Future.wait([
+        odooPickingFormService.checkNetworkConnectivity(),
+        SharedPreferences.getInstance(),
+      ]);
+      final isOnline = initResults[0] as bool;
+      final prefs = initResults[1] as SharedPreferences;
+
+      userId = prefs.getInt('userId') ?? 0;
+      if (isOnline) {
+        final results = await Future.wait([
+          odooService.loadProducts().catchError((e) {
+            debugPrint('loadProducts error: $e');
+            return <ProductModel>[];
+          }),
+          odooService.loadPartners().catchError((e) {
+            debugPrint('loadPartners error: $e');
+            return <PartnerModel>[];
+          }),
+          odooService.loadUsers().catchError((e) {
+            debugPrint('loadUsers error: $e');
+            return <UserModel>[];
+          }),
+          odooService.loadOperationTypes().catchError((e) {
+            debugPrint('loadOperationTypes error: $e');
+            return <OperationTypeModel>[];
+          }),
+        ]);
+        
+        final freshProducts = (results[0] as List?)?.cast<ProductModel>() ?? <ProductModel>[];
+        final freshPartners = (results[1] as List?)?.cast<PartnerModel>() ?? <PartnerModel>[];
+        final freshUsers = (results[2] as List?)?.cast<UserModel>() ?? <UserModel>[];
+        final freshOpTypes = (results[3] as List?)?.cast<OperationTypeModel>() ?? <OperationTypeModel>[];
+
+        setState(() {
+          if (freshProducts.isNotEmpty) products = freshProducts;
+          if (freshPartners.isNotEmpty) partnerList = freshPartners;
+          if (freshUsers.isNotEmpty) users = freshUsers;
+          if (freshOpTypes.isNotEmpty) operationTypes = freshOpTypes;
+        });
+      }
+
+      // If the two required dropdowns are still empty after all fallbacks, surface an error.
+      if (mounted && partnerList.isEmpty && operationTypes.isEmpty) {
+        setState(() {
+          _errorMessage =
+              "Could not load required data (partners and operation types). "
+              "Please check your connection and pull down to retry.";
+        });
+      } else {
+        setState(() {
+          _errorMessage = '';
+        });
+      }
+    } catch (e) {
+      debugPrint("Error initializing data: $e");
+      if (mounted && partnerList.isEmpty && operationTypes.isEmpty) {
+        setState(() {
+          _errorMessage = "Error loading data: ${e.toString().replaceFirst('Exception: ', '')}";
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
-    setState(() {
-      isLoading = false;
-    });
+  }
+
+  /// Fills only the lists that are currently empty from the Hive cache.
+  /// Called after an online load where individual RPC calls silently returned [].
+  Future<void> _loadOfflineDataForEmpty() async {
+    try {
+      if (products.isEmpty) {
+        final productsData = await _hiveService.getProducts();
+        products = productsData
+            .map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id))
+            .toList();
+      }
+      if (partnerList.isEmpty) {
+        final partnersData = await _hiveService.getPartners();
+        partnerList = partnersData
+            .map((p) => PartnerModel(id: p.id, name: p.name))
+            .toList();
+      }
+      if (users.isEmpty) {
+        final usersData = await _hiveService.getUsers();
+        users = usersData
+            .map((u) => UserModel(id: u.id, name: u.name))
+            .toList();
+      }
+      if (operationTypes.isEmpty) {
+        final operationsData = await _hiveService.getOperationTypes();
+        operationTypes = operationsData
+            .map(
+              (o) => OperationTypeModel(
+                id: o.id,
+                name: o.name,
+                defaultLocationSrcId: o.defaultLocationSrcId,
+                defaultLocationDestId: o.defaultLocationDestId,
+              ),
+            )
+            .toList();
+      }
+    } catch (e) {
+      debugPrint("Error loading offline fallback data: $e");
+    }
   }
 
   /// Loads cached dropdown data from Hive when offline.
@@ -218,8 +319,16 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
       String? formattedScheduledDate;
       final rawText = scheduledDateController.text.trim();
       if (rawText.isNotEmpty && rawText.toLowerCase() != 'none') {
-        final inputFormat = DateFormat('dd-MM-yyyy');
-        final date = inputFormat.parse(rawText);
+        DateTime date;
+        try {
+          date = DateFormat('dd-MM-yyyy HH:mm:ss').parse(rawText);
+        } catch (_) {
+          try {
+            date = DateFormat('dd-MM-yyyy').parse(rawText);
+          } catch (_) {
+            date = DateTime.now();
+          }
+        }
         formattedScheduledDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
       } else {
         formattedScheduledDate = DateFormat(
@@ -248,16 +357,28 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           throw Exception("Invalid locations");
         }
 
+        // Defensive: surface per-product failures instead of letting one
+        // bad UoM / location / access error leave the picking silently
+        // empty in Odoo. The picking itself was already created above —
+        // if any move fails we stop, report the first failure with the
+        // product name, and let the user retry in the form view.
         for (var product in moveProducts) {
-          await odooService.createStockMove(
-            name: product.productName,
-            productId: product.productId,
-            productUomQty: product.productUomQty,
-            productUomId: product.productUomId,
-            pickingId: pickingId,
-            locationId: locationId,
-            locationDestId: locationDestId,
-          );
+          try {
+            await odooService.createStockMove(
+              name: product.productName,
+              productId: product.productId,
+              productUomQty: product.productUomQty,
+              productUomId: product.productUomId,
+              pickingId: pickingId,
+              locationId: locationId,
+              locationDestId: locationDestId,
+            );
+          } catch (e) {
+            throw Exception(
+              "Failed to add '${product.productName}': "
+              "${e.toString().replaceFirst('Exception: ', '')}",
+            );
+          }
         }
 
         final newPicking = await odooService.getNewPickingDetails(pickingId);
@@ -396,13 +517,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: Center(
-          child: LoadingWidget(
-            size: 40,
-            color: isDark ? Colors.white : AppStyle.primaryColor,
-            variant: LoadingVariant.staggeredDots,
-          ),
-        ),
+        body: _buildShimmerLoading(),
       );
     }
 
@@ -527,6 +642,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                               isEditing: true,
                               dropdownItems: operationTypes,
                               selectedId: _selectedOperationTypeId,
+                              itemAsString: (item) => item.name,
                               prefixIcon:
                                   HugeIcons.strokeRoundedShippingTruck01,
                               onDropdownChanged: (value) {
@@ -561,18 +677,32 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                               controller: scheduledDateController,
                               prefixIcon: HugeIcons.strokeRoundedCalendar03,
                               onTapEditing: () async {
-                                DateTime? picked = await showDatePicker(
+                                final now = DateTime.now();
+                                DateTime? pickedDate = await showDatePicker(
                                   context: context,
-                                  initialDate: DateTime.now(),
+                                  initialDate: now,
                                   firstDate: DateTime(2000),
                                   lastDate: DateTime(2100),
                                 );
-                                if (picked != null) {
-                                  setState(() {
-                                    scheduledDateController.text = DateFormat(
-                                      'dd-MM-yyyy',
-                                    ).format(picked);
-                                  });
+                                if (pickedDate != null && context.mounted) {
+                                  TimeOfDay? pickedTime = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
+                                  );
+                                  if (pickedTime != null) {
+                                    final combined = DateTime(
+                                      pickedDate.year,
+                                      pickedDate.month,
+                                      pickedDate.day,
+                                      pickedTime.hour,
+                                      pickedTime.minute,
+                                    );
+                                    setState(() {
+                                      scheduledDateController.text = DateFormat(
+                                        'dd-MM-yyyy HH:mm:ss',
+                                      ).format(combined);
+                                    });
+                                  }
                                 }
                               },
                             ),
@@ -603,7 +733,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                   ),
                 ),
 
-                // Tabbed section: Operations / Additional Info / Note
                 Container(
                   margin: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
@@ -708,7 +837,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                   ),
                 ),
 
-                // Create button + error message
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -790,6 +918,75 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
             color: isSelected ? Colors.white : Colors.grey[600],
           ),
           textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  /// Builds a shimmer loading effect that mimics the form layout.
+  Widget _buildShimmerLoading() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[850]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Simulating "Delivery Information" container
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: List.generate(4, (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    children: [
+                      Container(width: 24, height: 24, color: Colors.white),
+                      const SizedBox(width: 12),
+                      Expanded(child: Container(height: 20, color: Colors.white)),
+                    ],
+                  ),
+                )),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Simulating Tabs
+            Row(
+              children: List.generate(3, (index) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Container(height: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15))),
+                ),
+              )),
+            ),
+            const SizedBox(height: 16),
+            // Simulating Tab Content
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Simulating Button
+            Container(
+              height: 56,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
         ),
       ),
     );

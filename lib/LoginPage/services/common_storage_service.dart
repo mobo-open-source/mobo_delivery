@@ -26,7 +26,6 @@ class CommonStorageService {
     await prefs.setBool('isSystem', session.isSystem);
     await prefs.setInt('version', session.version ?? 0);
 
-    // Persist allowed company IDs (mapping to the key used by CompanySessionManager)
     if (session.allowedCompanyIds.isNotEmpty) {
       await prefs.setStringList(
         'allowed_company_ids',

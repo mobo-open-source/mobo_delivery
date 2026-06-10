@@ -38,9 +38,6 @@ class ReturnManagementPage extends StatefulWidget {
 }
 
 class _ReturnManagementPageState extends State<ReturnManagementPage> {
-  // ───────────────────────────────────────────────
-  //  State & Controllers
-  // ───────────────────────────────────────────────
   late ReturnManagementBloc _bloc;
   bool isOnline = true;
   late DashboardStorageService storageService;
@@ -49,7 +46,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   final TextEditingController _searchController = TextEditingController();
   StreamSubscription? _companySub;
 
-  // Filter & Group state
   List<String> _selectedFilters = [];
   String? _selectedGroupBy;
   Map<String, bool> _groupExpanded = {};
@@ -87,7 +83,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     storageService = DashboardStorageService();
     _initAll();
 
-    // Listen to profile/account changes → reload data
     _profileSub = ProfileRefreshBus.onProfileRefresh.listen((_) {
       if (!mounted) return;
       _initAll(forceRefresh: true);
@@ -115,9 +110,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     setState(() {});
   }
 
-  // ───────────────────────────────────────────────
-  //  Filter & Group Bottom Sheet
-  // ───────────────────────────────────────────────
 
   /// Opens bottom sheet for selecting filters and grouping options
   void openFilterGroupBySheet(BuildContext pageContext) {
@@ -147,7 +139,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
               length: 2,
               child: Column(
                 children: [
-                  // Header
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -177,7 +168,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     ),
                   ),
 
-                  // Tabs
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
@@ -335,7 +325,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     ),
                   ),
 
-                  // Action bar
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -442,9 +431,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Grouped View (when grouping is active)
-  // ───────────────────────────────────────────────
 
   Widget _buildGroupedView(ReturnManagementState state, bool isDark) {
     return RefreshIndicator(
@@ -556,9 +542,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Individual Return Tile
-  // ───────────────────────────────────────────────
 
   Widget _buildReturnTile(
     Map<String, dynamic> picking,
@@ -569,9 +552,10 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     final primaryColor = theme.primaryColor;
     final reference = picking['name'] ?? 'Return #${picking['id']}';
     final state = picking['state'] ?? 'unknown';
-    final origin = (picking['origin'] == null || picking['origin'] == false)
-        ? 'None'
-        : picking['origin'].toString();
+    final rawOrigin = picking['origin'];
+    final hasOrigin =
+        rawOrigin != null && rawOrigin != false && rawOrigin.toString().trim().isNotEmpty;
+    final origin = hasOrigin ? rawOrigin.toString() : 'None';
     String partnerName = 'None';
     if (picking['partner_id'] is List && picking['partner_id'].length > 1) {
       partnerName = picking['partner_id'][1].toString();
@@ -638,19 +622,54 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Row 1: Reference + Status Badge ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      reference,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : primaryColor,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          reference,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : primaryColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (hasOrigin)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.amber.withValues(alpha: 0.2)
+                                  : Colors.amber.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.amber.shade300
+                                    : Colors.amber.shade700,
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Text(
+                              'Return',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? Colors.amber.shade200
+                                    : Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -659,16 +678,14 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
               ),
               const SizedBox(height: 8),
 
-              // ── Row 2: Origin ──
               _buildDetailRow(
-                'Origin:',
+                hasOrigin ? 'Return of:' : 'Origin:',
                 origin,
                 labelColor,
                 valueColor,
               ),
               const SizedBox(height: 4),
 
-              // ── Row 3: Partner ──
               _buildDetailRow(
                 'Partner:',
                 partnerName,
@@ -677,7 +694,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
               ),
               const SizedBox(height: 6),
 
-              // ── Row 4: Scheduled Date ──
               Row(
                 children: [
                   Icon(
@@ -791,9 +807,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
-  // ───────────────────────────────────────────────
-  //  Empty & Error States
-  // ───────────────────────────────────────────────
 
   Widget _buildEmptyState(bool isDark, BuildContext context) {
     final hasAnyFilter = hasFilters || hasGroupBy || _searchController.text.isNotEmpty;
@@ -836,9 +849,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Main Build Method
-  // ───────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -848,7 +858,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       value: _bloc,
       child: Builder(
         builder: (innerContext) {
-          // Listen to company refresh events
           _companySub?.cancel();
           _companySub = CompanyRefreshBus.stream.listen((_) {
             if (!mounted) return;
@@ -860,12 +869,28 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           return Scaffold(
             backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
             body: BlocListener<ReturnManagementBloc, ReturnManagementState>(
-              listener: (context, state) {},
+              // Transient errors (search failure, action failure, refresh
+              // failure while a list is already on screen) surface as a
+              // snackbar instead of replacing the whole page with the error
+              // widget — the user keeps the data they had.
+              listenWhen: (prev, curr) =>
+                  prev.error != curr.error &&
+                  curr.error != null &&
+                  curr.pickings.isNotEmpty,
+              listener: (context, state) {
+                CustomSnackbar.showError(context, state.error!);
+              },
               child: BlocBuilder<ReturnManagementBloc, ReturnManagementState>(
                 builder: (context, state) {
                   final displayedPickings = state.searchText?.isNotEmpty == true
                       ? state.filteredPickings
                       : state.pickings;
+
+                  // Page-level error widget only when we have NOTHING to show.
+                  // If pickings are already loaded, a follow-up error is a
+                  // transient one handled by the listener above.
+                  final showFullPageError =
+                      state.error != null && state.pickings.isEmpty;
 
                   return Column(
                     children: [
@@ -882,13 +907,12 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         },
                       ),
 
-                      // ── Pagination Bar ──
-                      if (!state.isLoading && state.error == null)
+                      if (!state.isLoading && !showFullPageError)
                         _buildPaginationBar(state, isDark, context),
 
                       if (state.isLoading)
                         Expanded(child: _buildListShimmer(isDark))
-                      else if (state.error != null)
+                      else if (showFullPageError)
                         Expanded(child: _buildErrorState(isDark, context))
                       else if (displayedPickings.isEmpty)
                         Expanded(
@@ -944,9 +968,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Pagination Bar (filter indicator + page range + arrows)
-  // ───────────────────────────────────────────────
 
   Widget _buildPaginationBar(
     ReturnManagementState state,
@@ -965,14 +986,12 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ── Filter indicator ──
           _buildFilterIndicator(isDark, filterCount),
 
           if (hasPagination)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Page range pill ──
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -1012,7 +1031,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     ],
                   ),
                 ),
-                // ── Navigation arrows ──
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -1098,9 +1116,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Shimmer Loading (card-shaped, matches tile layout)
-  // ───────────────────────────────────────────────
 
   Widget _buildListShimmer(bool isDark) {
     return ListView.builder(
@@ -1120,7 +1135,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Reference + badge row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1143,7 +1157,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Origin row
                 Row(
                   children: [
                     Container(
@@ -1166,7 +1179,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                // Partner row
                 Row(
                   children: [
                     Container(
@@ -1189,7 +1201,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Scheduled row
                 Row(
                   children: [
                     Container(
@@ -1219,9 +1230,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //  Static helpers (colors, labels, date formatting)
-  // ───────────────────────────────────────────────
 
   static const Map<String, String> stateLabels = {
     'draft': 'Draft',

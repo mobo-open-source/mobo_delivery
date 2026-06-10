@@ -40,8 +40,6 @@ class DashboardStorageService {
     await prefs.setBool('isSystem', session.isSystem);
     await prefs.setInt('version', session.version ?? 0);
 
-    // Always overwrite allowed_company_ids so stale values from a previous
-    // account are never left behind (even when switching to one with no list).
     await prefs.setStringList(
       'allowed_company_ids',
       session.allowedCompanyIds.map((id) => id.toString()).toList(),

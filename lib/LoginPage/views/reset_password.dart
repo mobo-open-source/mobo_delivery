@@ -55,7 +55,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   @override
   void initState() {
     super.initState();
-    // Animation setup for success state
     _successAnimationController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,

@@ -50,18 +50,13 @@ class _InAppWebPageState extends State<InAppWebPage> {
   void initState() {
     super.initState();
     _controller = WebViewController()
-      // Enable JavaScript (most modern websites require it)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      // Start loading the requested URL
       ..loadRequest(widget.url)
-      // Handle navigation events
       ..setNavigationDelegate(
         NavigationDelegate(
-          // Hide loading indicator when page has finished rendering
           onPageFinished: (_) {
             if (mounted) setState(() => isLoading = false);
           },
-          // Show error snackbar if loading fails (no internet, invalid URL, etc.)
           onWebResourceError: (error) {
             if (mounted) {
               CustomSnackbar.showError(

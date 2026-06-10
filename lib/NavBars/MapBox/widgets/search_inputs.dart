@@ -25,7 +25,6 @@ class SearchInputs extends StatelessWidget {
     final hint = isDark ? const Color(0xFF888888) : const Color(0xFF9AA0A6);
     final divider = isDark ? Colors.white12 : const Color(0xFFEEEEEE);
 
-    // Only non-empty stops get rendered rows
     final activeStops = showStopFields
         ? stopControllers
             .asMap()
@@ -34,7 +33,7 @@ class SearchInputs extends StatelessWidget {
             .toList()
         : <MapEntry<int, TextEditingController>>[];
 
-    final rowCount = 1 + activeStops.length; // source + active stops
+    final rowCount = 1 + activeStops.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -53,14 +52,12 @@ class SearchInputs extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Timeline indicator column ──────────────────────────────────
             SizedBox(
               width: 22,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: List.generate(rowCount * 2 - 1, (i) {
                   if (i.isEven) {
-                    // Dot
                     final dotIndex = i ~/ 2;
                     final isSource = dotIndex == 0;
                     final isLast = dotIndex == rowCount - 1;
@@ -87,7 +84,6 @@ class SearchInputs extends StatelessWidget {
                       ),
                     );
                   } else {
-                    // Connector line
                     return Expanded(
                       child: Center(
                         child: Container(
@@ -102,12 +98,10 @@ class SearchInputs extends StatelessWidget {
             ),
             const SizedBox(width: 10),
 
-            // ── Input fields ───────────────────────────────────────────────
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Source field
                   _buildField(
                     controller: sourceController,
                     hint: 'My location',
@@ -115,7 +109,6 @@ class SearchInputs extends StatelessWidget {
                     hint2: hint,
                   ),
 
-                  // Stop fields
                   ...activeStops.map((entry) {
                     return Column(
                       mainAxisSize: MainAxisSize.min,

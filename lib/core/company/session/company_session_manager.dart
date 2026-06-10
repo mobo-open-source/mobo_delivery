@@ -23,8 +23,9 @@ class CompanySessionManager {
   static OdooClient? _client;
   static SessionModel? _cachedSession;
 
-  /// Prevents parallel refresh calls.
-  static bool _isRefreshing = false;
+  /// Holds the in-flight refresh future so concurrent callers can await the
+  /// actual result instead of falling back to the stale `isLoggedIn` flag.
+  static Future<bool>? _refreshFuture;
 
   /// Last successful authentication time.
   static DateTime? _lastAuthTime;
@@ -100,6 +101,7 @@ class CompanySessionManager {
       companyId: prefs.getInt('companyId'),
       companyName: prefs.getString('company_name'),
       isSystem: prefs.getBool('isSystem') ?? false,
+      isPortal: prefs.getBool('isPortal') ?? false,
       version: prefs.getInt('version'),
       allowedCompanyIds: allowedCompanyIds,
     );
@@ -302,7 +304,7 @@ class CompanySessionManager {
     _client?.close();
     _client = null;
     _lastAuthTime = null;
-    _isRefreshing = false;
+    _refreshFuture = null;
   }
 
   /// Restores session for selected company context.
@@ -539,12 +541,25 @@ class CompanySessionManager {
   }
 
   /// Refreshes session using stored credentials from secure storage.
+  ///
+  /// Concurrent callers share the same in-flight refresh future so they all
+  /// receive the actual outcome (not the stale `isLoggedIn` flag). This
+  /// prevents a race where one caller would win the refresh while others
+  /// returned `true` prematurely and then retried with a stale client.
   static Future<bool> refreshSession() async {
-    if (_isRefreshing) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      return await isSessionValid();
+    if (_refreshFuture != null) {
+      return _refreshFuture!;
     }
-    _isRefreshing = true;
+    _refreshFuture = _performRefresh();
+    try {
+      return await _refreshFuture!;
+    } finally {
+      _refreshFuture = null;
+    }
+  }
+
+  /// Internal refresh implementation. Always returns a definitive result.
+  static Future<bool> _performRefresh() async {
     try {
       final current = await getCurrentSession();
       if (current == null) return false;
@@ -568,16 +583,14 @@ class CompanySessionManager {
         return false;
       }
 
-      if (password.isEmpty) return false;
-
       return await loginAndSaveSession(
         serverUrl: url,
         database: database,
         userLogin: userLogin,
         password: password,
       );
-    } finally {
-      _isRefreshing = false;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -824,7 +837,6 @@ class CompanySessionManager {
     await clearSessionCache();
     final prefs = await SharedPreferences.getInstance();
 
-    // Preserve important non-session data
     List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];
     bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
     bool biometricEnabled = prefs.getBool('biometricEnabled') ?? false;

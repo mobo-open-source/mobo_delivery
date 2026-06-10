@@ -39,7 +39,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<ClearCacheEvent>(_onClearCache);
     on<RefreshLanguageAndRegionEvent>(_onRefreshLanguageAndRegion);
 
-    // Initialize Odoo client right away
     _initializeOdooClient();
   }
 
@@ -66,7 +65,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     );
     odooService = OdooDashboardService(url, session);
 
-    // Auto-load settings after client is ready
     add(LoadSettingsEvent());
   }
 
@@ -77,14 +75,12 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     try {
       await settingsStorageService.initialize();
 
-      // Load persisted local preferences
       final language = settingsStorageService.getString('language') ?? state.language;
       final currency = settingsStorageService.getString('currency') ?? state.currency;
       final timezone = settingsStorageService.getString('timezone') ?? state.timezone;
       final darkMode = settingsStorageService.getBool('darkMode') ?? state.isDarkMode;
       final reduceMotion = settingsStorageService.getBool('reduceMotion') ?? state.reduceMotion;
 
-      // Fetch dynamic options from Odoo
       final languagesRaw = await odooService.fetchLanguage() ?? [];
       final currenciesRaw = await odooService.fetchCurrency() ?? [];
       final timezones = await odooService.fetchTimezones();
@@ -203,7 +199,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
 
   /// Recursively deletes files and folders inside a directory.
   /// Used for clearing temporary cache storage.

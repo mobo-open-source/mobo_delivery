@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -41,7 +42,7 @@ class OdooMapService {
     url = prefs.getString('url') ?? '';
     final connectivityResult = await Connectivity().checkConnectivity();
 
-    if (connectivityResult != ConnectivityResult.none) {
+    if (connectivityResult.any((r) => r != ConnectivityResult.none)) {
       try {
         final response = await http
             .get(Uri.parse('$url/web'))
@@ -64,24 +65,35 @@ class OdooMapService {
   /// **Security note**: Hardcoded key is **not** production-safe. Consider using secure storage
   /// (e.g. flutter_secure_storage) or server-side key management.
   String decryptText(String base64Text) {
-    final fullBytes = base64.decode(base64Text);
+    try {
+      final fullBytes = base64.decode(base64Text);
 
-    final ivBytes = fullBytes.sublist(0, 16);
-    final encryptedBytes = fullBytes.sublist(16);
+      if (fullBytes.length <= 16) {
+        return base64Text;
+      }
 
-    final key = encrypt.Key.fromUtf8("my32lengthsupersecretnooneknows!");
-    final iv = encrypt.IV(ivBytes);
+      final ivBytes = fullBytes.sublist(0, 16);
+      final encryptedBytes = fullBytes.sublist(16);
 
-    final encrypter = encrypt.Encrypter(
-      encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: "PKCS7"),
-    );
+      final keyStr = dotenv.env['ENCRYPTION_KEY'];
+      if (keyStr == null || keyStr.length != 32) {
+        throw Exception('Missing or invalid ENCRYPTION_KEY in .env file (must be 32 chars).');
+      }
+      final key = encrypt.Key.fromUtf8(keyStr);
+      final iv = encrypt.IV(ivBytes);
 
-    final decrypted = encrypter.decrypt(
-      encrypt.Encrypted(encryptedBytes),
-      iv: iv,
-    );
+      final encrypter = encrypt.Encrypter(
+        encrypt.AES(key, mode: encrypt.AESMode.cbc, padding: 'PKCS7'),
+      );
 
-    return decrypted;
+      final decrypted = encrypter.decrypt(
+        encrypt.Encrypted(encryptedBytes),
+        iv: iv,
+      );
+      return decrypted;
+    } catch (e) {
+      return base64Text;
+    }
   }
 
   /// Fetches and decrypts the Google Maps API key stored in the current company record.

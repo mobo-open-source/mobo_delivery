@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odoo_delivery_app/shared/utils/memory_page_manager.dart';
@@ -23,7 +24,7 @@ import 'core/providers/theme_provider.dart';
 /// Global Odoo client instance (initialized after login)
 OdooClient? client;
 
-/// Base Odoo server URL (set after login)e
+/// Base Odoo server URL (set after login)
 String url = "";
 
 /// Current authenticated user ID (set after login)
@@ -37,31 +38,26 @@ final memoryManager = MemoryPageManager();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Load environment variables securely
+
+  GoogleFonts.config.allowRuntimeFetching = false;
+
   await dotenv.load(fileName: ".env");
 
-  // Initialize Hive for offline storage
   await Hive.initFlutter();
 
-  // Register all Hive adapters
   Hive.registerAdapter(PickingAdapter());
   Hive.registerAdapter(ProfileAdapter());
   Hive.registerAdapter(MoveLineAdapter());
   Hive.registerAdapter(ReturnPickingAdapter());
 
-  // Open main pickings box (used across app)
   await Hive.openBox<Picking>('pickings');
 
-  // Load persistent settings
   final settingsStorageService = SettingsStorageService();
   await settingsStorageService.initialize();
 
-  // Load reduce motion preference (accessibility)
   final reduceMotion =
       await settingsStorageService.getBool('reduceMotion') ?? false;
 
-  // Initialize splash video
   final VideoPlayerController videoController = VideoPlayerController.asset(
     'assets/videos/Delivery.mp4',
   );
@@ -72,19 +68,16 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        // Storage services
         Provider<DashboardStorageService>(
           create: (_) => DashboardStorageService(),
         ),
         Provider<SettingsStorageService>.value(value: settingsStorageService),
 
-        // Theme & motion
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
           create: (_) => MotionProvider()..setReduceMotion(reduceMotion),
         ),
 
-        // Company / session provider
         ChangeNotifierProvider(
           create: (_) {
             final p = CompanyProvider();
@@ -93,10 +86,8 @@ void main() async {
           },
         ),
 
-        // Video controller (accessible app-wide if needed)
         ListenableProvider<VideoPlayerController>.value(value: videoController),
 
-        // Memory manager for large binary data
         Provider<MemoryPageManager>.value(value: memoryManager),
       ],
       child: LoginApp(),
@@ -138,7 +129,6 @@ class _LoginAppState extends State<LoginApp> {
       themeMode: themeProvider.themeMode,
       debugShowCheckedModeBanner: false,
 
-      // Global keys for navigation & snackbars
       navigatorKey: navigatorKey,
       scaffoldMessengerKey: scaffoldMessengerKey,
 
