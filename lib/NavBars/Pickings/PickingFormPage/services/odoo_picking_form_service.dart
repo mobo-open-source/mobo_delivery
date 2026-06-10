@@ -1,5 +1,7 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../models/picking_form.dart';
@@ -41,23 +43,37 @@ class OdooPickingFormService {
   /// 3. Stores latest URL from SharedPreferences
   ///
   /// Returns `true` only if both network exists and server responds 200 OK.
+  /// Returns `true` when the device has a working internet connection.
+  ///
+  /// Two cheap checks, no Odoo-server round trip:
+  ///   1. `connectivity_plus` — does the device have any active link
+  ///      (Wi-Fi / mobile / ethernet)?
+  ///   2. DNS lookup of a stable host (3s timeout) — does that link
+  ///      actually reach the internet (catches captive portals etc.)?
+  ///
+  /// Previously this method pinged `<url>/web` with a 5s timeout. That
+  /// caused false-negative "offline" classifications whenever the Odoo
+  /// server was momentarily slow or returned a non-200 — pushing actions
+  /// like cancel/validate into the offline-queue branch even on a live
+  /// connection. The actual RPC that follows still surfaces real server
+  /// failures via its own error handling, so checking server-side health
+  /// up front isn't needed.
   Future<bool> checkNetworkConnectivity() async {
-    final prefs = await SharedPreferences.getInstance();
-    url = prefs.getString('url') ?? '';
-    final connectivityResult = await Connectivity().checkConnectivity();
-
-    if (connectivityResult.any((r) => r != ConnectivityResult.none)) {
-      try {
-        final response = await http
-            .get(Uri.parse('$url/web'))
-            .timeout(const Duration(seconds: 5));
-
-        return response.statusCode == 200;
-      } catch (e) {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (!connectivityResult.any((r) => r != ConnectivityResult.none)) {
         return false;
       }
+      final result = await InternetAddress.lookup('example.com')
+          .timeout(const Duration(seconds: 3));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    } on TimeoutException {
+      return false;
+    } catch (_) {
+      return false;
     }
-    return false;
   }
 
   /// Loads a single picking by ID with all necessary fields
@@ -139,7 +155,9 @@ class OdooPickingFormService {
             'model': 'product.product',
             'method': 'search_read',
             'args': [[]],
-            'kwargs': {},
+            'kwargs': {
+              'fields': ['id', 'display_name', 'uom_id'],
+            },
           }))?.cast<Map<String, dynamic>>() ??
           [];
 
@@ -147,10 +165,84 @@ class OdooPickingFormService {
         await _hiveService.saveProducts(productItems);
         return productItems.map((item) => Product.fromJson(item)).toList();
       }
-      return [];
+      return await _hiveService.getProducts();
     } catch (e) {
-      return [];
+      debugPrint('loadProducts error: $e');
+      return await _hiveService.getProducts();
     }
+  }
+
+  /// Loads active `stock.picking.type` records (Operation Types) and
+  /// caches them for offline use. Returns maps shaped for
+  /// `InfoRow.dropdownItems` with `id`, `name` (display_name), and
+  /// flattened default source / destination location ids.
+  Future<List<Map<String, dynamic>>> loadOperationTypes() async {
+    try {
+      final result = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking.type',
+        'method': 'search_read',
+        'args': [
+          [
+            ['active', '=', true],
+          ],
+        ],
+        'kwargs': {
+          'fields': [
+            'id',
+            'display_name',
+            'default_location_src_id',
+            'default_location_dest_id',
+          ],
+        },
+      });
+
+      final rows = (result as List?)?.cast<Map<String, dynamic>>() ??
+          const <Map<String, dynamic>>[];
+
+      int? extractId(dynamic raw) {
+        if (raw is List && raw.isNotEmpty && raw.first is int) {
+          return raw.first as int;
+        }
+        return null;
+      }
+
+      final normalised = rows.map<Map<String, dynamic>>((row) {
+        final raw = row['display_name'];
+        final display = (raw is String && raw.isNotEmpty) ? raw : row['name'];
+        return {
+          'id': row['id'],
+          'name': display,
+          'default_location_src_id': row['default_location_src_id'],
+          'default_location_dest_id': row['default_location_dest_id'],
+          'default_location_src_id_int':
+              extractId(row['default_location_src_id']),
+          'default_location_dest_id_int':
+              extractId(row['default_location_dest_id']),
+        };
+      }).toList();
+
+      if (normalised.isNotEmpty) {
+        await _hiveService.saveOperationTypes(normalised);
+      }
+      return normalised.isNotEmpty ? normalised : await loadOperationTypesFromCache();
+    } catch (e) {
+      debugPrint('loadOperationTypes error: $e');
+      return await loadOperationTypesFromCache();
+    }
+  }
+
+  /// Loads operation types from the local Hive cache, used as the
+  /// offline fallback for the operation type dropdown.
+  Future<List<Map<String, dynamic>>> loadOperationTypesFromCache() async {
+    final cached = await _hiveService.getOperationTypes();
+    return cached
+        .map<Map<String, dynamic>>((o) => {
+              'id': o.id,
+              'name': o.name,
+              'default_location_src_id_int': o.defaultLocationSrcId,
+              'default_location_dest_id_int': o.defaultLocationDestId,
+            })
+        .toList();
   }
 
   /// Loads all visible partners (`res.partner`) — customers, suppliers, contacts
@@ -166,19 +258,23 @@ class OdooPickingFormService {
                 'model': 'res.partner',
                 'method': 'search_read',
                 'args': [[]],
-                'kwargs': {},
+                'kwargs': {
+                  'fields': ['id', 'display_name'],
+                },
               })
               as List<dynamic>?;
 
-      if (partnerItems != null) {
+      if (partnerItems != null && partnerItems.isNotEmpty) {
         await _hiveService.savePartners(
           List<Map<String, dynamic>>.from(partnerItems),
         );
         return partnerItems.map((item) => Partner.fromJson(item)).toList();
       }
-      return [];
+      // Online returned nothing — fall back to cache.
+      return await _hiveService.getPartners();
     } catch (e) {
-      return [];
+      debugPrint('loadPartners error: $e');
+      return await _hiveService.getPartners();
     }
   }
 
@@ -204,6 +300,8 @@ class OdooPickingFormService {
                 ],
                 'kwargs': {
                   'fields': [
+                    'id',
+                    'display_name',
                     'street',
                     'street2',
                     'city',
@@ -260,7 +358,9 @@ class OdooPickingFormService {
                 'model': 'res.users',
                 'method': 'search_read',
                 'args': [[]],
-                'kwargs': {},
+                'kwargs': {
+                  'fields': ['id', 'display_name'],
+                },
               })
               as List<dynamic>?;
       if (userItems != null) {
@@ -275,16 +375,21 @@ class OdooPickingFormService {
     }
   }
 
-  /// Loads all stock moves belonging to a picking
+  /// Loads all stock moves belonging to a picking.
   ///
-  /// Filters by `picking_id == pickingId`.
-  /// Caches moves in Hive for offline display/editing.
+  /// Filters by `picking_id == pickingId` and caches results in Hive.
   ///
-  /// Returns `StockMove` list or empty on error.
+  /// Field notes:
+  ///   • `product_uom`  — Many2one UoM on stock.move (NOT product_uom_id)
+  ///   • `quantity`     — done/reserved qty in Odoo 16+ (quantity_done was removed)
+  ///   • `lot_id` and `quantity_product_uom` live on stock.move.line, not stock.move
+  ///
+  /// Throws on RPC failure so the caller can surface the error to the user.
   Future<List<StockMove>> loadProductMoves(int pickingId) async {
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getInt('userId') ?? 0;
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      userId = prefs.getInt('userId') ?? 0;
       final moveItems =
           await CompanySessionManager.callKwWithCompany({
                 'model': 'stock.move',
@@ -294,7 +399,17 @@ class OdooPickingFormService {
                     ['picking_id', '=', pickingId],
                   ],
                 ],
-                'kwargs': {},
+                'kwargs': {
+                  'fields': [
+                    'id',
+                    'product_id',
+                    'product_uom_qty',
+                    'product_uom',
+                    'quantity',
+                    'picking_id',
+                    'location_id',
+                  ],
+                },
               })
               as List<dynamic>?;
 
@@ -305,8 +420,10 @@ class OdooPickingFormService {
         return moveItems.map((item) => StockMove.fromJson(item)).toList();
       }
       return [];
-    } catch (e) {
-      return [];
+    } catch (e, st) {
+      debugPrint('[OdooPickingFormService.loadProductMoves] '
+          'picking=$pickingId ERROR: $e\n$st');
+      rethrow;
     }
   }
 
@@ -392,39 +509,26 @@ class OdooPickingFormService {
     }
   }
 
-  /// Updates a single stock move (product, quantity, locations)
-  ///
-  /// Calls `stock.move.write()` with new values.
-  /// Version differences are handled in UI (name field not used here).
-  ///
-  /// Returns `true` on success, `false` on failure.
-  Future<bool> updateProductMove(
+  /// Updates an existing stock move's product and quantity. Locations
+  /// are intentionally not written — the move inherits them from its
+  /// picking. Throws on RPC failure.
+  Future<void> updateProductMove(
     int moveId,
     int productId,
-    String productName,
     double quantity,
-    int locationId,
-    int locationDestId,
   ) async {
-    try {
-      final response = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.move',
-        'method': 'write',
-        'args': [
-          [moveId],
-          {
-            'product_id': productId,
-            'quantity': quantity,
-            'location_id': locationId,
-            'location_dest_id': locationDestId,
-          },
-        ],
-        'kwargs': {},
-      });
-      return response != null;
-    } catch (e) {
-      return false;
-    }
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move',
+      'method': 'write',
+      'args': [
+        [moveId],
+        {
+          'product_id': productId,
+          'quantity': quantity,
+        },
+      ],
+      'kwargs': {},
+    });
   }
 
   /// Deletes a stock move line from the picking
@@ -450,27 +554,31 @@ class OdooPickingFormService {
   /// Validates (processes) the picking — equivalent to "Validate" button
   ///
   /// Calls `stock.picking.button_validate()`.
-  /// May return backorder wizard context (Map) if partial availability.
-  /// Returns `true` on simple success, wizard map on backorder prompt, `false` on error.
+  /// May return a wizard action (Map) — backorder, immediate transfer,
+  /// SMS confirmation, scrap warning, etc. — when Odoo needs user input.
+  /// Returns `true` on a direct success, the action Map when a wizard is
+  /// needed, and rethrows the original exception on failure so the caller
+  /// can surface the actual Odoo UserError text.
   Future<dynamic> validatePicking(int pickingId) async {
-    try {
-      final validate = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.picking',
-        'method': 'button_validate',
-        'args': [
-          [pickingId],
-        ],
-        'kwargs': {},
-      });
+    final validate = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'button_validate',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    });
 
-      if (validate is Map && validate['type'] == 'ir.actions.act_window') {
-        return validate;
-      }
-
-      return validate == null || validate is! Map;
-    } catch (e) {
-      return false;
+    // Wizard responses are act_window actions; pass them through so the
+    // UI can route to the matching dialog (backorder / sms / scrap / etc.).
+    if (validate is Map &&
+        (validate['type'] == 'ir.actions.act_window' ||
+            validate['type'] == 'ir.actions.client')) {
+      return validate;
     }
+
+    // Odoo returns True / None on a clean validate; treat both as success.
+    return validate == null || validate == true || validate is! Map;
   }
 
   /// Triggers stock reservation / availability check
@@ -493,92 +601,198 @@ class OdooPickingFormService {
     }
   }
 
-  /// Confirms the picking (moves from Draft → Waiting/Ready)
+  /// Confirms the picking (moves from Draft → Waiting/Ready).
   ///
-  /// Calls `action_confirm()`.
-  Future<bool> markAsTodoPicking(int pickingId) async {
-    try {
-      final confirm = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.picking',
-        'method': 'action_confirm',
-        'args': [
-          [pickingId],
-        ],
-        'kwargs': {},
-      });
-      return confirm != null;
-    } catch (e) {
-      return false;
+  /// Calls `action_confirm()`. Odoo returns `True` on success — older builds
+  /// returned `None`. We treat both as a clean confirm and also pass
+  /// through wizard responses (rare for confirm but possible via custom
+  /// modules). Throws on RPC failure so the caller can surface the actual
+  /// UserError instead of a generic "Failed" snackbar.
+  Future<dynamic> markAsTodoPicking(int pickingId) async {
+    final confirm = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'action_confirm',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    });
+
+    if (confirm is Map &&
+        (confirm['type'] == 'ir.actions.act_window' ||
+            confirm['type'] == 'ir.actions.client')) {
+      return confirm;
     }
+    return confirm == null || confirm == true || confirm is! Map;
   }
 
-  /// Cancels the entire picking
-  ///
-  /// Calls `action_cancel()`.
-  Future<bool> cancelPicking(int pickingId) async {
-    try {
-      final cancel = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.picking',
-        'method': 'action_cancel',
-        'args': [
-          [pickingId],
-        ],
-        'kwargs': {},
-      });
-      return cancel != null;
-    } catch (e) {
-      return false;
+  /// Cancels the entire picking via `action_cancel()`. Throws on failure so
+  /// the caller can surface the actual Odoo error (e.g. a wizard prompt
+  /// requesting confirmation for cancelling done moves).
+  Future<dynamic> cancelPicking(int pickingId) async {
+    final cancel = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'action_cancel',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    });
+
+    if (cancel is Map &&
+        (cancel['type'] == 'ir.actions.act_window' ||
+            cancel['type'] == 'ir.actions.client')) {
+      return cancel;
     }
+    return cancel == null || cancel == true || cancel is! Map;
   }
 
-  /// Adds a new stock move line to the picking
+  /// Adds a new stock move line to the picking. Version-aware: Odoo 19
+  /// dropped the `name` field on `stock.move`. Throws on RPC failure so
+  /// the caller can surface the error.
   ///
-  /// Version-aware payload: Odoo 19+ removed mandatory `name` field.
-  /// Returns new move ID on success or `null` on failure.
-  Future<int?> addProductToLine(
+  /// Bug fix: for pickings already past draft (confirmed/waiting/assigned),
+  /// a bare `stock.move.create` leaves the new move in `draft` state. The
+  /// picking form view in Odoo filters its operations table on confirmed
+  /// moves, so the freshly-created draft move never shows up in the web
+  /// backend until the picking is re-fetched and the state is recomputed.
+  /// Subsequent picking-level actions (`action_confirm`, `button_validate`)
+  /// also raise UserErrors because they refuse to touch an orphaned draft
+  /// move attached to a non-draft picking.
+  ///
+  /// To match the Odoo form-view workflow we transition the new move into
+  /// the same state family as the picking by calling `_action_confirm` on
+  /// it. This also runs Odoo's merge logic (duplicate-product lines get
+  /// summed into a single move), triggers reservations on assigned
+  /// pickings, and makes the move immediately visible everywhere.
+  Future<int> addProductToLine(
     int pickingId,
     int productId,
     String productName,
     int selectedPickingUom,
     double quantity,
     int locationId,
-    int locationDestId,
-  ) async {
+    int locationDestId, {
+    String? pickingState,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    int version = prefs.getInt('version') ?? 0;
-    try {
-      Map<String, dynamic> payload;
-      if (version >= 19) {
-        payload = {
-          'product_id': productId,
-          'product_uom_qty': quantity,
-          'product_uom': selectedPickingUom,
-          'picking_id': pickingId,
-          'location_id': locationId,
-          'location_dest_id': locationDestId,
-        };
-      } else {
-        payload = {
-          'name': productName,
-          'product_id': productId,
-          'product_uom_qty': quantity,
-          'product_uom': selectedPickingUom,
-          'picking_id': pickingId,
-          'location_id': locationId,
-          'location_dest_id': locationDestId,
-        };
-      }
+    final int version = prefs.getInt('version') ?? 0;
 
-      final createMove = await CompanySessionManager.callKwWithCompany({
+    final pickingRead = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'read',
+      'args': [
+        [pickingId],
+        ['company_id', 'location_id', 'location_dest_id'],
+      ],
+      'kwargs': {},
+    });
+
+    int? freshCompanyId;
+    int freshLocationId = locationId;
+    int freshLocationDestId = locationDestId;
+    if (pickingRead is List && pickingRead.isNotEmpty) {
+      final row = pickingRead.first as Map<String, dynamic>;
+      int? extractId(dynamic raw) {
+        if (raw is List && raw.isNotEmpty && raw.first is int) {
+          return raw.first as int;
+        }
+        return null;
+      }
+      freshCompanyId = extractId(row['company_id']);
+      freshLocationId = extractId(row['location_id']) ?? locationId;
+      freshLocationDestId =
+          extractId(row['location_dest_id']) ?? locationDestId;
+    }
+
+    final payload = <String, dynamic>{
+      if (version < 19) 'name': productName,
+      'product_id': productId,
+      'product_uom_qty': quantity,
+      'product_uom': selectedPickingUom,
+      'picking_id': pickingId,
+      'location_id': freshLocationId,
+      'location_dest_id': freshLocationDestId,
+      if (freshCompanyId != null) 'company_id': freshCompanyId,
+    };
+
+    final createMove = await CompanySessionManager.callKwWithCompany(
+      {
         'model': 'stock.move',
         'method': 'create',
         'args': [payload],
         'kwargs': {},
-      });
-      return createMove as int?;
-    } catch (e) {
+      },
+      companyId: freshCompanyId,
+    );
+
+    int? newMoveId;
+    if (createMove is int) newMoveId = createMove;
+    if (createMove is List && createMove.isNotEmpty && createMove.first is int) {
+      newMoveId = createMove.first as int;
+    }
+    if (newMoveId == null) {
+      throw Exception(
+        'Odoo did not return a valid stock.move id (got: $createMove)',
+      );
+    }
+
+    const stateNeedsConfirm = {'confirmed', 'waiting', 'partially_available', 'assigned'};
+    if (pickingState != null && stateNeedsConfirm.contains(pickingState)) {
+      try {
+        await CompanySessionManager.callKwWithCompany(
+          {
+            'model': 'stock.picking',
+            'method': 'action_confirm',
+            'args': [
+              [pickingId],
+            ],
+            'kwargs': {},
+          },
+          companyId: freshCompanyId,
+        );
+      } catch (e) {
+        debugPrint(
+          '[addProductToLine] action_confirm failed for picking=$pickingId: $e',
+        );
+        rethrow;
+      }
+    }
+
+    return newMoveId;
+  }
+
+  /// Fetches the source and destination location IDs for a given
+  /// picking. Either may be `null` if the picking has no value set.
+  Future<({int? locationId, int? locationDestId})> getPickingLocations(
+    int pickingId,
+  ) async {
+    final result = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'read',
+      'args': [
+        [pickingId],
+        ['location_id', 'location_dest_id'],
+      ],
+      'kwargs': {},
+    });
+
+    if (result is! List || result.isEmpty) {
+      throw Exception('Picking $pickingId not found');
+    }
+    final row = result.first as Map<String, dynamic>;
+
+    int? extractId(dynamic raw) {
+      if (raw is List && raw.isNotEmpty && raw.first is int) {
+        return raw.first as int;
+      }
       return null;
     }
+
+    return (
+      locationId: extractId(row['location_id']),
+      locationDestId: extractId(row['location_dest_id']),
+    );
   }
 
   /// Saves changes to picking header fields
@@ -586,6 +800,9 @@ class OdooPickingFormService {
   /// Calls `stock.picking.write()` with the updates map.
   /// Returns `true` if write succeeded.
   Future<bool> saveChanges(int pickingId, Map<String, dynamic> updates) async {
+    debugPrint(
+      '[PickingForm.saveChanges] id=$pickingId fields=${updates.keys.toList()}',
+    );
     try {
       final response = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking',
@@ -596,8 +813,12 @@ class OdooPickingFormService {
         ],
         'kwargs': {},
       });
+      debugPrint(
+        '[PickingForm.saveChanges] id=$pickingId response=$response',
+      );
       return response == true;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[PickingForm.saveChanges] id=$pickingId ERROR: $e\n$st');
       return false;
     }
   }

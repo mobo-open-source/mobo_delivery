@@ -1,17 +1,19 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../LoginPage/models/session_model.dart';
 import '../../LoginPage/services/storage_service.dart';
+import '../../core/company/services/connectivity_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../core/providers/motion_provider.dart';
 import '../../shared/utils/app_theme.dart';
 import '../../shared/widgets/action_tile.dart';
 import '../../shared/widgets/odoo_avatar.dart';
+import '../../shared/widgets/snackbar.dart';
 import '../services/storage_service.dart';
 import '../../shared/widgets/dialogs/common_dialog.dart';
 import '../widgets/profile/profile_header_card.dart';
@@ -72,6 +74,10 @@ class _ConfigurationState extends State<Configuration> {
 
   /// Loads the user profile directly via CompanySessionManager
   /// (same pattern as mobo_inv_app's ProfileProvider.fetchUserProfile).
+  ///
+  /// Always completes within the timeout so `_isLoading` cannot stick true
+  /// on a slow / unreachable Odoo. The page renders without waiting for
+  /// this — only the profile header card relies on the result.
   Future<void> _loadProfile() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -100,7 +106,7 @@ class _ConfigurationState extends State<Configuration> {
           ],
         ],
         'kwargs': {},
-      });
+      }).timeout(const Duration(seconds: 15));
 
       if (res is List && res.isNotEmpty) {
         if (!mounted) return;
@@ -112,9 +118,10 @@ class _ConfigurationState extends State<Configuration> {
         if (!mounted) return;
         setState(() => _isLoading = false);
       }
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     } catch (e) {
-
-      // If session is expired, redirect to login
       if (e is OdooSessionExpiredException && mounted) {
         CompanySessionManager.logout(context);
         return;
@@ -158,55 +165,48 @@ class _ConfigurationState extends State<Configuration> {
           ),
         ),
       ),
-      body: _isLoading && profile == null
-          ? _buildLoadingShimmer(isDark)
-          : RefreshIndicator(
-              onRefresh: _loadProfile,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Offline banner — shown when server unreachable, uses cached data
-                    if (profile == null && !_isLoading)
-                      _buildOfflineBanner(isDark),
+      body: RefreshIndicator(
+        onRefresh: _loadProfile,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (profile == null && !_isLoading) _buildOfflineBanner(isDark),
 
-                    const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-                    // Profile Header Card (falls back to Dashboard cached data when offline)
-                    ProfileHeaderCard(
-                      name:
-                          profile?['name']?.toString() ??
-                          widget.userName ??
-                          'Unknown User',
-                      email:
-                          (profile?['email'] != null &&
-                              profile?['email'] != false)
-                          ? profile!['email'].toString()
-                          : widget.mail ?? '',
-                      jobFunction: '',
-                      avatarBase64: _userAvatarBase64,
-                      showCameraButton: false,
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          _buildPageRoute(
-                            motionProvider,
-                            const ProfileDetailScreen(),
-                          ),
-                        );
-                        _loadProfile();
-                      },
+              ProfileHeaderCard(
+                name:
+                    profile?['name']?.toString() ??
+                    widget.userName ??
+                    'Unknown User',
+                email:
+                    (profile?['email'] != null && profile?['email'] != false)
+                        ? profile!['email'].toString()
+                        : widget.mail ?? '',
+                jobFunction: '',
+                avatarBase64: _userAvatarBase64,
+                showCameraButton: false,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    _buildPageRoute(
+                      motionProvider,
+                      const ProfileDetailScreen(),
                     ),
-                    const SizedBox(height: 12),
-
-                    // Quick Actions always visible (Settings, Switch Accounts, Logout)
-                    _buildQuickActionsSection(context, motionProvider),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                  );
+                  _loadProfile();
+                },
               ),
-            ),
+              const SizedBox(height: 12),
+
+              _buildQuickActionsSection(context, motionProvider),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -238,7 +238,6 @@ class _ConfigurationState extends State<Configuration> {
       ),
       child: Column(
         children: [
-          // Settings
           ActionTile(
             title: 'Settings',
             subtitle: 'App preferences and sync options',
@@ -252,11 +251,9 @@ class _ConfigurationState extends State<Configuration> {
           ),
           _buildDivider(isDark),
 
-          // Switch Accounts
           _buildSwitchAccountsTile(context, isDark, motionProvider),
           _buildDivider(isDark),
 
-          // Logout
           ActionTile(
             title: 'Logout',
             subtitle: 'Sign out from this device',
@@ -608,140 +605,6 @@ class _ConfigurationState extends State<Configuration> {
     );
   }
 
-  Widget _buildLoadingShimmer(bool isDark) {
-    final shimmerBase = isDark ? Colors.grey[800]! : Colors.grey[300]!;
-    final shimmerHighlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
-    final placeholderColor = isDark ? Colors.grey[900]! : Colors.white;
-    final cardColor = isDark ? Colors.grey[900] : Colors.white;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Shimmer.fromColors(
-        baseColor: shimmerBase,
-        highlightColor: shimmerHighlight,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile card shimmer
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: placeholderColor,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: 18,
-                          width: 180,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: placeholderColor,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        Container(
-                          height: 14,
-                          width: 160,
-                          margin: const EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            color: placeholderColor,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        Container(
-                          height: 12,
-                          width: 120,
-                          decoration: BoxDecoration(
-                            color: placeholderColor,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Actions shimmer
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
-                ),
-              ),
-              child: Column(
-                children: List.generate(3, (index) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: index == 2 ? 0 : 16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: placeholderColor,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                height: 14,
-                                width: 120,
-                                margin: const EdgeInsets.only(bottom: 6),
-                                decoration: BoxDecoration(
-                                  color: placeholderColor,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                              Container(
-                                height: 12,
-                                width: 180,
-                                decoration: BoxDecoration(
-                                  color: placeholderColor,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   PageRoute _buildPageRoute(MotionProvider motionProvider, Widget page) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
@@ -764,7 +627,6 @@ class _ConfigurationState extends State<Configuration> {
   ) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Show blocking loading dialog immediately so the user gets feedback
     if (mounted) {
       showDialog(
         context: context,
@@ -826,12 +688,50 @@ class _ConfigurationState extends State<Configuration> {
       );
     }
 
-    try {
-      final url = (user['url'] as String? ?? '').trim();
-      final database = (user['database'] as String? ?? '').trim();
-      final userLogin = (user['userLogin'] as String? ?? '').trim();
+    final url = (user['url'] as String? ?? '').trim();
+    final database = (user['database'] as String? ?? '').trim();
+    final userLogin = (user['userLogin'] as String? ?? '').trim();
+    final displayName = (user['userName'] as String?)?.trim().isNotEmpty == true
+        ? user['userName'] as String
+        : userLogin;
 
-      // Restore the account's session data to SharedPreferences
+    Future<void> abort(String message) async {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      CustomSnackbar.showError(context, message);
+    }
+
+    if (url.isEmpty || database.isEmpty || userLogin.isEmpty) {
+      await abort(
+        'Cannot switch: this account is missing server URL, database, '
+        'or username. Please remove it and add again.',
+      );
+      return;
+    }
+
+    final storedPassword = await SecureStorageService().getPassword(
+      url: url,
+      database: database,
+      username: userLogin,
+    );
+    if (storedPassword == null || storedPassword.isEmpty) {
+      await abort(
+        'Cannot switch to $displayName: saved password not found. '
+        'Please remove this account and sign in again.',
+      );
+      return;
+    }
+
+    // Snapshot the current session for rollback if re-auth fails.
+    final prevSession = await CompanySessionManager.getCurrentSession();
+    final prefs = await SharedPreferences.getInstance();
+    final prevUrl = prefs.getString('url');
+    final prevDatabase =
+        prefs.getString('selectedDatabase') ?? prefs.getString('database');
+
+    // Apply the new account's prefs so loginAndSaveSession uses the right
+    // URL/database. If re-auth fails we roll these back from the snapshot.
+    try {
       await storageService.saveSession(
         SessionModel(
           sessionId: user['sessionId'] ?? '',
@@ -849,52 +749,113 @@ class _ConfigurationState extends State<Configuration> {
               (user['allowedCompanyIds'] as List?)?.cast<int>() ?? [],
         ),
       );
-
       await storageService.saveLoginState(
         isLoggedIn: true,
         database: database,
         url: url,
         password: '',
       );
-
-      // Clear stale company selection so the account's own company is used
-      final prefs = await SharedPreferences.getInstance();
       await prefs.remove('selected_company_id');
       await prefs.remove('selected_allowed_company_ids');
-
-      // Wipe the old client/session so getClientEnsured() rebuilds from prefs
       await CompanySessionManager.clearSessionCache();
-
-      // Re-authenticate with the stored password to get a fresh session.
-      // This prevents stale/expired sessionIds from causing data mismatches
-      // on the first API call after switching.
-      final storedPassword = await SecureStorageService().getPassword(
-        url: url,
-        database: database,
-        username: userLogin,
-      );
-      if (storedPassword != null && storedPassword.isNotEmpty) {
-        await CompanySessionManager.loginAndSaveSession(
-          serverUrl: url,
-          database: database,
-          userLogin: userLogin,
-          password: storedPassword,
-        );
-      }
-
-      // Clear ALL Hive caches to prevent any data leakage between accounts
-      await HiveService().clearAllData();
     } catch (e) {
-      // Non-fatal: if re-auth fails (e.g. no internet) the Dashboard
-      // will handle the error state gracefully via its own retry logic.
+      await _rollbackSwitch(prevSession, prevUrl, prevDatabase);
+      await abort('Could not prepare account switch: ${_extractReason(e)}');
+      return;
     }
 
+    // Try the actual sign-in for the target account. If it fails for ANY
+    // reason — bad password, timeout, connectivity — we restore the
+    // previous prefs and stay on the configuration page so the user is
+    // never left on a broken dashboard with destroyed offline data.
+    bool reauthOk = false;
+    String? reauthReason;
+    try {
+      reauthOk = await CompanySessionManager.loginAndSaveSession(
+        serverUrl: url,
+        database: database,
+        userLogin: userLogin,
+        password: storedPassword,
+      ).timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      reauthReason =
+          'Server took too long to confirm the session. Account was not switched.';
+    } on NoInternetException {
+      reauthReason =
+          'No internet connection. Connect and try switching again.';
+    } on ServerUnreachableException {
+      reauthReason =
+          'Could not reach $url. Verify the server and try again.';
+    } catch (e) {
+      reauthReason =
+          'Could not sign in to $displayName: ${_extractReason(e)}';
+    }
+
+    if (!reauthOk) {
+      await _rollbackSwitch(prevSession, prevUrl, prevDatabase);
+      await abort(
+        reauthReason ??
+            'Could not sign in to $displayName. Account was not switched.',
+      );
+      return;
+    }
+
+    // Re-auth succeeded — safe to wipe the old user's offline cache and
+    // jump to the dashboard for the new account.
+    await HiveService().clearAllData();
+
     if (!mounted) return;
-    // pushAndRemoveUntil also dismisses the loading dialog automatically
     Navigator.pushAndRemoveUntil(
       context,
       _buildPageRoute(motionProvider, const Dashboard()),
       (route) => false,
     );
+  }
+
+  /// Restores the previous account's session prefs after a failed switch.
+  Future<void> _rollbackSwitch(
+    SessionModel? prevSession,
+    String? prevUrl,
+    String? prevDatabase,
+  ) async {
+    try {
+      if (prevSession != null) {
+        await storageService.saveSession(prevSession);
+      }
+      if (prevUrl != null && prevDatabase != null) {
+        await storageService.saveLoginState(
+          isLoggedIn: true,
+          database: prevDatabase,
+          url: prevUrl,
+          password: '',
+        );
+      }
+      await CompanySessionManager.clearSessionCache();
+    } catch (_) {
+      // Best-effort rollback; the next RPC will trigger a session refresh
+      // via the stored credentials anyway.
+    }
+  }
+
+  /// Extracts a short, user-readable reason from an arbitrary exception.
+  String _extractReason(Object e) {
+    final raw = e.toString().toLowerCase();
+    if (raw.contains('wrong login') ||
+        raw.contains('invalid login') ||
+        raw.contains('access denied') ||
+        raw.contains('accessdenied') ||
+        raw.contains('wrong credentials')) {
+      return 'wrong saved password — remove and add this account again.';
+    }
+    if (raw.contains('database') && raw.contains('not found')) {
+      return 'database no longer exists on this server.';
+    }
+    if (raw.contains('socket') || raw.contains('network')) {
+      return 'network error — check your connection.';
+    }
+    if (raw.contains('certificate') || raw.contains('ssl')) {
+      return 'SSL/certificate problem reaching the server.';
+    }
+    return 'unexpected error. Please try again.';
   }
 }

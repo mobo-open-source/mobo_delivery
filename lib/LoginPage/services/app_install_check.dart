@@ -1,57 +1,75 @@
 import '../../core/company/session/company_session_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Utility class used to verify whether required backend modules
-/// are installed in the Odoo server.
-///
-/// Uses RPC calls via CompanySessionManager to check module availability.
-/// Includes fallback model checks to verify general API accessibility.
+enum AccessCheckStatus {
+  ok,
+  moduleMissing,
+  noInventoryAccess,
+}
+
 class AppInstallCheck {
+  static const _stockUserGroups = <String>[
+    'stock.group_stock_manager',
+    'stock.group_stock_user',
+  ];
 
-  /// Checks whether a specific Odoo module is installed.
-  ///
-  /// First attempts direct module lookup using `ir.module.module`.
-  /// If it fails (e.g., permission issues or restricted access),
-  /// falls back to checking a commonly available model (`stock.picking`)
-  /// to verify backend connectivity.
-  ///
-  /// Returns:
-  /// - true → Module installed OR backend reachable
-  /// - false → Module missing OR backend not reachable
-  Future<bool> isModuleInstalled(String moduleName) async {
+  Future<bool> _isStockModuleInstalled() async {
     try {
       final count = await CompanySessionManager.callKwWithCompany({
         'model': 'ir.module.module',
         'method': 'search_count',
         'args': [
           [
-            ['name', '=', moduleName],
-            ['state', '=', 'installed']
-          ]
+            ['name', '=', 'stock'],
+            ['state', '=', 'installed'],
+          ],
         ],
-        'kwargs': {}
+        'kwargs': {},
       });
       return (count ?? 0) > 0;
     } catch (_) {
-      try {
-        if (moduleName != 'stock') return false;
-
-        await CompanySessionManager.callKwWithCompany({
-          'model': 'stock.picking',
-          'method': 'search_count',
-          'args': [[]],
-          'kwargs': {'limit': 1}
-        });
-        return true;
-      } catch (_) {
-        return false;
-      }
+      return true;
     }
   }
 
-  /// Checks whether the Inventory (stock) module is installed.
-  ///
-  /// Required for picking, delivery order, and stock movement features.
-  Future<bool> checkRequiredModules() async {
-    return await isModuleInstalled('stock');
+  Future<bool?> _hasStockAccess() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int? userId = prefs.getInt('userId');
+    final int majorVersion = prefs.getInt('version') ?? 0;
+
+    bool sawDefiniteFalse = false;
+
+    for (final group in _stockUserGroups) {
+      try {
+        final payload = majorVersion >= 18
+            ? {
+                'model': 'res.users',
+                'method': 'has_group',
+                'args': [userId, group],
+                'kwargs': {},
+              }
+            : {
+                'model': 'res.users',
+                'method': 'has_group',
+                'args': [group],
+                'kwargs': {},
+              };
+        final result = await CompanySessionManager.callKwWithCompany(payload);
+        if (result == true) return true;
+        if (result == false) sawDefiniteFalse = true;
+      } catch (_) {}
+    }
+    return sawDefiniteFalse ? false : null;
   }
+
+  Future<AccessCheckStatus> evaluateAccess() async {
+    final installed = await _isStockModuleInstalled();
+    if (!installed) return AccessCheckStatus.moduleMissing;
+    final hasAccess = await _hasStockAccess();
+    if (hasAccess == false) return AccessCheckStatus.noInventoryAccess;
+    return AccessCheckStatus.ok;
+  }
+
+  Future<bool> checkRequiredModules() async =>
+      await evaluateAccess() == AccessCheckStatus.ok;
 }

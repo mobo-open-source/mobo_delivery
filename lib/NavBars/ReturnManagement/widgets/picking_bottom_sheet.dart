@@ -18,9 +18,10 @@ import '../services/odoo_return_service.dart';
 ///
 /// On "Return" button press:
 /// • Collects lines with positive return quantities
-/// • Dispatches `CreateReturn` event to `ReturnManagementBloc`
-/// • Navigates to `PickingDetailsPage` for the new return picking
-/// • Shows success/error snackbar
+/// • Awaits the wizard RPCs directly via `OdooReturnManagementService`
+/// • On success, dispatches `FetchStockPickings` to refresh the list and
+///   navigates to `PickingDetailsPage` for the source picking
+/// • Shows success/error snackbar based on the actual result
 ///
 /// Features:
 /// • Offline-aware error handling
@@ -30,13 +31,23 @@ import '../services/odoo_return_service.dart';
 class PickingBottomSheet extends StatefulWidget {
   final Map<String, dynamic> picking;
   final OdooReturnManagementService odooService;
-  final ReturnManagementBloc bloc;
+
+  /// Provided when invoked from the Return Management tab so the list can
+  /// be refreshed after success. Null when called from the picking detail
+  /// page, where the host handles its own reload via [onReturnCreated].
+  final ReturnManagementBloc? bloc;
+
+  /// Optional callback fired after a return picking is successfully
+  /// created. Lets the host (e.g. picking detail page) refresh its own
+  /// state and update the "Return (count)" badge.
+  final VoidCallback? onReturnCreated;
 
   const PickingBottomSheet({
     super.key,
     required this.picking,
     required this.odooService,
-    required this.bloc,
+    this.bloc,
+    this.onReturnCreated,
   });
 
   @override
@@ -48,40 +59,53 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
   /// Each map contains product info + `qtyController` added in code
   List<Map<String, dynamic>> moveItems = [];
 
+  bool _isSubmitting = false;
+  bool _moveItemsLoaded = false;
+  String? _inlineError;
+
+  int get _pickingId {
+    final raw = widget.picking['id'];
+    if (raw is int) return raw;
+    return int.tryParse(raw?.toString() ?? '') ?? 0;
+  }
+
   @override
   void initState() {
     super.initState();
     _fetchMoveItems();
   }
 
-  /// Fetches move lines for the given picking ID from Odoo
-  ///
-  /// On success: attaches a `TextEditingController` to each item for quantity editing
-  /// On failure: shows error snackbar
+  /// Fetches the returnable moves for the picking via Odoo's
+  /// `stock.return.picking` wizard. The wizard's compute pre-fills each
+  /// line's `quantity` with the correct returnable amount — accounting
+  /// for previously-returned units — so the qty fields match what Odoo's
+  /// web UI shows.
   Future<void> _fetchMoveItems() async {
     try {
       await widget.odooService.initializeClient();
-      final items = await widget.odooService.fetchMoveItems(
-        widget.picking['id'],
-      );
+      final items = await widget.odooService.fetchReturnableMoves(_pickingId);
+      if (!mounted) return;
       setState(() {
         moveItems = items.map((item) {
-          item['qtyController'] = TextEditingController(
-            text: item['product_uom_qty'].toString(),
-          );
+          final qty = item['quantity'];
+          final text = qty is num ? qty.toString() : (qty?.toString() ?? '0');
+          item['qtyController'] = TextEditingController(text: text);
           return item;
         }).toList();
+        _moveItemsLoaded = true;
       });
     } catch (e) {
-      if (mounted) {
-        CustomSnackbar.showError(context, 'Something went wrong, please try again later');
-      }
+      if (!mounted) return;
+      setState(() => _moveItemsLoaded = true);
+      CustomSnackbar.showError(
+        context,
+        'Something went wrong, please try again later',
+      );
     }
   }
 
   @override
   void dispose() {
-    // Clean up all quantity controllers to prevent memory leaks
     for (var item in moveItems) {
       (item['qtyController'] as TextEditingController?)?.dispose();
     }
@@ -98,7 +122,6 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
           Text(
             'Return Items',
             style: TextStyle(
@@ -109,12 +132,22 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
           ),
           const SizedBox(height: 12),
 
-          // Loading or content
-          moveItems.isEmpty
+          !_moveItemsLoaded
               ? const Center(
                   child: LoadingWidget(
                     size: 40,
                     variant: LoadingVariant.staggeredDots,
+                  ),
+                )
+              : moveItems.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'No returnable items found for this picking.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                 )
               : ListView.builder(
@@ -127,7 +160,6 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Row(
                   children: [
-                    // Product name (takes most space)
                     Expanded(
                       flex: 2,
                       child: Text(
@@ -142,11 +174,17 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                     ),
                     const SizedBox(width: 10),
 
-                    // Quantity input
                     Expanded(
                       child: TextFormField(
                         controller: controller,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (_) {
+                          if (_inlineError != null) {
+                            setState(() => _inlineError = null);
+                          }
+                        },
                         decoration: const InputDecoration(
                           labelText: 'Qty',
                           border: OutlineInputBorder(),
@@ -156,12 +194,6 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                             vertical: 8,
                           ),
                         ),
-                        onChanged: (value) {
-                          final newQty = int.tryParse(value);
-                          if (newQty != null) {
-                            moveItems[index]['product_uom_qty'] = newQty;
-                          }
-                        },
                       ),
                     ),
                   ],
@@ -171,13 +203,62 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
           ),
           const SizedBox(height: 20),
 
-          // Return Action Button
+          if (_inlineError != null)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.red.withOpacity(0.15)
+                    : Colors.red.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDark ? Colors.red[300]! : Colors.red[400]!,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: isDark ? Colors.red[300] : Colors.red[700],
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _inlineError!,
+                      style: TextStyle(
+                        color: isDark ? Colors.red[200] : Colors.red[800],
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              icon: const Icon(HugeIcons.strokeRoundedDeliveryReturn02),
+              icon: _isSubmitting
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isDark ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    )
+                  : const Icon(HugeIcons.strokeRoundedDeliveryReturn02),
               label: Text(
-                'Return',
+                _isSubmitting ? 'Creating return...' : 'Return',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.black : Colors.white,
@@ -197,76 +278,133 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                   ),
                 ),
               ),
-              onPressed: () async {
-                try {
-                  final odooPickingFormService = OdooPickingFormService();
-                  await odooPickingFormService.initializeOdooClient();
-                  final returnLines = moveItems
-                      .asMap()
-                      .entries
-                      .where((entry) {
-                    final controller = entry.value['qtyController'] as TextEditingController?;
-                    final quantity = double.tryParse(controller?.text ?? '0') ?? 0;
-                    return quantity > 0;
-                  })
-                      .map((entry) {
-                    final item = entry.value;
-                    final controller = item['qtyController'] as TextEditingController?;
-                    final quantity = double.tryParse(controller?.text ?? '0') ?? 0;
-                    return [
-                      0,
-                      0,
-                      {
-                        'product_id': item['product_id']?[0],
-                        'quantity': quantity,
-                        'move_id': item['id'],
-                      },
-                    ];
-                  })
-                      .toList();
-
-                  widget.bloc.add(
-                    CreateReturn(widget.picking['id'], returnLines),
-                  );
-
-                  Navigator.pushReplacement(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          PickingDetailsPage(
-                            picking: widget.picking,
-                            odooService: odooPickingFormService,
-                            isPickingForm: false,
-                            isReturnPicking: false,
-                            isReturnCreate: true,
-                          ),
-                      transitionDuration: motionProvider.reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 300),
-                      reverseTransitionDuration: motionProvider.reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 300),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        if (motionProvider.reduceMotion) return child;
-                        return FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        );
-                      },
-                    ),
-                  );
-                  CustomSnackbar.showSuccess(context, 'Return created successfully.');
-                } catch (e) {
-                  if (mounted) {
-                    Navigator.pop(context, null);
-                    CustomSnackbar.showError(context, 'Nothing to check the availability for.');
-                  }
-                }
-              },
+              onPressed: _isSubmitting
+                  ? null
+                  : () => _submitReturn(motionProvider),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Builds the wizard line payload from the user-entered quantities.
+  /// Each line is the Odoo One2many `(0, 0, values)` create command.
+  ///
+  /// Source data now comes from `stock.return.picking.line` records (via
+  /// `fetchReturnableMoves`), so `move_id` arrives as a Many2one tuple
+  /// `[id, name]` — unwrap to the bare int.
+  List<List<Object>> _buildReturnLines() {
+    return moveItems
+        .where((item) {
+          final controller = item['qtyController'] as TextEditingController?;
+          final quantity = double.tryParse(controller?.text ?? '0') ?? 0;
+          return quantity > 0;
+        })
+        .map<List<Object>>((item) {
+          final controller = item['qtyController'] as TextEditingController?;
+          final quantity = double.tryParse(controller?.text ?? '0') ?? 0;
+          final productId = (item['product_id'] is List)
+              ? item['product_id'][0] as Object
+              : item['product_id'] as Object;
+          final rawMoveId = item['move_id'];
+          final moveId = (rawMoveId is List && rawMoveId.isNotEmpty)
+              ? rawMoveId[0] as Object
+              : (rawMoveId as Object);
+          return [
+            0,
+            0,
+            {
+              'product_id': productId,
+              'quantity': quantity,
+              'move_id': moveId,
+            },
+          ];
+        })
+        .toList();
+  }
+
+  /// Submits the return wizard. Navigates and shows success only on real
+  /// success; errors are surfaced via snackbar.
+  Future<void> _submitReturn(MotionProvider motionProvider) async {
+    if (_isSubmitting) return;
+
+    final returnLines = _buildReturnLines();
+    if (returnLines.isEmpty) {
+      setState(() {
+        _inlineError =
+            'Enter a quantity greater than 0 for at least one product.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _inlineError = null;
+    });
+
+    final odooPickingFormService = OdooPickingFormService();
+    try {
+      await odooPickingFormService.initializeOdooClient();
+      await widget.odooService.createReturn(_pickingId, returnLines);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _inlineError = _formatError(e);
+      });
+      return;
+    }
+
+    if (!mounted) return;
+
+    final bloc = widget.bloc;
+    if (bloc != null) {
+      bloc.add(FetchStockPickings(bloc.state.currentPage));
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              PickingDetailsPage(
+                picking: widget.picking,
+                odooService: odooPickingFormService,
+                isPickingForm: false,
+                isReturnPicking: false,
+                isReturnCreate: true,
+              ),
+          transitionDuration: motionProvider.reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
+          reverseTransitionDuration: motionProvider.reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
+          transitionsBuilder:
+              (context, animation, secondaryAnimation, child) {
+            if (motionProvider.reduceMotion) return child;
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    } else {
+      Navigator.of(context).pop();
+      widget.onReturnCreated?.call();
+    }
+    CustomSnackbar.showSuccess(context, 'Return created successfully.');
+  }
+
+  /// Translates raw RPC / wizard exceptions into user-friendly messages.
+  String _formatError(Object e) {
+    final raw = e.toString();
+    if (raw.contains('404')) {
+      return 'This picking can no longer be returned. It may already have a return in progress, or the source moves are no longer available.';
+    }
+    if (raw.contains('No quantity specified')) {
+      return 'Enter a quantity greater than 0 for at least one product.';
+    }
+    if (raw.contains('Session expired') ||
+        raw.contains('SessionExpired')) {
+      return 'Session expired. Please log in again to create a return.';
+    }
+    return 'Failed to create return. Please try again.';
   }
 }

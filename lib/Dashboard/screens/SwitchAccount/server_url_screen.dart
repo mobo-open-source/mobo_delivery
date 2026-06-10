@@ -101,7 +101,6 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
 
     String url = widget.serverUrl.trim();
 
-    // Detect protocol
     if (url.startsWith('http://')) {
       selectedProtocol = 'http://';
       url = url.replaceFirst('http://', '');
@@ -113,7 +112,6 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
     _url = url;
     _urlController.text = url;
 
-    // Fetch DB list
     await _fetchDatabaseList(url);
 
     if (widget.database.isNotEmpty) {
@@ -208,27 +206,25 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
   /// Triggers database list fetch after delay to reduce
   /// unnecessary network requests.
   Future<void> _handleUrlChanged(String value) async {
-    setState(() {
-      _isLoading = true;
-    });
-    final timer = Future.delayed(const Duration(seconds: 2));
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(seconds: 1), () async {
+    _debounce = Timer(const Duration(milliseconds: 700), () async {
       final url = value.trim();
       if (url.isNotEmpty) {
         await _fetchDatabaseList(url);
-        await timer;
-
-        setState(() {
-          _url = value;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _url = value;
+          });
+        }
       } else {
-        setState(() {
-          _databases = [];
-          _selectedDatabase = null;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _databases = [];
+            _selectedDatabase = null;
+            _url = value;
+            _isLoading = false;
+          });
+        }
       }
     });
   }
@@ -241,12 +237,14 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
   /// Displays user-friendly error messages on failure.
   Future<void> _fetchDatabaseList(String url) async {
     try {
+      if (!mounted) return;
       setState(() {
         _isLoading = true;
         _databases.clear();
         _errorMessage = null;
         _workingProtocol = null;
         _showManualDbInput = false;
+        showError = false;
       });
 
       String rawUrl = url;
@@ -255,86 +253,93 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
         caseSensitive: false,
       ).firstMatch(rawUrl);
 
-      List<String> protocolsToTry = [];
-      String host;
-
-      if (match != null) {
-        String detectedProtocol = match.group(1)!.toLowerCase();
-        protocolsToTry = [detectedProtocol];
-        host = rawUrl.substring(detectedProtocol.length);
-      } else {
-        host = rawUrl;
-        protocolsToTry = [selectedProtocol];
-        protocolsToTry.add(
-          selectedProtocol == 'https://' ? 'http://' : 'https://',
-        );
-      }
+      final String host = match != null
+          ? rawUrl.substring(match.group(0)!.length)
+          : rawUrl;
+      final List<String> protocolsToTry = [selectedProtocol];
 
       bool success = false;
       dynamic lastError;
 
       for (String protocol in protocolsToTry) {
         try {
-          final dbList = await _networkService.fetchDatabaseList(
-            '$protocol$host',
-          );
+          final dbList = await Future.any([
+            _networkService.fetchDatabaseList('$protocol$host'),
+            Future.delayed(const Duration(seconds: 15)).then(
+              (_) => throw TimeoutException('Request timed out'),
+            ),
+          ]);
+
           if (dbList.isNotEmpty) {
-            setState(() {
-              _databases = dbList;
-              _workingProtocol = protocol;
-              _errorMessage = null;
-              if (dbList.length == 1) {
-                _selectedDatabase = dbList.first;
-              }
-            });
+            if (mounted) {
+              setState(() {
+                final uniqueDbList = dbList.toSet().toList();
+                uniqueDbList.sort((a, b) => a.toString().compareTo(b.toString()));
+                _databases = uniqueDbList;
+                _workingProtocol = protocol;
+                _errorMessage = null;
+                if (uniqueDbList.length == 1) {
+                  _selectedDatabase = uniqueDbList.first;
+                }
+              });
+            }
             success = true;
             break;
           } else {
-            setState(() {
-              _workingProtocol = protocol;
-              _databases = [];
-              _showManualDbInput = true;
-              _errorMessage = null;
-            });
+            if (mounted) {
+              setState(() {
+                _workingProtocol = protocol;
+                _databases = [];
+                _showManualDbInput = true;
+                _errorMessage = null;
+              });
+            }
             success = true;
             break;
           }
         } catch (error) {
-          if (error is Map && error.containsKey('data')) {
-            setState(() {
-              _workingProtocol = protocol;
-              _databases = [];
-              _showManualDbInput = true;
-              _errorMessage = null;
-            });
+          if (error.toString().contains('Odoo Server returned an error') || 
+              (error is Map && error.containsKey('data'))) {
+            if (mounted) {
+              setState(() {
+                _workingProtocol = protocol;
+                _databases = [];
+                _showManualDbInput = true;
+                _errorMessage = null;
+              });
+            }
             success = true;
             break;
           }
           lastError = error;
         }
       }
-      if (!success) {
+      if (!success && mounted) {
         setState(() {
           _databases = [];
           _selectedDatabase = null;
           showError = true;
-          _showManualDbInput = false;
+          _showManualDbInput = true;
           _errorMessage = _formatLoginError(lastError);
           _workingProtocol = null;
         });
       }
     } catch (e) {
-      setState(() {
-        showError = true;
-        _errorMessage = _formatLoginError(e);
-        _databases = [];
-        _selectedDatabase = null;
-        _showManualDbInput = false;
-      });
+      if (mounted) {
+        setState(() {
+          showError = true;
+          _errorMessage = _formatLoginError(e);
+          _databases = [];
+          _selectedDatabase = null;
+          _showManualDbInput = true;
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -750,7 +755,16 @@ class _UrlInputField extends StatelessWidget {
       },
 
       onSelected: (selection) {
-        onUrlChanged(selection);
+        String hostOnly = selection;
+        final match =
+            RegExp(r'^(https?://)', caseSensitive: false).firstMatch(selection);
+        if (match != null) {
+          final detectedProtocol = match.group(1)!.toLowerCase();
+          hostOnly = selection.substring(match.group(0)!.length);
+          onProtocolChanged(detectedProtocol);
+        }
+        controller.text = hostOnly;
+        onUrlChanged(hostOnly);
         final entry = urlHistory[selection];
         if (entry != null && entry['db']?.isNotEmpty == true) {
           onDatabaseSelected(entry['db']!);
@@ -767,7 +781,21 @@ class _UrlInputField extends StatelessWidget {
             }
             return null;
           },
-          onChanged: onUrlChanged,
+          onChanged: (value) {
+            final match = RegExp(r'^(https?://)', caseSensitive: false)
+                .firstMatch(value);
+            if (match != null) {
+              final detected = match.group(1)!.toLowerCase();
+              final hostOnly = value.substring(match.group(0)!.length);
+              controller.text = hostOnly;
+              controller.selection =
+                  TextSelection.collapsed(offset: hostOnly.length);
+              onProtocolChanged(detected);
+              onUrlChanged(hostOnly);
+              return;
+            }
+            onUrlChanged(value);
+          },
           style: GoogleFonts.manrope(
             color: Colors.black,
             fontSize: 14,

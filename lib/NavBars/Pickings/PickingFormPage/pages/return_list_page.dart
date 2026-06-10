@@ -20,20 +20,46 @@ import '../services/odoo_picking_form_service.dart';
 /// • Dark/light theme support
 /// • Motion-reduced page transitions (respects user accessibility preference)
 /// • Shows "No Return Pickings Found" placeholder when list is empty
+/// • Refreshes the list from Odoo when the user pops back from the
+///   detail view — keeps state cells (Draft / Ready / Done / Cancelled)
+///   in sync after the user validates or cancels a return.
 ///
 /// Data is passed pre-loaded from `PickingDetailsPage` (either from Odoo or Hive cache).
-class ReturnListPage extends StatelessWidget {
-  /// List of return picking data maps (usually from `stock.picking` records)
-  /// Expected keys: 'name', 'partner_id' (List), 'scheduled_date', 'origin', 'state', ...
+/// The `sourcePickingId` is used to re-fetch the linked returns when the
+/// user returns from a detail view, so the list mirrors backend state.
+class ReturnListPage extends StatefulWidget {
+  /// Initial list of return picking data maps (usually from `stock.picking`).
+  /// Expected keys: 'id', 'name', 'partner_id' (List), 'scheduled_date',
+  /// 'origin', 'state'.
   final List<Map<String, dynamic>> returnDataList;
 
   final OdooPickingFormService odooService;
+
+  /// Source picking ID whose return linkage drives this list. Used to
+  /// re-fetch returns when the user comes back from a detail view so
+  /// state changes (e.g. Validate → Done) propagate to the list cells.
+  final int sourcePickingId;
 
   const ReturnListPage({
     Key? key,
     required this.returnDataList,
     required this.odooService,
+    required this.sourcePickingId,
   }) : super(key: key);
+
+  @override
+  State<ReturnListPage> createState() => _ReturnListPageState();
+}
+
+class _ReturnListPageState extends State<ReturnListPage> {
+  late List<Map<String, dynamic>> _returnDataList;
+  bool _isRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _returnDataList = List<Map<String, dynamic>>.from(widget.returnDataList);
+  }
 
   /// Returns color matching the picking/return state (used for visual distinction)
   Color _getStateColor(String state) {
@@ -65,12 +91,35 @@ class ReturnListPage extends StatelessWidget {
     'cancel': 'Cancelled',
   };
 
-  /// Navigates to PickingDetailsPage for the selected return picking
+  /// Re-fetches the returns linked to the source picking. Called after the
+  /// detail-view pop so any state transition (Validate → Done, Cancel,
+  /// add/remove product) is reflected immediately in the list cells.
+  Future<void> _refreshReturns() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    try {
+      final fresh = await widget.odooService
+          .loadReturnPickings(widget.sourcePickingId);
+      if (!mounted) return;
+      setState(() {
+        _returnDataList = fresh;
+      });
+    } catch (_) {
+      // Silent: keep the existing (possibly stale) data and let the user
+      // pull-to-refresh again if needed. We don't have a snackbar wired
+      // into this page and the rows still work for navigation.
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
+  }
+
+  /// Navigates to PickingDetailsPage for the selected return picking.
   ///
-  /// Passes the return data as the `picking` map, with some adjustments:
-  /// • Adds 'item' key for title fallback
-  /// • Sets `isReturnPicking: true` flag to customize behavior if needed
-  /// Uses fade transition with motion reduction support.
+  /// After the detail page pops we re-fetch the returns from Odoo so the
+  /// list reflects whatever was changed inside the detail view (state,
+  /// added/removed products, validation outcome). Without this hook the
+  /// list shows pre-edit data until the user backs all the way out and
+  /// re-enters — that's the "state not updating in real time" bug.
   void _navigateToPickingDetails(
     BuildContext context,
     Map<String, dynamic> picking,
@@ -86,7 +135,7 @@ class ReturnListPage extends StatelessWidget {
                 ...picking,
                 'item': picking['name'] ?? 'Return Picking',
               },
-              odooService: odooService,
+              odooService: widget.odooService,
               isPickingForm: false,
               isReturnCreate: false,
               isReturnPicking: true,
@@ -102,7 +151,7 @@ class ReturnListPage extends StatelessWidget {
           return FadeTransition(opacity: animation, child: child);
         },
       ),
-    );
+    ).then((_) => _refreshReturns());
   }
 
   @override
@@ -133,126 +182,133 @@ class ReturnListPage extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: returnDataList.isEmpty
-            ? Center(
-                child: Text(
-                  'No Return Pickings Found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: isDark ? Colors.white : Colors.black54,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[850] : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withOpacity(0.18)
-                            : Colors.black.withOpacity(0.06),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+        body: RefreshIndicator(
+          onRefresh: _refreshReturns,
+          child: _returnDataList.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                    Center(
+                      child: Text(
+                        'No Return Pickings Found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: isDark ? Colors.white : Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+                    ),
+                  ],
+                )
+              : SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(12.0),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[850] : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark
+                              ? Colors.black.withOpacity(0.18)
+                              : Colors.black.withOpacity(0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(12.0),
-                      child: DataTable(
-                        headingRowColor: MaterialStateProperty.all(
-                          isDark ? Color(0x66757575) : Colors.grey.shade200,
+                      scrollDirection: Axis.horizontal,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12.0),
+                        child: DataTable(
+                          headingRowColor: MaterialStateProperty.all(
+                            isDark ? Color(0x66757575) : Colors.grey.shade200,
+                          ),
+                          headingTextStyle: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppStyle.primaryColor,
+                          ),
+                          columnSpacing: 28,
+                          dataRowHeight: 56,
+                          columns: const [
+                            DataColumn(label: Text('Reference')),
+                            DataColumn(label: Text('Contact')),
+                            DataColumn(label: Text('Scheduled')),
+                            DataColumn(label: Text('Source Document')),
+                            DataColumn(label: Text('State')),
+                          ],
+                          rows: _returnDataList.map((data) {
+                            final state = (data['state'] ?? '').toString();
+                            final stateColor = _getStateColor(state);
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    cleanOdooValue(data['name']),
+                                    style: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        fontWeight: FontWeight.normal
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      _navigateToPickingDetails(context, data),
+                                ),
+                                DataCell(
+                                  Text(
+                                    cleanOdooValue(data['partner_id']),
+                                    style: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        fontWeight: FontWeight.normal
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      _navigateToPickingDetails(context, data),
+                                ),
+                                DataCell(
+                                  Text(
+                                    cleanOdooValue(data['scheduled_date']),
+                                    style: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        fontWeight: FontWeight.normal
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      _navigateToPickingDetails(context, data),
+                                ),
+                                DataCell(
+                                  Text(
+                                    cleanOdooValue(data['origin']),
+                                    style: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        fontWeight: FontWeight.normal
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      _navigateToPickingDetails(context, data),
+                                ),
+                                DataCell(
+                                  Text(
+                                    stateMap[state]?.toUpperCase() ?? 'Unknown',
+                                    style: TextStyle(
+                                        color: isDark ? Colors.white70 : stateColor,
+                                        fontWeight: FontWeight.normal
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      _navigateToPickingDetails(context, data),
+                                ),
+                              ],
+                            );
+                          }).toList(),
                         ),
-                        headingTextStyle: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppStyle.primaryColor,
-                        ),
-                        columnSpacing: 28,
-                        dataRowHeight: 56,
-                        columns: const [
-                          DataColumn(label: Text('Reference')),
-                          DataColumn(label: Text('Contact')),
-                          DataColumn(label: Text('Scheduled')),
-                          DataColumn(label: Text('Source Document')),
-                          DataColumn(label: Text('State')),
-                        ],
-                        rows: returnDataList.map((data) {
-                          final state = (data['state'] ?? '').toString();
-                          final stateColor = _getStateColor(state);
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                Text(
-                                  data['name'] ?? '',
-                                  style: TextStyle(
-                                      color: isDark ? Colors.white70 : Colors.black87,
-                                      fontWeight: FontWeight.normal
-                                  ),
-                                ),
-                                onTap: () =>
-                                    _navigateToPickingDetails(context, data),
-                              ),
-                              DataCell(
-                                Text(
-                                  (data['partner_id'] is List &&
-                                          data['partner_id'].length > 1)
-                                      ? data['partner_id'][1].toString()
-                                      : '',
-                                  style: TextStyle(
-                                      color: isDark ? Colors.white70 : Colors.black87,
-                                      fontWeight: FontWeight.normal
-                                  ),
-                                ),
-                                onTap: () =>
-                                    _navigateToPickingDetails(context, data),
-                              ),
-                              DataCell(
-                                Text(
-                                  data['scheduled_date'] ?? '',
-                                  style: TextStyle(
-                                      color: isDark ? Colors.white70 : Colors.black87,
-                                      fontWeight: FontWeight.normal
-                                  ),
-                                ),
-                                onTap: () =>
-                                    _navigateToPickingDetails(context, data),
-                              ),
-                              DataCell(
-                                Text(
-                                  data['origin'] ?? '',
-                                  style: TextStyle(
-                                      color: isDark ? Colors.white70 : Colors.black87,
-                                      fontWeight: FontWeight.normal
-                                  ),
-                                ),
-                                onTap: () =>
-                                    _navigateToPickingDetails(context, data),
-                              ),
-                              DataCell(
-                                Text(
-                                  stateMap[state]?.toUpperCase() ?? 'Unknown',
-                                  style: TextStyle(
-                                      color: isDark ? Colors.white70 : stateColor,
-                                      fontWeight: FontWeight.normal
-                                  ),
-                                ),
-                                onTap: () =>
-                                    _navigateToPickingDetails(context, data),
-                              ),
-                            ],
-                          );
-                        }).toList(),
                       ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }

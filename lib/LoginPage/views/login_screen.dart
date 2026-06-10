@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -36,6 +37,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _urlController = TextEditingController();
+  final FocusNode _urlFocusNode = FocusNode();
 
   String selectedProtocol = 'https://';
   List<String> _databases = [];
@@ -51,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
   late final NetworkService networkService;
   bool _showManualDbInput = false;
   final TextEditingController _manualDbController = TextEditingController();
-  // Prevents the addListener callback from firing during programmatic onSelected changes
   bool _suppressUrlChange = false;
 
   @override
@@ -112,9 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Waits ~1s after typing stops before making network request to avoid
   /// excessive calls during rapid typing. Immediately clears error state.
   void _onUrlChanged() {
-    // Bail out if this was triggered by a programmatic onSelected
     if (_suppressUrlChange) return;
-    // Immediately clear any previous error state so old errors don't flash
     setState(() {
       _isLoading = true;
       showError = false;
@@ -143,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// On failure: shows friendly error message.
   Future<void> _fetchDatabaseList() async {
     try {
+      log("_fetchDatabaseList");
       setState(() {
         _isLoading = true;
         _databases.clear();
@@ -155,32 +155,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final match = RegExp(r'^(https?://)', caseSensitive: false).firstMatch(rawUrl);
 
-      List<String> protocolsToTry = [];
-      String host;
-
-      if (match != null) {
-        String detectedProtocol = match.group(1)!.toLowerCase();
-        protocolsToTry = [detectedProtocol];
-        host = rawUrl.substring(detectedProtocol.length);
-      } else {
-        host = rawUrl;
-        protocolsToTry = [selectedProtocol];
-
-        if (selectedProtocol == 'https://') {
-          protocolsToTry.add('http://');
-        } else {
-          protocolsToTry.add('https://');
-        }
-      }
+      final String host = match != null
+          ? rawUrl.substring(match.group(0)!.length)
+          : rawUrl;
+      final List<String> protocolsToTry = [selectedProtocol];
 
       bool success = false;
       dynamic lastError;
 
       for (String protocol in protocolsToTry) {
         try {
+          log("protocol : $protocol");
           final dbList =
           await widget.networkService.fetchDatabaseList('$protocol$host');
 
+          log("dbList  : $dbList");
           if (dbList.isNotEmpty) {
             setState(() {
               _databases = dbList;
@@ -280,6 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _urlController.dispose();
+    _urlFocusNode.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -372,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 40),
                         _buildInputField(
                           controller: _urlController,
-                          label: 'Server URL',
+                          label: 'Server address',
                         ),
                         const SizedBox(height: 16),
                         if (_showManualDbInput) _buildManualDbInput(),
@@ -569,30 +559,36 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return RawAutocomplete<String>(
       key: ValueKey(selectedProtocol),
+      textEditingController: controller,
+      focusNode: _urlFocusNode,
       optionsBuilder: (TextEditingValue textEditingValue) {
-        final input = textEditingValue.text.toLowerCase();
-        final filtered = _urlSuggestions
+        final input = textEditingValue.text.trim().toLowerCase();
+        return _urlSuggestions
             .where((url) => url.toLowerCase().contains(input))
             .toList();
-
-        return filtered;
       },
       onSelected: (String selection) async {
-        // Cancel any pending debounce to prevent competing fetch
         _debounce?.cancel();
 
-        // Suppress the addListener callback while we set the URL programmatically
-        _suppressUrlChange = true;
-        controller.text = selection;
-        _suppressUrlChange = false;
-
-        if (selection.startsWith('https://')) {
-          selectedProtocol = 'https://';
-        } else if (selection.startsWith('http://')) {
-          selectedProtocol = 'http://';
+        String hostOnly = selection;
+        final match =
+            RegExp(r'^(https?://)', caseSensitive: false).firstMatch(selection);
+        if (match != null) {
+          selectedProtocol = match.group(1)!.toLowerCase();
+          hostOnly = selection.substring(match.group(0)!.length);
         }
 
-        // Clear all error/db state before fetching (same as _onUrlChanged)
+        _suppressUrlChange = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          controller.value = TextEditingValue(
+            text: hostOnly,
+            selection: TextSelection.collapsed(offset: hostOnly.length),
+          );
+          _urlFocusNode.unfocus();
+          _suppressUrlChange = false;
+        });
+
         setState(() {
           _isLoading = true;
           showError = false;
@@ -604,7 +600,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         await _fetchDatabaseList();
 
-        // Cancel any debounce that may have started during the async fetch
         _debounce?.cancel();
 
         if (_urlHistory.containsKey(selection)) {
@@ -618,12 +613,6 @@ class _LoginScreenState extends State<LoginScreen> {
       },
       fieldViewBuilder:
           (context, fieldController, focusNode, onFieldSubmitted) {
-        if (fieldController.text != controller.text) {
-          final oldSelection = fieldController.selection;
-          fieldController.text = controller.text;
-          fieldController.selection = oldSelection;
-        }
-
         return TextFormField(
           controller: fieldController,
           focusNode: focusNode,
@@ -635,7 +624,25 @@ class _LoginScreenState extends State<LoginScreen> {
             return null;
           },
           onChanged: (value) {
-            controller.text = value;
+            final match = RegExp(r'^(https?://)', caseSensitive: false)
+                .firstMatch(value);
+            if (match != null) {
+              final detected = match.group(1)!.toLowerCase();
+              final hostOnly = value.substring(match.group(0)!.length);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                fieldController.value = TextEditingValue(
+                  text: hostOnly,
+                  selection:
+                      TextSelection.collapsed(offset: hostOnly.length),
+                );
+                if (selectedProtocol != detected) {
+                  setState(() => selectedProtocol = detected);
+                }
+              });
+              onChanged?.call(hostOnly);
+              return;
+            }
             onChanged?.call(value);
           },
           style: GoogleFonts.manrope(
@@ -644,7 +651,7 @@ class _LoginScreenState extends State<LoginScreen> {
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
-            hintText: "Enter Server Address",
+            hintText: "Enter Server address",
             hintStyle: GoogleFonts.manrope(
               fontSize: 14,
               fontWeight: FontWeight.w400,

@@ -11,11 +11,13 @@ import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
 import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/list_search_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loaders/list_shimmer.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
+import '../../../../shared/widgets/snackbar.dart';
 import '../../CreateNewPicking/pages/create_picking_page.dart';
 import '../../PickingFormPage/pages/picking_details_page.dart';
 import '../../PickingFormPage/services/odoo_picking_form_service.dart';
@@ -38,9 +40,6 @@ class PickingsGroupedPage extends StatefulWidget {
 }
 
 class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
-  // ───────────────────────────────────────────────
-  //  Controllers & State
-  // ───────────────────────────────────────────────
   final TextEditingController _searchController = TextEditingController();
   final PickingService _service = PickingService();
 
@@ -48,7 +47,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   String? selectedStateValue;
   DateTime? selectedScheduleDate;
   DateTime? selectedDeadlineDate;
-  String selectedType = '';
+  String selectedType = 'outgoing';
   final Map<String, String> stateMap = {
     'draft': 'Draft',
     'confirmed': 'Waiting',
@@ -66,9 +65,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   final Set<String> _isFetchingMore = {};
   int initialCount = 0;
 
-  // ───────────────────────────────────────────────
-  //  Lifecycle & Subscriptions
-  // ───────────────────────────────────────────────
   StreamSubscription? _profileSub;
   late final StreamSubscription _companySub;
 
@@ -108,13 +104,11 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     super.initState();
     initializeAndFetch();
 
-    // Listen to company changes (e.g. switch company) → reload data
     _companySub = CompanyRefreshBus.stream.listen((_) async {
       if (!mounted) return;
       _onCompanyRefresh();
     });
 
-    // Listen to profile/account changes (e.g. switch account) → reload data
     _profileSub = ProfileRefreshBus.onProfileRefresh.listen((_) {
       if (!mounted) return;
       _onCompanyRefresh();
@@ -138,13 +132,21 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     await _fetchData();
   }
 
-  // ───────────────────────────────────────────────
-  //  Data Loading & Refresh
-  // ───────────────────────────────────────────────
 
-  /// Main data fetch method — calls service with current filters/search
+  /// Main data fetch method — calls service with current filters/search.
+  ///
+  /// Bounded by a 15-second timeout so the shimmer can't sit forever on a
+  /// slow or hung Odoo response. On failure: if a list is already loaded
+  /// the user keeps seeing it and gets a snackbar (transient error). Only
+  /// when there is nothing to fall back to do we replace the page with
+  /// the retryable error widget.
   Future<void> _fetchData() async {
-    setState(() => isLoading = true);
+    final hadDataBefore =
+        _service.allPickingsByLocation.values.any((list) => list.isNotEmpty);
+    setState(() {
+      isLoading = true;
+      catchError = false;
+    });
     try {
       await _service.fetchData(
         scheduledDate: selectedScheduleDate,
@@ -154,7 +156,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         searchTerm: _searchTerm,
         filters: _selectedFilters,
         forceRefresh: _isFreshFetch,
-      );
+      ).timeout(const Duration(seconds: 15));
       _isFreshFetch = false;
       final allPickings = _service.allPickingsByLocation.values
           .expand((e) => e)
@@ -168,11 +170,27 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       if (mounted) {
         CompanySessionManager.logout(context);
       }
-    } catch (e) {
+    } on TimeoutException {
       if (mounted) {
-        setState(() {
-          catchError = true;
-        });
+        if (hadDataBefore) {
+          CustomSnackbar.showError(
+            context,
+            'Refresh took too long. Showing previous results.',
+          );
+        } else {
+          setState(() => catchError = true);
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        if (hadDataBefore) {
+          CustomSnackbar.showError(
+            context,
+            'Could not refresh pickings. Showing previous results.',
+          );
+        } else {
+          setState(() => catchError = true);
+        }
       }
     } finally {
       if (mounted) {
@@ -219,9 +237,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     await _fetchData();
   }
 
-  // ───────────────────────────────────────────────
-  //  UI Helpers
-  // ───────────────────────────────────────────────
 
   Color getStateColor(String? state) {
     switch (state) {
@@ -275,9 +290,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     }
   }
 
-  // ───────────────────────────────────────────────
-  //  Pagination per location
-  // ───────────────────────────────────────────────
 
   Future<void> _loadNextPage(String location) async {
     final nextPage = (_service.currentPage[location] ?? 0) + 1;
@@ -315,9 +327,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     }
   }
 
-  // ───────────────────────────────────────────────
-  //  Filter & Group Bottom Sheet
-  // ───────────────────────────────────────────────
 
   /// Opens bottom sheet to select filters and grouping options
   void openFilterGroupBySheet(BuildContext context) {
@@ -347,7 +356,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
               length: 2,
               child: Column(
                 children: [
-                  // Header
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -377,7 +385,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     ),
                   ),
 
-                  // Tabs (Filter / Group By)
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
@@ -531,7 +538,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     ),
                   ),
 
-                  // Bottom action bar
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -549,7 +555,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             onPressed: () {
                               setState(() {
                                 selectedStateValue = null;
-                                selectedType = '';
+                                selectedType = 'outgoing';
                                 selectedScheduleDate = null;
                                 selectedDeadlineDate = null;
                                 _selectedFilters.clear();
@@ -711,7 +717,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         (selectedDeadlineDate != null ? 1 : 0) +
         (selectedStateValue != null ? 1 : 0);
 
-    // Filter locations based on current search term
     final filteredLocations = _service.allPickingsByLocation.entries
         .map((entry) {
           final location = entry.key;
@@ -730,10 +735,9 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50], // Match mobo_inv_app
+      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       body: Column(
         children: [
-          // Search Bar
           ListSearchBar(
             controller: _searchController,
             hintText: 'Search by location or item...',
@@ -761,16 +765,12 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     _buildFilterIndicator(isDark, activeFilterCount),
                   ],
                 ),
-                // Pagination for Flat List (if no grouping)
                 if (_selectedGroupBy == null)
                   Consumer<CompanyProvider>(
                       builder: (context, companyProvider, _) {
-                    // Collect global stats
                     final totalGlobalCount = _service.totalPickingsCount.values
                         .fold(0, (sum, count) => sum + count);
                     
-                    // For simplified global pagination, we use the first warehouse's page
-                    // since the service currently fetches all warehouses per "page" request.
                     final firstLoc = _service.allPickingsByLocation.keys.isNotEmpty 
                         ? _service.allPickingsByLocation.keys.first 
                         : null;
@@ -784,7 +784,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     return Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Range Pill
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -806,7 +805,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                         ),
                         const SizedBox(width: 8),
 
-                        // Back Arrow
                         _buildPaginationArrow(
                           icon: HugeIcons.strokeRoundedArrowLeft01,
                           onPressed: currentPage > 0 
@@ -816,7 +814,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                           enabled: currentPage > 0,
                         ),
                         
-                        // Next Arrow
                         _buildPaginationArrow(
                           icon: HugeIcons.strokeRoundedArrowRight01,
                           onPressed: hasNext 
@@ -1042,6 +1039,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'pickingsCreateFab',
         onPressed: () {
           Navigator.push(
             context,
@@ -1077,11 +1075,14 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
 
   /// Builds individual picking card used in list/grouped view
   Widget _buildPickingCard(Map<String, dynamic> picking, bool isDark) {
-    final reference = picking['item'] ?? '';
+    final reference = cleanOdooValue(picking['item']);
     final state = picking['state'] ?? '';
-    final origin = picking['origin']?.toString() ?? 'false';
-    final partner = picking['partner_id'] ?? '';
-    final scheduled = picking['scheduled_date'] ?? '';
+    final origin = cleanOdooValue(picking['origin']);
+    final partner = cleanOdooValue(picking['partner_id']);
+    final rawScheduled = picking['scheduled_date'];
+    final scheduled = (rawScheduled is String && rawScheduled.isNotEmpty)
+        ? OdooDateTimeFormat.formatForDisplay(rawScheduled)
+        : cleanOdooValue(rawScheduled);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1127,7 +1128,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Reference & Status Badge
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1149,7 +1149,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                 ),
                 const SizedBox(height: 8),
                 
-                // Details
                 _buildCardDetailRow('Origin:', origin, isDark),
                 const SizedBox(height: 4),
                 _buildCardDetailRow('Partner:', partner, isDark),
@@ -1199,7 +1198,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            value == 'false' ? 'false' : value,
+            cleanOdooValue(value),
             style: TextStyle(
               fontSize: 12,
               color: isDark ? Colors.grey[400] : Colors.grey[600],

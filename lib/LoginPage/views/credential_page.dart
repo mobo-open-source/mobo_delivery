@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -55,7 +56,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
-  // Focus management
   final FocusNode _usernameFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
 
@@ -69,7 +69,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
   void initState() {
     super.initState();
     _loadBiometricPreference();
-    // Auto-focus username field after frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _usernameFocusNode.requestFocus();
     });
@@ -175,6 +174,153 @@ class _CredentialsPageState extends State<CredentialsPage> {
     await prefs.setStringList('urlHistory', history);
   }
 
+  /// Shows dialog informing user they are a portal user and cannot access this app.
+  void showPortalUserDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+        title: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedUserBlock01,
+              color: AppStyle.primaryColor,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Access Restricted',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Your account is a portal user and does not have access to this delivery app. Please contact your administrator to grant the necessary permissions.',
+          style: GoogleFonts.manrope(
+            fontSize: 15,
+            color: Colors.black87,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyle.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+              child: Text(
+                'Back to Login',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showInventoryAccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+        title: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedUserBlock01,
+              color: AppStyle.primaryColor,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'No Inventory Access',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Your account does not have access to the Inventory app. '
+          'Ask your administrator to grant at least the "Inventory: User" '
+          'access right, then try again.',
+          style: GoogleFonts.manrope(
+            fontSize: 15,
+            color: Colors.black87,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyle.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+              child: Text(
+                'Back to Login',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Shows dialog informing user that the "Inventory" module is missing.
   void showModuleMissingDialog(BuildContext context) {
     showDialog(
@@ -227,7 +373,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
                 elevation: 0,
               ),
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop();
                 Navigator.pushNamedAndRemoveUntil(
                   context,
                   '/login',
@@ -259,7 +405,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
     final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     String baseUrl = widget.url.trim();
 
-    // Clean protocol prefix if accidentally included
     if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
       baseUrl = baseUrl.replaceFirst(RegExp(r'^https?://'), '');
     }
@@ -270,7 +415,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
       return;
     }
 
-    // Biometric gate if user previously enabled it
     if (_biometricEnabled) {
       bool authenticated = await _authenticateWithBiometrics();
       if (!authenticated) {
@@ -289,15 +433,18 @@ class _CredentialsPageState extends State<CredentialsPage> {
         database: widget.database!,
         userLogin: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
-      );
+      ).timeout(const Duration(seconds: 20));
 
       if (!success) {
         return;
       }
       final session = await CompanySessionManager.getCurrentSession();
       if (session != null) {
+        if (session.isPortal) {
+          if (mounted) showPortalUserDialog(context);
+          return;
+        }
 
-        // Save session & login state
         await _storageService.saveSession(session);
         await _storageService.saveLoginState(
           isLoggedIn: true,
@@ -305,7 +452,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
           url: widget.protocol + baseUrl,
         );
 
-        // Save to URL history
         await _saveUrlHistoryWithProtocol(
           widget.protocol,
           widget.url,
@@ -314,7 +460,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
           _passwordController.text.trim(),
         );
 
-        // Save minimal account info for account switcher
         await _dashboardStorageService.saveAccount({
           'userName': session.userName,
           'userLogin': session.userLogin,
@@ -334,17 +479,21 @@ class _CredentialsPageState extends State<CredentialsPage> {
           'image': '',
         });
 
-        // Verify required modules are installed
         final checker = AppInstallCheck();
-        final isInstalled = await checker.checkRequiredModules();
+        final access = await checker.evaluateAccess();
 
-        if (!isInstalled) {
+        if (access != AccessCheckStatus.ok) {
+          await _storageService.clearLoginState();
+          await CompanySessionManager.clearSessionCache();
           if (mounted) {
-            showModuleMissingDialog(context);
+            if (access == AccessCheckStatus.noInventoryAccess) {
+              showInventoryAccessDialog(context);
+            } else {
+              showModuleMissingDialog(context);
+            }
           }
           return;
         } else {
-          // Success → go to main dashboard with nice transition
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
@@ -370,7 +519,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
     } catch (e) {
       final errorStr = e.toString().toLowerCase();
 
-      // Special case: 2FA required
       if (errorStr.contains('two factor') ||
           errorStr.contains('2fa') ||
           errorStr.contains('null')) {
@@ -447,7 +595,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background with subtle image overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -466,7 +613,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
             ),
           ),
 
-          // Back button
           Positioned(
             top: 0,
             left: 0,
@@ -492,7 +638,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
             ),
           ),
 
-          // Logo + App name
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(top: 40),
@@ -527,7 +672,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
             ),
           ),
 
-          // Main form content
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: SafeArea(

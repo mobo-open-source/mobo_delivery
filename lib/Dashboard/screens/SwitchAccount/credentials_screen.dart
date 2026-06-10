@@ -177,6 +177,38 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
       if (!success) throw Exception("Authentication failed.");
 
       final session = await CompanySessionManager.getCurrentSession();
+
+      if (session != null && session.isPortal) {
+        if (_hadPreviousSession &&
+            _previousUrl != null &&
+            _previousDatabase != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('url', _previousUrl!);
+          await prefs.setString('database', _previousDatabase!);
+          await prefs.setString('selectedDatabase', _previousDatabase!);
+          await prefs.setString('sessionId', _previousSessionId!);
+          await prefs.setString('userName', widget.session.userName ?? '');
+          await prefs.setString('userLogin', widget.session.userLogin ?? '');
+          await prefs.setInt('userId', widget.session.userId ?? 0);
+          await prefs.setString('serverVersion', widget.session.serverVersion ?? '');
+          await prefs.setString('userLang', widget.session.userLang ?? '');
+          await prefs.setInt('partnerId', widget.session.partnerId ?? 0);
+          await prefs.setString('userTimezone', widget.session.userTimezone ?? '');
+          await prefs.setInt('companyId', widget.session.companyId ?? 1);
+          await prefs.setString('company_name', widget.session.companyName ?? '');
+          await prefs.setBool('isSystem', widget.session.isSystem);
+          await prefs.setInt('version', widget.session.version ?? 0);
+          await prefs.setStringList(
+            'allowed_company_ids',
+            widget.session.allowedCompanyIds.map((e) => e.toString()).toList(),
+          );
+          await CompanySessionManager.clearSessionCache();
+          await CompanySessionManager.forceRefreshFromPrefs();
+        }
+        if (context.mounted) showPortalUserDialog(context);
+        return;
+      }
+
       final storageService = DashboardStorageService();
       await storageService.saveAccount({
         'userName': session?.userName,
@@ -209,7 +241,8 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
 
       if (context.mounted) {
         final checker = AppInstallCheck();
-        final isInstalled = await checker.checkRequiredModules();
+        final access = await checker.evaluateAccess();
+        final isInstalled = access == AccessCheckStatus.ok;
 
         final motionProvider = Provider.of<MotionProvider>(
           context,
@@ -271,7 +304,11 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
               ),
             );
             if (context.mounted) {
-              showModuleMissingDialog(context);
+              if (access == AccessCheckStatus.noInventoryAccess) {
+                showInventoryAccessDialog(context);
+              } else {
+                showModuleMissingDialog(context);
+              }
             }
             return;
           }
@@ -321,6 +358,139 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Displays a blocking dialog when the account is a portal user.
+  void showPortalUserDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+        title: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedUserBlock01,
+              color: AppStyle.primaryColor,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Access Restricted',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Your account is a portal user and does not have access to this delivery app. Please contact your administrator to grant the necessary permissions.',
+          style: GoogleFonts.manrope(
+            fontSize: 15,
+            color: Colors.black87,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyle.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Back to Add Account',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showInventoryAccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+        title: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedUserBlock01,
+              color: AppStyle.primaryColor,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'No Inventory Access',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'This account does not have access to the Inventory app. '
+          'Ask your administrator to grant at least the "Inventory: User" '
+          'access right, then try again.',
+          style: GoogleFonts.manrope(
+            fontSize: 15,
+            color: Colors.black87,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyle.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'OK',
+                style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Displays a blocking dialog when required modules are missing.

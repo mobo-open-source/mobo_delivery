@@ -1,15 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import '../../../../NavBars/MapBox/pages/route_visualization_page.dart';
-import '../../../../NavBars/OfflineSync/pages/offline_sync_page.dart';
+
 import '../../../../NavBars/Pickings/PickingListPage/pages/pickings_grouped_page.dart';
 import '../../../../NavBars/ReturnManagement/pages/return_management_page.dart';
 import '../../../../StoreToOffline/attachment_and_notes.dart';
 import '../../../../StoreToOffline/picking_form.dart';
 import '../../../../StoreToOffline/picking_list.dart';
 import '../../../../StoreToOffline/return.dart';
+import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../services/odoo_dashboard_service.dart';
 import '../../../services/storage_service.dart';
 import 'dashboard_event.dart';
@@ -30,7 +32,10 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
   late OdooDashboardService odooService;
 
-  // Offline storage handlers (static to share across the app)
+  /// Guards the one-shot retry after a profile fetch that didn't populate
+  /// (e.g. the early RPC raced with session refresh and came back empty).
+  bool _didProfileAutoRetry = false;
+
   static final pickingListToOffline pickingList = pickingListToOffline();
   static final PickingFormToOffline PickingForm = PickingFormToOffline();
   static final ReturnToOffline Return = ReturnToOffline();
@@ -76,8 +81,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     odooService = serviceFactory(url, session);
     await _initializeOfflineClients();
-    await _loadUserProfile(emit);
 
+    // Render the dashboard immediately — name/email/picture populate
+    // asynchronously below. Previously this awaited `_loadUserProfile`,
+    // so any hang in the user-profile RPC (e.g., a slow Odoo response or
+    // a session-refresh deadlock) would leave the splash stuck forever.
     emit(state.copyWith(
       isLoading: false,
       currentIndex: event.initialIndex,
@@ -100,12 +108,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           'icon': HugeIcons.strokeRoundedReturnRequest,
           'route': const ReturnManagementPage(),
         },
-        {
-          'title': 'Offline Sync',
-          'label': 'Offline',
-          'icon': HugeIcons.strokeRoundedHotspotOffline,
-          'route': const OfflineSyncPage(),
-        },
+
         {
           'title': 'Others',
           'label': 'Others',
@@ -114,6 +117,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         },
       ],
     ));
+
+    add(LoadUserProfile());
   }
 
   /// Simply updates the current tab index
@@ -139,6 +144,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     PickingForm.initializeOdooClient();
     Return.initializeOdooClient();
     attachmentAndNotes.initializeOdooClient();
+    await OdooDateTimeFormat.loadCached();
+    unawaited(OdooDateTimeFormat.ensureFetched());
   }
 
   String safeString(dynamic value) =>
@@ -157,20 +164,29 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       emit(state.copyWith(isServerReachable: isOnline));
     }
     Map<String, dynamic>? userDetails;
+    bool liveFetchSucceeded = false;
 
     if (isOnline) {
       try {
-        userDetails = await odooService.getUserProfile(userId);
+        userDetails = await odooService
+            .getUserProfile(userId)
+            .timeout(const Duration(seconds: 15));
         if (userDetails != null) {
           await storageService.saveUserProfile(userDetails);
+          liveFetchSucceeded = true;
         }
       } on OdooSessionExpiredException {
-        if (!emit.isDone) {
-          emit(state.copyWith(isSessionExpired: true, isLoading: false));
-        }
-        return;
+        // Don't auto-logout at boot: this can fire from a transient race in
+        // session refresh (parallel RPCs from dashboard + sync) or a brief
+        // server-side hiccup. Fall back to the cached profile; the next
+        // user-driven RPC will surface a real session expiration if it
+        // genuinely persists.
+        userDetails = await storageService.getSavedUserProfile();
+      } on TimeoutException {
+        // Profile RPC took too long — fall back to cached profile rather
+        // than blocking the UI on a slow Odoo response.
+        userDetails = await storageService.getSavedUserProfile();
       } catch (e) {
-        // Fallback to local storage (SharedPreferences) on other errors
         userDetails = await storageService.getSavedUserProfile();
       }
     } else {
@@ -178,7 +194,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
 
     if (userDetails != null) {
-      // Prepare profile picture bytes for UI
       final imageBase64 = userDetails['image_1920']?.toString();
       final profilePicBytes = (imageBase64 != null &&
           imageBase64.isNotEmpty &&
@@ -193,7 +208,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       ));
     }
 
-    // Also update account list with latest image
    final base64Image = userDetails?['image_1920'];
 
     final currentAccounts = await storageService.getAccounts();
@@ -206,5 +220,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final accountWithImage = {...existing, 'image': base64Image};
 
     await storageService.saveAccount(accountWithImage);
+
+    // One-shot retry: if we're online but the live fetch didn't succeed
+    // (raced with session refresh, transient network, etc.) AND the user's
+    // name still isn't on screen, try again after a short delay so the
+    // avatar / display name catch up automatically.
+    if (isOnline && !liveFetchSucceeded && !_didProfileAutoRetry) {
+      final stillEmpty = (userDetails?['name'] == null ||
+          userDetails!['name'].toString().trim().isEmpty);
+      if (stillEmpty) {
+        _didProfileAutoRetry = true;
+        Timer(const Duration(seconds: 3), () {
+          if (isClosed) return;
+          add(RefreshUserProfile());
+        });
+      }
+    } else if (liveFetchSucceeded) {
+      _didProfileAutoRetry = false;
+    }
   }
 }
