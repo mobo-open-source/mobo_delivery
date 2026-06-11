@@ -176,9 +176,15 @@ class CommonDialog extends StatelessWidget {
                         side: BorderSide(color: primary, width: 1),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text(
-                        secondaryLabel!,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          secondaryLabel!,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
                       ),
                     ),
                   ),
@@ -200,7 +206,15 @@ class CommonDialog extends StatelessWidget {
                       ),
                       textStyle: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    child: Text(primaryLabel),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        primaryLabel,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ),
                 ),
               ],

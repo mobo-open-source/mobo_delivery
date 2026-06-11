@@ -44,6 +44,12 @@ class _AddProductDialogState extends State<AddProductDialog> {
   String _errorMessage = '';
 
   @override
+  void dispose() {
+    qtyController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

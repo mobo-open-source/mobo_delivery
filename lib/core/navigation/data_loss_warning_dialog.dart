@@ -97,12 +97,18 @@ class DataLossWarningDialog extends StatelessWidget {
                       ),
                     ),
                     onPressed: () => Navigator.pop(context, false),
-                    child: Text(
-                      cancelText,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.grey[300]! : Colors.grey[700]!,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        cancelText,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.grey[300]! : Colors.grey[700]!,
+                        ),
                       ),
                     ),
                   ),
@@ -121,12 +127,18 @@ class DataLossWarningDialog extends StatelessWidget {
                       ),
                     ),
                     onPressed: () => Navigator.pop(context, true),
-                    child: Text(
-                      confirmText,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.black : Colors.white,
-                        fontWeight: FontWeight.w600,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        confirmText,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

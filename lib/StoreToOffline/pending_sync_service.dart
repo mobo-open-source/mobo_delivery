@@ -93,7 +93,7 @@ class PendingSyncService {
           onFail();
           continue;
         }
-        await createService.createPicking(
+        final newPickingId = await createService.createPicking(
           partnerId: partnerId,
           operationTypeId: operationTypeId,
           scheduledDate: data['scheduledDate']?.toString() ?? '',
@@ -102,6 +102,53 @@ class PendingSyncService {
           userId: _asInt(data['userId']),
           note: data['note']?.toString(),
         );
+
+        // Replay any product moves that were queued with the picking.
+        // Without this, an offline-created picking syncs as an empty
+        // header — the user's product lines silently disappear.
+        final products = data['products'];
+        bool hasProducts = false;
+        if (products is List && products.isNotEmpty) {
+          int? locationId = _asInt(
+            (products.first is Map) ? products.first['defaultLocationSrcId'] : null,
+          );
+          int? locationDestId = _asInt(
+            (products.first is Map) ? products.first['defaultLocationDestId'] : null,
+          );
+          if (locationId == null || locationDestId == null) {
+            final locations =
+                await createService.getPickingLocations(newPickingId);
+            locationId ??= locations['location_id'] as int?;
+            locationDestId ??= locations['location_dest_id'] as int?;
+          }
+          if (locationId != null && locationDestId != null) {
+            for (final raw in products) {
+              if (raw is! Map) continue;
+              final productId = _asInt(raw['productId']);
+              final uomId = _asInt(raw['productUomId']) ?? 1;
+              final qty = _asDouble(raw['productUomQty']) ?? 0.0;
+              final name = raw['productName']?.toString() ?? 'Product';
+              if (productId == null || qty <= 0) continue;
+              await createService.createStockMove(
+                name: name,
+                productId: productId,
+                productUomQty: qty,
+                productUomId: uomId,
+                pickingId: newPickingId,
+                locationId: locationId,
+                locationDestId: locationDestId,
+              );
+              hasProducts = true;
+            }
+          }
+        }
+
+        // Confirm so the moves transition out of draft and surface in
+        // Odoo's backend tree view. Matches the online create flow.
+        if (hasProducts) {
+          await createService.confirmPicking(newPickingId);
+        }
+
         await _hive.clearPendingCreates(c.pickingId);
         ok++;
       } catch (_) {
@@ -213,13 +260,31 @@ class PendingSyncService {
     return ok;
   }
 
+  /// Returns true when an Odoo response map represents a wizard
+  /// action (backorder confirm, immediate transfer, scrap warning,
+  /// SMS confirm, etc.) — those can't be resolved in a headless
+  /// background sync, so we leave the queue entry in place and let
+  /// the user finish it from the picking detail page next time.
+  bool _isWizardAction(dynamic result) {
+    if (result is! Map) return false;
+    final type = result['type'];
+    return type == 'ir.actions.act_window' ||
+        type == 'ir.actions.client';
+  }
+
   Future<int> _drainValidations({required void Function() onFail}) async {
     final pending = await _hive.getPendingValidations();
     int ok = 0;
     for (final v in pending) {
       try {
         final result = await _formService.validatePicking(v.pickingId);
-        if (result == true || result is Map) {
+        if (_isWizardAction(result)) {
+          // Wizard popped on the server (e.g. backorder confirmation).
+          // We can't drive it from background sync — keep the entry
+          // pending and surface it as "failed/retry" so the user sees
+          // it and can finish from the picking detail page.
+          onFail();
+        } else if (result == true) {
           await _hive.clearPendingValidation(v.pickingId);
           ok++;
         } else {
@@ -239,8 +304,12 @@ class PendingSyncService {
     int ok = 0;
     for (final c in pending) {
       try {
-        final success = await _formService.cancelPicking(c.pickingId);
-        if (success) {
+        final result = await _formService.cancelPicking(c.pickingId);
+        if (_isWizardAction(result)) {
+          // Same handling as validation: wizard requires UI, leave
+          // queued and let the user finish it manually.
+          onFail();
+        } else if (result == true) {
           await _hive.clearPendingCancellation(c.pickingId);
           ok++;
         } else {

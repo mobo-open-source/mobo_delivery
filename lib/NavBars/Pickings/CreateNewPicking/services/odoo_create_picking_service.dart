@@ -269,6 +269,28 @@ class OdooCreatePickingService {
     });
   }
 
+  /// Confirms a freshly-created picking so its draft moves transition out
+  /// of the `draft` state and become visible in Odoo's backend tree view.
+  /// Without this, a picking created from the app sits in draft with
+  /// draft moves; many of Odoo's stock views filter those out and the
+  /// products appear missing.
+  Future<void> confirmPicking(int pickingId) async {
+    try {
+      await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking',
+        'method': 'action_confirm',
+        'args': [
+          [pickingId],
+        ],
+        'kwargs': {},
+      });
+    } catch (_) {
+      // Best-effort: the picking and its moves are already saved.
+      // Failing to confirm leaves them in draft, which the user can
+      // still resolve from the picking detail page.
+    }
+  }
+
   /// Fetches detailed information about a newly created picking using `search_read`
   /// with a precise domain (`id = pickingId`) and a selected set of fields.
   ///

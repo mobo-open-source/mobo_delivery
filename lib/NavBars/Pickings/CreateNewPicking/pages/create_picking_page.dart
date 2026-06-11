@@ -378,6 +378,10 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           }
         }
 
+        if (moveProducts.isNotEmpty) {
+          await odooService.confirmPicking(pickingId);
+        }
+
         final newPicking = await odooService.getNewPickingDetails(pickingId);
 
         if (newPicking != null) {
@@ -437,6 +441,7 @@ return FadeTransition(opacity: animation, child: child);
                   'productId': p.productId,
                   'productName': p.productName,
                   'productUomQty': p.productUomQty,
+                  'productUomId': p.productUomId,
                   'defaultLocationSrcId': defaultLocationSrcId,
                   'defaultLocationDestId': defaultLocationDestId,
                 },

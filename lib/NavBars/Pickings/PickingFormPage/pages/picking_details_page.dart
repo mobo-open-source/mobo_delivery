@@ -3843,7 +3843,12 @@ return FadeTransition(opacity: animation, child: child);
               context: context,
               builder: (context) =>
                   _editProductLine(context, product, index, qtyController),
-            ).whenComplete(qtyController.dispose);
+            ).whenComplete(() {
+              Future.delayed(
+                const Duration(milliseconds: 400),
+                qtyController.dispose,
+              );
+            });
           }
         },
         child: Padding(
@@ -3958,7 +3963,12 @@ return FadeTransition(opacity: animation, child: child);
                     context: context,
                     builder: (context) =>
                         _addProductLine(context, qtyController),
-                  ).whenComplete(qtyController.dispose);
+                  ).whenComplete(() {
+                    Future.delayed(
+                      const Duration(milliseconds: 400),
+                      qtyController.dispose,
+                    );
+                  });
                 },
                 child: Text(
                   "+ Add a line",
