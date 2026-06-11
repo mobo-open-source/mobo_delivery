@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,6 @@ import '../../LoginPage/models/session_model.dart';
 import '../../LoginPage/services/storage_service.dart';
 import '../../core/company/services/connectivity_service.dart';
 import '../../core/company/session/company_session_manager.dart';
-import '../../core/providers/motion_provider.dart';
 import '../../shared/utils/app_theme.dart';
 import '../../shared/widgets/action_tile.dart';
 import '../../shared/widgets/odoo_avatar.dart';
@@ -141,7 +141,7 @@ class _ConfigurationState extends State<Configuration> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
+    final imageData = profile?['image_1920'];
 
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
@@ -192,7 +192,6 @@ class _ConfigurationState extends State<Configuration> {
                   await Navigator.push(
                     context,
                     _buildPageRoute(
-                      motionProvider,
                       const ProfileDetailScreen(),
                     ),
                   );
@@ -201,7 +200,7 @@ class _ConfigurationState extends State<Configuration> {
               ),
               const SizedBox(height: 12),
 
-              _buildQuickActionsSection(context, motionProvider),
+              _buildQuickActionsSection(context),
               const SizedBox(height: 20),
             ],
           ),
@@ -212,8 +211,7 @@ class _ConfigurationState extends State<Configuration> {
 
   Widget _buildQuickActionsSection(
     BuildContext context,
-    MotionProvider motionProvider,
-  ) {
+    ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -245,13 +243,13 @@ class _ConfigurationState extends State<Configuration> {
             onTap: () {
               Navigator.push(
                 context,
-                _buildPageRoute(motionProvider, const SettingsPage()),
+                _buildPageRoute(const SettingsPage()),
               );
             },
           ),
           _buildDivider(isDark),
 
-          _buildSwitchAccountsTile(context, isDark, motionProvider),
+          _buildSwitchAccountsTile(context, isDark),
           _buildDivider(isDark),
 
           ActionTile(
@@ -285,8 +283,7 @@ class _ConfigurationState extends State<Configuration> {
   Widget _buildSwitchAccountsTile(
     BuildContext context,
     bool isDark,
-    MotionProvider motionProvider,
-  ) {
+    ) {
     final Color subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
     final Color iconColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
 
@@ -336,10 +333,9 @@ class _ConfigurationState extends State<Configuration> {
                       context,
                       user,
                       isDark,
-                      motionProvider,
-                    ),
+                      ),
                   ),
-                  _buildAddAccountButton(context, isDark, motionProvider),
+                  _buildAddAccountButton(context, isDark),
                 ],
               );
             },
@@ -394,8 +390,7 @@ class _ConfigurationState extends State<Configuration> {
     BuildContext context,
     Map<String, dynamic> user,
     bool isDark,
-    MotionProvider motionProvider,
-  ) {
+    ) {
     final dynamic imageVal = user['image'];
     final String? imageBase64 = imageVal is String ? imageVal : null;
     final hasImage =
@@ -469,7 +464,7 @@ class _ConfigurationState extends State<Configuration> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          onPressed: () => _switchAccount(user, motionProvider),
+          onPressed: () => _switchAccount(user),
           child: Text(
             'Switch',
             style: TextStyle(
@@ -519,8 +514,7 @@ class _ConfigurationState extends State<Configuration> {
   Widget _buildAddAccountButton(
     BuildContext context,
     bool isDark,
-    MotionProvider motionProvider,
-  ) {
+    ) {
     return Container(
       margin: const EdgeInsets.all(16),
       width: double.infinity,
@@ -535,7 +529,6 @@ class _ConfigurationState extends State<Configuration> {
           Navigator.push(
             this.context,
             _buildPageRoute(
-              motionProvider,
               ServerUrlScreen(
                 serverUrl: url,
                 database: database,
@@ -605,26 +598,20 @@ class _ConfigurationState extends State<Configuration> {
     );
   }
 
-  PageRoute _buildPageRoute(MotionProvider motionProvider, Widget page) {
+  PageRoute _buildPageRoute(Widget page) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: motionProvider.reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 300),
-      reverseTransitionDuration: motionProvider.reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 300),
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        if (motionProvider.reduceMotion) return child;
-        return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
       },
     );
   }
 
   Future<void> _switchAccount(
     Map<String, dynamic> user,
-    MotionProvider motionProvider,
-  ) async {
+    ) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (mounted) {
@@ -807,7 +794,7 @@ class _ConfigurationState extends State<Configuration> {
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      _buildPageRoute(motionProvider, const Dashboard()),
+      _buildPageRoute(const Dashboard()),
       (route) => false,
     );
   }

@@ -81,6 +81,6 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>GMSApiKey</key>
-    <string>AIzaSyDErARNoqJg-HTyUUvsgSkWEFPC1q13FBI</string>
+    <string>$(MAPS_API_KEY)</string>
 </dict>
 </plist>

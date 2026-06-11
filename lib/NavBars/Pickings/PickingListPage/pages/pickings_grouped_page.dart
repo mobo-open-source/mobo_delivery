@@ -9,7 +9,6 @@ import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../Dashboard/infrastructure/profile_refresh_bus.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
-import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -730,8 +729,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         })
         .where((entry) => entry.value.isNotEmpty)
         .toList();
-
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -1046,15 +1043,10 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
                   CreatePickingPage(url: _service.url),
-              transitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
-              reverseTransitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder: (context, animation, _, child) {
-                if (motionProvider.reduceMotion) return child;
-                return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
               },
             ),
           ).then((_) => reloadPickingList());

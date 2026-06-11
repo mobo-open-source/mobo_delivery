@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
-import '../../../core/providers/motion_provider.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -114,7 +113,6 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
@@ -280,7 +278,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
               ),
               onPressed: _isSubmitting
                   ? null
-                  : () => _submitReturn(motionProvider),
+                  : () => _submitReturn(),
             ),
           ),
         ],
@@ -326,7 +324,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
 
   /// Submits the return wizard. Navigates and shows success only on real
   /// success; errors are surfaced via snackbar.
-  Future<void> _submitReturn(MotionProvider motionProvider) async {
+  Future<void> _submitReturn() async {
     if (_isSubmitting) return;
 
     final returnLines = _buildReturnLines();
@@ -372,16 +370,11 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                 isReturnPicking: false,
                 isReturnCreate: true,
               ),
-          transitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          reverseTransitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder:
               (context, animation, secondaryAnimation, child) {
-            if (motionProvider.reduceMotion) return child;
-            return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
           },
         ),
       );

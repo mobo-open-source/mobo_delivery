@@ -15,7 +15,6 @@ import '../../../../shared/widgets/loaders/shimmer_skeleton.dart' as sk;
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
-import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -645,16 +644,13 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     final pickingId = int.parse(widget.picking['id'].toString());
 
     try {
-      // Use the cached connectivity flag — no DNS round-trip before the action.
       final isOnline = isOnlineAvailability;
       if (isOnline) {
-        // Increased timeout to 30s for complex validations
         final success = await odooPickingFormService
             .validatePicking(pickingId)
             .timeout(const Duration(seconds: 30));
 
         if (success == true) {
-          // Success case
           try {
             await _loadSavingData().timeout(const Duration(seconds: 15));
           } catch (_) {}
@@ -666,9 +662,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         } else if (success is Map &&
             (success['type'] == 'ir.actions.act_window' ||
                 success['type'] == 'ir.actions.client')) {
-          // Wizard case — backorder / immediate transfer / SMS confirmation
-          // / scrap warning / etc. Routed via the generic dispatcher so any
-          // wizard Odoo surfaces is handled the same way the web UI does.
           await _handlePickingWizard(
             pickingId: pickingId,
             action: success,
@@ -801,8 +794,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     setState(() {
       isSaving = true;
     });
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
-
     final odooPickingFormService = OdooPickingFormService();
     await odooPickingFormService.initializeOdooClient();
     final pickingId = int.parse(widget.picking['id'].toString());
@@ -828,15 +819,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
               StockMoveLineListPage(pickingStockLine: pickingStockLine),
-          transitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          reverseTransitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            if (motionProvider.reduceMotion) return child;
-            return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
           },
         ),
       );
@@ -858,16 +844,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
                 StockMoveLineListPage(pickingStockLine: pickingStockLine),
-            transitionDuration: motionProvider.reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 300),
-            reverseTransitionDuration: motionProvider.reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 300),
+            transitionDuration: const Duration(milliseconds: 300),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-                  if (motionProvider.reduceMotion) return child;
-                  return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
                 },
           ),
         );
@@ -910,16 +891,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
                 StockMoveLineListPage(pickingStockLine: pickingStockLine),
-            transitionDuration: motionProvider.reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 300),
-            reverseTransitionDuration: motionProvider.reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 300),
+            transitionDuration: const Duration(milliseconds: 300),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-                  if (motionProvider.reduceMotion) return child;
-                  return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
                 },
           ),
         );
@@ -1041,8 +1017,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     setState(() {
       isSaving = true;
     });
-
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     final odooPickingFormService = OdooPickingFormService();
 
     try {
@@ -1120,15 +1094,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           odooService: odooPickingFormService,
           sourcePickingId: sourcePickingId,
         ),
-        transitionDuration: motionProvider.reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
-        reverseTransitionDuration: motionProvider.reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          if (motionProvider.reduceMotion) return child;
-          return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
         },
       ),
     );

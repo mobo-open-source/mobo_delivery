@@ -12,7 +12,6 @@ class SettingsState {
   final bool isLoading;
   final bool isLanguageLoading;
   final bool isDarkMode;
-  final bool reduceMotion;
   final String language;
   final String currency;
   final String timezone;
@@ -25,7 +24,6 @@ class SettingsState {
     this.isLoading = false,
     this.isLanguageLoading = false,
     this.isDarkMode = false,
-    this.reduceMotion = false,
     this.language = 'English (US)',
     this.currency = 'United States dollar',
     this.timezone = 'Europe/Brussels',
@@ -49,7 +47,6 @@ class SettingsState {
     bool? isLoading,
     bool? isLanguageLoading,
     bool? isDarkMode,
-    bool? reduceMotion,
     String? language,
     String? currency,
     String? timezone,
@@ -62,7 +59,6 @@ class SettingsState {
       isLoading: isLoading ?? this.isLoading,
       isLanguageLoading: isLanguageLoading ?? this.isLanguageLoading,
       isDarkMode: isDarkMode ?? this.isDarkMode,
-      reduceMotion: reduceMotion ?? this.reduceMotion,
       language: language ?? this.language,
       currency: currency ?? this.currency,
       timezone: timezone ?? this.timezone,

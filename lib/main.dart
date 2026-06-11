@@ -18,7 +18,6 @@ import 'NavBars/Pickings/PickingFormPage/models/return_picking.dart';
 import 'NavBars/Pickings/PickingListPage/models/picking_model.dart';
 import 'core/company/providers/company_provider.dart';
 import 'core/navigation/global_keys.dart';
-import 'core/providers/motion_provider.dart';
 import 'core/providers/theme_provider.dart';
 
 /// Global Odoo client instance (initialized after login)
@@ -55,9 +54,6 @@ void main() async {
   final settingsStorageService = SettingsStorageService();
   await settingsStorageService.initialize();
 
-  final reduceMotion =
-      await settingsStorageService.getBool('reduceMotion') ?? false;
-
   final VideoPlayerController videoController = VideoPlayerController.asset(
     'assets/videos/Delivery.mp4',
   );
@@ -74,9 +70,6 @@ void main() async {
         Provider<SettingsStorageService>.value(value: settingsStorageService),
 
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(
-          create: (_) => MotionProvider()..setReduceMotion(reduceMotion),
-        ),
 
         ChangeNotifierProvider(
           create: (_) {
@@ -147,24 +140,13 @@ class _LoginAppState extends State<LoginApp> {
           default:
             builder = (context) => SplashScreen();
         }
-
-        final motionProvider = Provider.of<MotionProvider>(
-          navigatorKey.currentContext!,
-          listen: false,
-        );
-
         return PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
               builder(context),
-          transitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          reverseTransitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            if (motionProvider.reduceMotion) return child;
-            return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
           },
         );
       },

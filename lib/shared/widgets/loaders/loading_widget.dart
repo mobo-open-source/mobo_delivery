@@ -9,7 +9,6 @@ class LoadingWidget extends StatelessWidget {
     this.color,
     this.size = 40,
     this.variant = LoadingVariant.staggeredDots,
-    this.reduceMotion = false,
     this.overlay = false,
     this.barrierDismissible = false,
   });
@@ -21,8 +20,6 @@ class LoadingWidget extends StatelessWidget {
   final double size;
 
   final LoadingVariant variant;
-
-  final bool reduceMotion;
 
   final bool overlay;
 
@@ -117,14 +114,6 @@ class LoadingWidget extends StatelessWidget {
   }
 
   Widget _buildAnimated(Color resolvedColor, bool isDark) {
-    if (reduceMotion) {
-      return Icon(
-        Icons.hourglass_empty_rounded,
-        color: resolvedColor,
-        size: size,
-      );
-    }
-
     switch (variant) {
       case LoadingVariant.fourRotatingDots:
         return LoadingAnimationWidget.fourRotatingDots(

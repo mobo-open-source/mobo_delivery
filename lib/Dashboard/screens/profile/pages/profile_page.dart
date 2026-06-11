@@ -121,8 +121,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     try {
       final admin = await hasGroup('base.group_system');
       if (mounted) setState(() => isAdmin = admin);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   @override

@@ -22,15 +22,6 @@ class ToggleDarkModeEvent extends SettingsEvent {
   ToggleDarkModeEvent(this.isDarkMode);
 }
 
-/// Toggles reduced motion / accessibility mode.
-///
-/// Disables or enables animations/transitions throughout the app.
-class ToggleReduceMotionEvent extends SettingsEvent {
-  /// `true` = reduce motion (minimal animations), `false` = full animations
-  final bool reduceMotion;
-  ToggleReduceMotionEvent(this.reduceMotion);
-}
-
 /// Updates the user's preferred display language.
 ///
 /// Saves locally and (if online) updates the user record in Odoo.

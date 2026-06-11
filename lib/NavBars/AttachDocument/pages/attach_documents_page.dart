@@ -18,7 +18,6 @@ import '../../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../../Dashboard/services/storage_service.dart';
 import '../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../core/company/providers/company_provider.dart';
-import '../../../core/providers/motion_provider.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
@@ -51,7 +50,6 @@ class AttachDocumentsPage extends StatefulWidget {
 ///   - Handles signature capture & file uploads via BLoC
 ///   - Displays empty/error/loading states with Lottie animations
 class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
-  MotionProvider? _motionProvider;
   late DashboardStorageService storageService;
   int? userId;
   int? companyId;
@@ -85,12 +83,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
     "Source Document": "origin",
     "Operation Type": "picking_type_id",
   };
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _motionProvider = Provider.of<MotionProvider>(context, listen: false);
-  }
 
   @override
   void initState() {
@@ -264,17 +256,11 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                   PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
                         const SignatureScreen(),
-                    transitionDuration: _motionProvider?.reduceMotion ?? false
-                        ? Duration.zero
-                        : const Duration(milliseconds: 300),
+                    transitionDuration: const Duration(milliseconds: 300),
                     reverseTransitionDuration:
-                        _motionProvider?.reduceMotion ?? false
-                        ? Duration.zero
-                        : const Duration(milliseconds: 300),
+                        const Duration(milliseconds: 300),
                     transitionsBuilder:
                         (context, animation, secondaryAnimation, child) {
-                          if (_motionProvider?.reduceMotion ?? false)
-                            return child;
                           return FadeTransition(
                             opacity: animation,
                             child: child,

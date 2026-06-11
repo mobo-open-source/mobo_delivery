@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/pages/picking_details_page.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../services/odoo_picking_form_service.dart';
 
@@ -124,8 +123,6 @@ class _ReturnListPageState extends State<ReturnListPage> {
     BuildContext context,
     Map<String, dynamic> picking,
   ) {
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
-
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -140,15 +137,10 @@ class _ReturnListPageState extends State<ReturnListPage> {
               isReturnCreate: false,
               isReturnPicking: true,
             ),
-        transitionDuration: motionProvider.reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
-        reverseTransitionDuration: motionProvider.reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          if (motionProvider.reduceMotion) return child;
-          return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
         },
       ),
     ).then((_) => _refreshReturns());

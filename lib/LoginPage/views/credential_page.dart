@@ -16,7 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../Dashboard/services/storage_service.dart';
 import '../../core/company/session/company_session_manager.dart';
-import '../../core/providers/motion_provider.dart';
 import '../../shared/utils/globals.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../services/app_install_check.dart';
@@ -402,7 +401,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
   /// 5. Check required modules
   /// 6. Navigate to Dashboard or show error / 2FA screen
   Future<void> _login() async {
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     String baseUrl = widget.url.trim();
 
     if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
@@ -499,16 +497,11 @@ class _CredentialsPageState extends State<CredentialsPage> {
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
                   const Dashboard(),
-              transitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
-              reverseTransitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-                    if (motionProvider.reduceMotion) return child;
-                    return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
                   },
             ),
           );
@@ -585,7 +578,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     String baseUrl = widget.url.trim();
 
     if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
@@ -742,13 +734,9 @@ class _CredentialsPageState extends State<CredentialsPage> {
                                         database: widget.database,
                                       ),
                                   transitionDuration:
-                                      motionProvider.reduceMotion
-                                      ? Duration.zero
-                                      : const Duration(milliseconds: 300),
+                                      const Duration(milliseconds: 300),
                                   reverseTransitionDuration:
-                                      motionProvider.reduceMotion
-                                      ? Duration.zero
-                                      : const Duration(milliseconds: 300),
+                                      const Duration(milliseconds: 300),
                                   transitionsBuilder:
                                       (
                                         context,
@@ -756,9 +744,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
                                         secondaryAnimation,
                                         child,
                                       ) {
-                                        if (motionProvider.reduceMotion)
-                                          return child;
-                                        return FadeTransition(
+return FadeTransition(
                                           opacity: animation,
                                           child: child,
                                         );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
-import '../../core/providers/motion_provider.dart';
 import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -72,24 +71,16 @@ class AuthController {
   ///
   /// Features:
   /// • Uses PageRouteBuilder for custom transition control
-  /// • Respects user's motion reduction preference (from MotionProvider)
   /// • Replaces current route (no back stack to auth screens)
   Future<void> _navigateToDashboard(BuildContext context) async {
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
-
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const Dashboard(),
-        transitionDuration: motionProvider.reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
-        reverseTransitionDuration: motionProvider.reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          if (motionProvider.reduceMotion) return child;
-          return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
@@ -104,7 +95,6 @@ class AuthController {
   ///
   /// Also uses fade transition and respects motion reduction setting.
   Future<void> _navigateToLogin(BuildContext context) async {
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
     bool isGetStarted = prefs.getBool('hasSeenGetStarted')?? false;
     if(isGetStarted) {
@@ -112,15 +102,10 @@ class AuthController {
         context,
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => LoginScreen(),
-          transitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          reverseTransitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            if (motionProvider.reduceMotion) return child;
-            return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
           },
         ),
       );
@@ -130,15 +115,10 @@ class AuthController {
         PageRouteBuilder(
           pageBuilder: (context, animation,
               secondaryAnimation) => const GetStartedScreen(),
-          transitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          reverseTransitionDuration: motionProvider.reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            if (motionProvider.reduceMotion) return child;
-            return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
           },
         ),
       );

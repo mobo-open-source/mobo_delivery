@@ -176,15 +176,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           liveFetchSucceeded = true;
         }
       } on OdooSessionExpiredException {
-        // Don't auto-logout at boot: this can fire from a transient race in
-        // session refresh (parallel RPCs from dashboard + sync) or a brief
-        // server-side hiccup. Fall back to the cached profile; the next
-        // user-driven RPC will surface a real session expiration if it
-        // genuinely persists.
         userDetails = await storageService.getSavedUserProfile();
       } on TimeoutException {
-        // Profile RPC took too long — fall back to cached profile rather
-        // than blocking the UI on a slow Odoo response.
         userDetails = await storageService.getSavedUserProfile();
       } catch (e) {
         userDetails = await storageService.getSavedUserProfile();

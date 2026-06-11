@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/providers/motion_provider.dart';
 import '../../shared/widgets/loaders/loading_widget.dart';
 import '../services/network_service.dart';
 
@@ -277,8 +276,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
-
     return Scaffold(
       body: Stack(
         children: [
@@ -427,15 +424,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                             database: finalDb,
                                           ),
                                       transitionDuration:
-                                      motionProvider.reduceMotion
-                                          ? Duration.zero
-                                          : const Duration(
+                                      const Duration(
                                         milliseconds: 300,
                                       ),
                                       reverseTransitionDuration:
-                                      motionProvider.reduceMotion
-                                          ? Duration.zero
-                                          : const Duration(
+                                      const Duration(
                                         milliseconds: 300,
                                       ),
                                       transitionsBuilder: (
@@ -444,9 +437,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           secondaryAnimation,
                                           child,
                                           ) {
-                                        if (motionProvider.reduceMotion)
-                                          return child;
-                                        return FadeTransition(
+return FadeTransition(
                                           opacity: animation,
                                           child: child,
                                         );

@@ -32,7 +32,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   }) : super(SettingsState()) {
     on<LoadSettingsEvent>(_onLoadSettings);
     on<ToggleDarkModeEvent>(_onToggleDarkMode);
-    on<ToggleReduceMotionEvent>(_onToggleReduceMotion);
     on<UpdateLanguageEvent>(_onUpdateLanguage);
     on<UpdateCurrencyEvent>(_onUpdateCurrency);
     on<UpdateTimezoneEvent>(_onUpdateTimezone);
@@ -79,7 +78,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       final currency = settingsStorageService.getString('currency') ?? state.currency;
       final timezone = settingsStorageService.getString('timezone') ?? state.timezone;
       final darkMode = settingsStorageService.getBool('darkMode') ?? state.isDarkMode;
-      final reduceMotion = settingsStorageService.getBool('reduceMotion') ?? state.reduceMotion;
 
       final languagesRaw = await odooService.fetchLanguage() ?? [];
       final currenciesRaw = await odooService.fetchCurrency() ?? [];
@@ -93,7 +91,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         currency: currency,
         timezone: timezone,
         isDarkMode: darkMode,
-        reduceMotion: reduceMotion,
         languages: languages,
         currencies: currencies,
         timezones: timezones,
@@ -110,15 +107,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       ToggleDarkModeEvent event, Emitter<SettingsState> emit) async {
     await settingsStorageService.setBool('darkMode', event.isDarkMode);
     emit(state.copyWith(isDarkMode: event.isDarkMode));
-  }
-
-  /// Toggles reduce motion accessibility setting.
-  /// Stores preference locally and updates state.
-  /// Helps control animation usage across the app.
-  Future<void> _onToggleReduceMotion(
-      ToggleReduceMotionEvent event, Emitter<SettingsState> emit) async {
-    await settingsStorageService.setBool('reduceMotion', event.reduceMotion);
-    emit(state.copyWith(reduceMotion: event.reduceMotion));
   }
 
   /// Updates preferred language (local storage + Odoo user record)

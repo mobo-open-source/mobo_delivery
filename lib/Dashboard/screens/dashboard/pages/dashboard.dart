@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/loaders/loading_indicator.dart';
@@ -13,7 +14,6 @@ import '../../../../Rating/review_service.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
 import '../../../../core/company/widgets/company_selector_widget.dart';
-import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../../services/odoo_dashboard_service.dart';
@@ -85,8 +85,6 @@ class _DashboardState extends State<Dashboard> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
-
     return BlocProvider(
       create: (_) => DashboardBloc(DashboardStorageService(), (url, session) {
         return OdooDashboardService(url, session);
@@ -191,13 +189,9 @@ class _DashboardState extends State<Dashboard> {
                                         userName: state.userName,
                                         mail: state.mail,
                                       ),
-                                      transitionDuration: motionProvider.reduceMotion
-                                          ? Duration.zero
-                                          : const Duration(milliseconds: 300),
+                                      transitionDuration: const Duration(milliseconds: 300),
                                       reverseTransitionDuration:
-                                          motionProvider.reduceMotion
-                                          ? Duration.zero
-                                          : const Duration(milliseconds: 300),
+                                          const Duration(milliseconds: 300),
                                       transitionsBuilder:
                                           (
                                             context,
@@ -205,9 +199,7 @@ class _DashboardState extends State<Dashboard> {
                                             secondaryAnimation,
                                             child,
                                           ) {
-                                            if (motionProvider.reduceMotion)
-                                              return child;
-                                            return FadeTransition(
+return FadeTransition(
                                               opacity: animation,
                                               child: child,
                                             );

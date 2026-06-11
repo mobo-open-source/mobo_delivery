@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
-import '../../../../core/providers/motion_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../../shared/widgets/snackbar.dart';
@@ -288,8 +287,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
   ///
   /// Handles validation errors and shows user feedback.
   Future<void> _createPicking() async {
-    final motionProvider = Provider.of<MotionProvider>(context, listen: false);
-
     if (_selectedPartnerId == null && _selectedOperationTypeId == null) {
       setState(() {
         _errorMessage = "Please select a Delivery Address and Operation Type.";
@@ -401,16 +398,11 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                     isReturnPicking: false,
                     isReturnCreate: false,
                   ),
-              transitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
-              reverseTransitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-                    if (motionProvider.reduceMotion) return child;
-                    return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
                   },
             ),
           );

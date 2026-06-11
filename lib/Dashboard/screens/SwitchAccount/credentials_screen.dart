@@ -14,7 +14,6 @@ import '../../../LoginPage/services/app_install_check.dart';
 import '../../../LoginPage/views/totp_page.dart';
 import '../../../core/company/services/connectivity_service.dart';
 import '../../../core/company/session/company_session_manager.dart';
-import '../../../core/providers/motion_provider.dart';
 import '../../../core/security/secure_storage_service.dart';
 import '../../../shared/utils/globals.dart';
 import '../../services/storage_service.dart';
@@ -243,11 +242,6 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
         final checker = AppInstallCheck();
         final access = await checker.evaluateAccess();
         final isInstalled = access == AccessCheckStatus.ok;
-
-        final motionProvider = Provider.of<MotionProvider>(
-          context,
-          listen: false,
-        );
         if (!isInstalled) {
           await prefs.remove('lastUsername');
           await storageService.removeAccount(
@@ -317,16 +311,11 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
                   const Dashboard(),
-              transitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
-              reverseTransitionDuration: motionProvider.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-                    if (motionProvider.reduceMotion) return child;
-                    return FadeTransition(opacity: animation, child: child);
+return FadeTransition(opacity: animation, child: child);
                   },
             ),
             (route) => false,

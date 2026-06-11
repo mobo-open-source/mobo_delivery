@@ -12,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/company/session/company_session_manager.dart';
-import '../../core/providers/motion_provider.dart';
 import '../../shared/utils/globals.dart';
 import '../services/app_install_check.dart';
 import '../services/common_storage_service.dart';
@@ -564,14 +563,11 @@ class _TotpPageState extends State<TotpPage> {
           }
           return;
         } else {
-          final motion = Provider.of<MotionProvider>(context, listen: false);
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               pageBuilder: (_, __, ___) => const Dashboard(),
-              transitionDuration: motion.reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 300),
+              transitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder: (_, a, __, c) =>
                   FadeTransition(opacity: a, child: c),
             ),
