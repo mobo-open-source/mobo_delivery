@@ -238,11 +238,17 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: Text(
-                  "CANCEL",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    "CANCEL",
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppStyle.primaryColor,
+                    ),
                   ),
                 ),
               ),
@@ -274,11 +280,17 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   Icons.add,
                   color: isDark ? Colors.black : Colors.white,
                 ),
-                label: Text(
-                  'Add',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.black : Colors.white,
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Add',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
                   ),
                 ),
                 style: ElevatedButton.styleFrom(

@@ -354,11 +354,15 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           throw Exception("Invalid locations");
         }
 
-        // Defensive: surface per-product failures instead of letting one
-        // bad UoM / location / access error leave the picking silently
-        // empty in Odoo. The picking itself was already created above —
-        // if any move fails we stop, report the first failure with the
-        // product name, and let the user retry in the form view.
+        // Read the picking's company once so we stamp every subsequent
+        // move (and the confirm RPC) with the same company. Without
+        // this, in multi-company setups Odoo silently saves the moves
+        // under the user's primary company — they exist in the DB but
+        // record rules hide them from the picking, which surfaces as
+        // "products didn't get added".
+        final pickingCompanyId =
+            await odooService.getPickingCompanyId(pickingId);
+
         for (var product in moveProducts) {
           try {
             await odooService.createStockMove(
@@ -369,6 +373,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
               pickingId: pickingId,
               locationId: locationId,
               locationDestId: locationDestId,
+              companyId: pickingCompanyId,
             );
           } catch (e) {
             throw Exception(
@@ -379,7 +384,24 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
         }
 
         if (moveProducts.isNotEmpty) {
-          await odooService.confirmPicking(pickingId);
+          try {
+            await odooService.confirmPicking(
+              pickingId,
+              companyId: pickingCompanyId,
+            );
+          } catch (e) {
+            // Picking + moves already exist on the server. Surface the
+            // confirm failure so the user knows the products are in
+            // draft and can be confirmed from the picking detail page.
+            if (mounted) {
+              CustomSnackbar.showWarning(
+                context,
+                "Picking created but couldn't be confirmed: "
+                "${e.toString().replaceFirst('Exception: ', '')}. "
+                "Confirm it manually from the picking detail page.",
+              );
+            }
+          }
         }
 
         final newPicking = await odooService.getNewPickingDetails(pickingId);
@@ -759,40 +781,47 @@ return FadeTransition(opacity: animation, child: child);
                               Container(
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 padding: const EdgeInsets.all(4),
-                                child: TabBar(
-                                  controller: tabController,
-                                  indicator: BoxDecoration(
-                                    color: Colors
-                                        .transparent,
-                                  ),
-                                  dividerColor: Colors.transparent,
-                                  labelPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  overlayColor: MaterialStateProperty.all(
-                                    Colors.transparent,
-                                  ),
-                                  tabs: List.generate(3, (index) {
-                                    String text;
-                                    switch (index) {
-                                      case 0:
-                                        text = "Operations";
-                                        break;
-                                      case 1:
-                                        text = "Additional Info";
-                                        break;
-                                      case 2:
-                                        text = "Note";
-                                        break;
-                                      default:
-                                        text = "";
-                                    }
-                                    bool isSelected =
-                                        tabController.index == index;
-                                    return _buildStyledTab(text, isSelected);
-                                  }),
-                                  onTap: (_) {
-                                    (context as Element).markNeedsBuild();
+                                child: AnimatedBuilder(
+                                  animation: tabController.animation!,
+                                  builder: (context, _) {
+                                    final double animValue =
+                                        tabController.animation!.value;
+                                    return TabBar(
+                                      controller: tabController,
+                                      indicator: BoxDecoration(
+                                        color: Colors.transparent,
+                                      ),
+                                      dividerColor: Colors.transparent,
+                                      labelPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      overlayColor: WidgetStateProperty.all(
+                                        Colors.transparent,
+                                      ),
+                                      tabs: List.generate(3, (index) {
+                                        String text;
+                                        switch (index) {
+                                          case 0:
+                                            text = "Operations";
+                                            break;
+                                          case 1:
+                                            text = "Additional Info";
+                                            break;
+                                          case 2:
+                                            text = "Note";
+                                            break;
+                                          default:
+                                            text = "";
+                                        }
+                                        final double selectedness =
+                                            (1.0 - (animValue - index).abs())
+                                                .clamp(0.0, 1.0);
+                                        return _buildStyledTab(
+                                          text,
+                                          selectedness,
+                                        );
+                                      }),
+                                    );
                                   },
                                 ),
                               ),
@@ -893,26 +922,32 @@ return FadeTransition(opacity: animation, child: child);
     );
   }
 
-  /// Builds styled tab button for the operations/additional info/note section.
-  Widget _buildStyledTab(String text, bool isSelected) {
+  Widget _buildStyledTab(String text, double selectedness) {
+    final bgColor =
+        Color.lerp(Colors.transparent, Colors.black, selectedness)!;
+    final textColor =
+        Color.lerp(Colors.grey[600], Colors.white, selectedness)!;
+    final borderColor = Color.lerp(
+      Colors.grey.shade400,
+      Colors.transparent,
+      selectedness,
+    )!;
     return Tab(
       child: Container(
         width: 120,
         height: 40,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.black : Colors.transparent,
+          color: bgColor,
           borderRadius: BorderRadius.circular(15),
-          border: isSelected
-              ? null
-              : Border.all(color: Colors.grey.shade400, width: 1),
+          border: Border.all(color: borderColor, width: 1),
         ),
         child: Text(
           text,
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 13,
-            color: isSelected ? Colors.white : Colors.grey[600],
+            color: textColor,
           ),
           textAlign: TextAlign.center,
         ),

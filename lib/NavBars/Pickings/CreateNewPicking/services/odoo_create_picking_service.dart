@@ -248,6 +248,7 @@ class OdooCreatePickingService {
     required int pickingId,
     required int locationId,
     required int locationDestId,
+    int? companyId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     int version = prefs.getInt('version') ?? 0;
@@ -259,36 +260,59 @@ class OdooCreatePickingService {
       'picking_id': pickingId,
       'location_id': locationId,
       'location_dest_id': locationDestId,
+      if (companyId != null) 'company_id': companyId,
     };
 
-    await CompanySessionManager.callKwWithCompany({
-      'model': 'stock.move',
-      'method': 'create',
-      'args': [payload],
-      'kwargs': {},
-    });
+    await CompanySessionManager.callKwWithCompany(
+      {
+        'model': 'stock.move',
+        'method': 'create',
+        'args': [payload],
+        'kwargs': {},
+      },
+      companyId: companyId,
+    );
   }
 
-  /// Confirms a freshly-created picking so its draft moves transition out
-  /// of the `draft` state and become visible in Odoo's backend tree view.
-  /// Without this, a picking created from the app sits in draft with
-  /// draft moves; many of Odoo's stock views filter those out and the
-  /// products appear missing.
-  Future<void> confirmPicking(int pickingId) async {
+  /// Reads the picking's `company_id` so freshly-created moves can be
+  /// stamped with the same company the picking belongs to. Without this,
+  /// in multi-company setups, moves default to the user's primary
+  /// company — either tripping Odoo's "Incompatible companies on
+  /// records" check or saving the move under a company whose record
+  /// rules hide it from the picking's view.
+  Future<int?> getPickingCompanyId(int pickingId) async {
     try {
-      await CompanySessionManager.callKwWithCompany({
+      final result = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking',
+        'method': 'read',
+        'args': [
+          [pickingId],
+          ['company_id'],
+        ],
+        'kwargs': {},
+      });
+      if (result is List && result.isNotEmpty) {
+        final raw = (result.first as Map<String, dynamic>)['company_id'];
+        if (raw is List && raw.isNotEmpty && raw.first is int) {
+          return raw.first as int;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> confirmPicking(int pickingId, {int? companyId}) async {
+    await CompanySessionManager.callKwWithCompany(
+      {
         'model': 'stock.picking',
         'method': 'action_confirm',
         'args': [
           [pickingId],
         ],
         'kwargs': {},
-      });
-    } catch (_) {
-      // Best-effort: the picking and its moves are already saved.
-      // Failing to confirm leaves them in draft, which the user can
-      // still resolve from the picking detail page.
-    }
+      },
+      companyId: companyId,
+    );
   }
 
   /// Fetches detailed information about a newly created picking using `search_read`

@@ -654,6 +654,28 @@ class _TotpPageState extends State<TotpPage> {
           return;
         }
         final session = await CompanySessionManager.getCurrentSession();
+        // Best-effort profile image fetch so the new account's avatar
+        // is populated in Switch Account from the start.
+        String profileImage = '';
+        if (session?.userId != null) {
+          try {
+            final res = await CompanySessionManager.callKwWithCompany({
+              'model': 'res.users',
+              'method': 'read',
+              'args': [
+                [session!.userId],
+                ['image_1920'],
+              ],
+              'kwargs': {},
+            });
+            if (res is List && res.isNotEmpty) {
+              final raw = (res.first as Map)['image_1920'];
+              if (raw is String && raw.isNotEmpty && raw != 'false') {
+                profileImage = raw;
+              }
+            }
+          } catch (_) {}
+        }
         await _commonStorageService.saveAccount({
           'userName': session?.userName,
           'userLogin': session?.userLogin,
@@ -669,7 +691,7 @@ class _TotpPageState extends State<TotpPage> {
           'allowedCompanyIds': session?.allowedCompanyIds,
           'url': widget.serverUrl,
           'database': widget.database,
-          'image': '',
+          'image': profileImage,
         });
 
         final prefs = await SharedPreferences.getInstance();

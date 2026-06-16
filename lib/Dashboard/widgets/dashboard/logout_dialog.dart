@@ -91,11 +91,17 @@ class _LogoutDialogState extends State<LogoutDialog> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: Text(
-                  "Cancel",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    "Cancel",
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppStyle.primaryColor,
+                    ),
                   ),
                 ),
               ),
@@ -125,10 +131,16 @@ class _LogoutDialogState extends State<LogoutDialog> {
                 ),
                 child: isLogoutLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    :  Text(
-                  'Log Out',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Log Out',
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
               ),
             ),
           ],

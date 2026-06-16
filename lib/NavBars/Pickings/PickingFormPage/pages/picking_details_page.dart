@@ -3199,11 +3199,17 @@ return FadeTransition(opacity: animation, child: child);
                       });
                     },
                     icon: const Icon(Icons.delete),
-                    label: Text(
-                      'DELETE',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppStyle.primaryColor,
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'DELETE',
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : AppStyle.primaryColor,
+                        ),
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -3342,11 +3348,17 @@ return FadeTransition(opacity: animation, child: child);
                       }
                     },
                     icon: const Icon(Icons.save),
-                    label: Text(
-                      'SAVE',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.black : Colors.white,
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'SAVE',
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.black : Colors.white,
+                        ),
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -3577,11 +3589,19 @@ return FadeTransition(opacity: animation, child: child);
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                       ),
-                      child: Text(
-                        "CANCEL",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppStyle.primaryColor,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          "CANCEL",
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : AppStyle.primaryColor,
+                          ),
                         ),
                       ),
                     ),
@@ -3787,11 +3807,17 @@ return FadeTransition(opacity: animation, child: child);
                         Icons.add,
                         color: isDark ? Colors.black : Colors.white,
                       ),
-                      label: Text(
-                        'Add',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.black : Colors.white,
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Add',
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
                         ),
                       ),
                       style: ElevatedButton.styleFrom(

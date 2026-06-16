@@ -208,6 +208,29 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
         return;
       }
 
+      // Best-effort fetch of the profile image so the new account's
+      // avatar shows in Switch Account from the start.
+      String profileImage = '';
+      if (session?.userId != null) {
+        try {
+          final res = await CompanySessionManager.callKwWithCompany({
+            'model': 'res.users',
+            'method': 'read',
+            'args': [
+              [session!.userId],
+              ['image_1920'],
+            ],
+            'kwargs': {},
+          });
+          if (res is List && res.isNotEmpty) {
+            final raw = (res.first as Map)['image_1920'];
+            if (raw is String && raw.isNotEmpty && raw != 'false') {
+              profileImage = raw;
+            }
+          }
+        } catch (_) {}
+      }
+
       final storageService = DashboardStorageService();
       await storageService.saveAccount({
         'userName': session?.userName,
@@ -225,7 +248,7 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
         'url': url,
         'database': widget.database,
         'selectedDatabase': widget.database,
-        'image': '',
+        'image': profileImage,
       });
 
       final prefs = await SharedPreferences.getInstance();

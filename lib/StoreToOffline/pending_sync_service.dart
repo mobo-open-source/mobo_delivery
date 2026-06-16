@@ -104,10 +104,13 @@ class PendingSyncService {
         );
 
         // Replay any product moves that were queued with the picking.
-        // Without this, an offline-created picking syncs as an empty
-        // header — the user's product lines silently disappear.
+        // Read the picking's actual company so the moves are stamped
+        // with the same company — otherwise multi-company record rules
+        // hide them from the picking view.
         final products = data['products'];
         bool hasProducts = false;
+        final pickingCompanyId =
+            await createService.getPickingCompanyId(newPickingId);
         if (products is List && products.isNotEmpty) {
           int? locationId = _asInt(
             (products.first is Map) ? products.first['defaultLocationSrcId'] : null,
@@ -137,16 +140,23 @@ class PendingSyncService {
                 pickingId: newPickingId,
                 locationId: locationId,
                 locationDestId: locationDestId,
+                companyId: pickingCompanyId,
               );
               hasProducts = true;
             }
           }
         }
 
-        // Confirm so the moves transition out of draft and surface in
-        // Odoo's backend tree view. Matches the online create flow.
         if (hasProducts) {
-          await createService.confirmPicking(newPickingId);
+          try {
+            await createService.confirmPicking(
+              newPickingId,
+              companyId: pickingCompanyId,
+            );
+          } catch (_) {
+            // Best-effort in headless sync. Picking + moves are saved;
+            // user can confirm manually from the picking detail page.
+          }
         }
 
         await _hive.clearPendingCreates(c.pickingId);

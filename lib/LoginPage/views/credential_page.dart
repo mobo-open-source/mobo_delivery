@@ -458,6 +458,32 @@ class _CredentialsPageState extends State<CredentialsPage> {
           _passwordController.text.trim(),
         );
 
+        // Best-effort fetch of the profile image so the Switch Account
+        // tile has its avatar from the moment this account is saved.
+        // Without this, the image stays empty until the user opens the
+        // dashboard (which doesn't always happen — e.g., immediate
+        // switch-account or background sign-in flows leave a blank tile).
+        String profileImage = '';
+        if (session.userId != null) {
+          try {
+            final res = await CompanySessionManager.callKwWithCompany({
+              'model': 'res.users',
+              'method': 'read',
+              'args': [
+                [session.userId],
+                ['image_1920'],
+              ],
+              'kwargs': {},
+            });
+            if (res is List && res.isNotEmpty) {
+              final raw = (res.first as Map)['image_1920'];
+              if (raw is String && raw.isNotEmpty && raw != 'false') {
+                profileImage = raw;
+              }
+            }
+          } catch (_) {}
+        }
+
         await _dashboardStorageService.saveAccount({
           'userName': session.userName,
           'userLogin': session.userLogin,
@@ -474,7 +500,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
           'url': widget.protocol + baseUrl,
           'database': widget.database!,
           'password': _passwordController.text.trim(),
-          'image': '',
+          'image': profileImage,
         });
 
         final checker = AppInstallCheck();
