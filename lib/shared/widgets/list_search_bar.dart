@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// A reusable search bar widget matching the mobo_sales quotation list style.
 ///
@@ -56,72 +56,91 @@ class _ListSearchBarState extends State<ListSearchBar> {
                 ),
               ],
             ),
-            child: TextField(
-              controller: widget.controller,
-              onChanged: (v) {
-                widget.onChanged(v);
-                setState(() {});
-              },
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? Colors.white : const Color(0xff1E1E1E),
-              ),
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                hintText: widget.hintText,
-                hintStyle: TextStyle(
-                  color: isDark ? Colors.white : Color(0xff1E1E1E),
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                ),
-                prefixIcon: GestureDetector(
-                  onTap: widget.onFilterTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedFilterHorizontal,
-                      size: 20,
-                      color: widget.hasActiveFilters
-                          ? primary
-                          : (isDark ? Colors.white : const Color(0xff1E1E1E)),
-                    ),
-                  ),
-                ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 48,
-                  minHeight: 48,
-                ),
-                suffixIcon: widget.controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          Icons.close,
-                          size: 18,
-                          color: isDark ? Colors.grey[400] : Colors.grey[500],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Black rounded-square filter button, flush to the left and
+                    // full field height (mobo color when filters are active).
+                    GestureDetector(
+                      onTap: widget.onFilterTap,
+                      child: Container(
+                        width: 52,
+                        alignment: Alignment.center,
+                        color: widget.hasActiveFilters
+                            ? primary
+                            : (isDark ? Colors.white : Colors.black),
+                        child: SvgPicture.asset(
+                          'assets/icons/filter.svg',
+                          width: 18,
+                          height: 15,
+                          colorFilter: ColorFilter.mode(
+                            (!widget.hasActiveFilters && isDark)
+                                ? Colors.black
+                                : Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
-                        onPressed: () {
-                          widget.controller.clear();
-                          widget.onChanged('');
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: widget.controller,
+                        onChanged: (v) {
+                          widget.onChanged(v);
                           setState(() {});
                         },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white : const Color(0xff1E1E1E),
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          hintText: widget.hintText,
+                          hintStyle: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xff1E1E1E),
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14,
+                          ),
+                          suffixIcon: widget.controller.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.close,
+                                    size: 18,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[500],
+                                  ),
+                                  onPressed: () {
+                                    widget.controller.clear();
+                                    widget.onChanged('');
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                          border: const OutlineInputBorder(
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: primary, width: 1.5),
-                ),
-                filled: true,
-                fillColor: Colors.transparent,
               ),
             ),
           ),

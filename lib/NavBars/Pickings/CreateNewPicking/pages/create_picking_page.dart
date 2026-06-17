@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../PickingFormPage/pages/picking_details_page.dart';
@@ -663,7 +664,7 @@ return FadeTransition(opacity: animation, child: child);
                               selectedId: _selectedOperationTypeId,
                               itemAsString: (item) => item.name,
                               prefixIcon:
-                                  HugeIcons.strokeRoundedShippingTruck01,
+                                  HugeIcons.strokeRoundedArrowDataTransferHorizontal,
                               onDropdownChanged: (value) {
                                 setState(() {
                                   _selectedOperationTypeId = value?.id;
@@ -702,11 +703,15 @@ return FadeTransition(opacity: animation, child: child);
                                   initialDate: now,
                                   firstDate: DateTime(2000),
                                   lastDate: DateTime(2100),
+                                  builder: (context, child) =>
+                                      _whitePickerTheme(context, child),
                                 );
                                 if (pickedDate != null && context.mounted) {
                                   TimeOfDay? pickedTime = await showTimePicker(
                                     context: context,
                                     initialTime: TimeOfDay.now(),
+                                    builder: (context, child) =>
+                                        _whitePickerTheme(context, child),
                                   );
                                   if (pickedTime != null) {
                                     final combined = DateTime(
@@ -863,43 +868,14 @@ return FadeTransition(opacity: animation, child: child);
                   ),
                 ),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _createPicking,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark
-                          ? Colors.white
-                          : AppStyle.primaryColor,
-                      foregroundColor: isDark
-                          ? Colors.black
-                          :Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      disabledBackgroundColor: isDark
-                          ? Colors.grey[700]!
-                          : Colors.grey[400]!,
-                    ),
-                    icon: Icon(
-                      HugeIcons.strokeRoundedNoteAdd,
-                      color: isDark ? Colors.black : Colors.white,
-                      size: 20,
-                    ),
-                    label: Text(
-                      "Create Picking",
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.black
-                            : Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                MoboButton.primary(
+                  label: "Create Picking",
+                  icon: HugeIcons.strokeRoundedNoteAdd,
+                  // Stay disabled (grey) until the required data is selected.
+                  onPressed: (_selectedPartnerId != null &&
+                          _selectedOperationTypeId != null)
+                      ? _createPicking
+                      : null,
                 ),
 
                 if (_errorMessage.isNotEmpty)
@@ -919,6 +895,30 @@ return FadeTransition(opacity: animation, child: child);
           ],
         ),
       ),
+    );
+  }
+
+  /// Forces the date/time pickers onto a clean white surface with mobo
+  /// accents instead of the seeded pink-tinted Material 3 surface.
+  Widget _whitePickerTheme(BuildContext context, Widget? child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: ColorScheme.light(
+          primary: AppStyle.primaryColor,
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black87,
+        ),
+        datePickerTheme: const DatePickerThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+        ),
+        timePickerTheme: const TimePickerThemeData(
+          backgroundColor: Colors.white,
+        ),
+        dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
+      ),
+      child: child!,
     );
   }
 

@@ -12,6 +12,7 @@ import '../../core/company/services/connectivity_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/app_theme.dart';
 import '../../shared/widgets/action_tile.dart';
+import '../../shared/widgets/buttons/mobo_button.dart';
 import '../../shared/widgets/odoo_avatar.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../services/storage_service.dart';
@@ -518,7 +519,9 @@ class _ConfigurationState extends State<Configuration> {
     return Container(
       margin: const EdgeInsets.all(16),
       width: double.infinity,
-      child: ElevatedButton.icon(
+      child: MoboButton.primary(
+        label: 'Add Account',
+        icon: HugeIcons.strokeRoundedUserAdd01,
         onPressed: () async {
           final prefs = await SharedPreferences.getInstance();
           final url = prefs.getString('url') ?? '';
@@ -537,16 +540,6 @@ class _ConfigurationState extends State<Configuration> {
             ),
           );
         },
-        icon: const Icon(HugeIcons.strokeRoundedUserAdd01, size: 18),
-        label: const Text('Add Account'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDark ? Colors.white : AppTheme.primaryColor,
-          foregroundColor: isDark ? Colors.black : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
       ),
     );
   }

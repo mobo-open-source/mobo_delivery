@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
-import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/pages/picking_details_page.dart';
@@ -68,6 +68,14 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
     return int.tryParse(raw?.toString() ?? '') ?? 0;
   }
 
+  /// True when at least one line has a return quantity > 0. The Return
+  /// button stays disabled until then.
+  bool get _hasReturnQty => moveItems.any((item) {
+        final c = item['qtyController'] as TextEditingController?;
+        final qty = double.tryParse(c?.text ?? '0') ?? 0;
+        return qty > 0;
+      });
+
   @override
   void initState() {
     super.initState();
@@ -125,7 +133,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : AppStyle.primaryColor,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           const SizedBox(height: 12),
@@ -179,9 +187,9 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                           decimal: true,
                         ),
                         onChanged: (_) {
-                          if (_inlineError != null) {
-                            setState(() => _inlineError = null);
-                          }
+                          // Rebuild so the Return button enables/disables
+                          // as soon as a quantity is entered or cleared.
+                          setState(() => _inlineError = null);
                         },
                         decoration: const InputDecoration(
                           labelText: 'Qty',
@@ -240,46 +248,15 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                 ],
               ),
             ),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              icon: _isSubmitting
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isDark ? Colors.black : Colors.white,
-                        ),
-                      ),
-                    )
-                  : const Icon(HugeIcons.strokeRoundedDeliveryReturn02),
-              label: Text(
-                _isSubmitting ? 'Creating return...' : 'Return',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.black : Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isDark ? Colors.white : AppStyle.primaryColor,
-                foregroundColor: isDark ? Colors.black : Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
-                  ),
-                ),
-              ),
-              onPressed: _isSubmitting
-                  ? null
-                  : () => _submitReturn(),
-            ),
+          MoboButton.primary(
+            label: 'Return',
+            icon: HugeIcons.strokeRoundedDeliveryReturn02,
+            borderRadius: 8,
+            isLoading: _isSubmitting,
+            loadingLabel: 'Creating return...',
+            onPressed: (_isSubmitting || !_hasReturnQty)
+                ? null
+                : () => _submitReturn(),
           ),
         ],
       ),

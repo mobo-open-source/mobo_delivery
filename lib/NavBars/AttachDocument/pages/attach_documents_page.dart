@@ -19,6 +19,7 @@ import '../../../Dashboard/services/storage_service.dart';
 import '../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../core/company/providers/company_provider.dart';
 import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
 import '../bloc/attach_documents_bloc.dart';
@@ -487,38 +488,92 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: filterTechnicalNames.keys.map((label) {
-                              final tech = filterTechnicalNames[label]!;
-                              final selected = tempFilters.contains(tech);
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (tempFilters.isNotEmpty) ...[
+                                Text(
+                                  'Active Filters',
+                                  style: TextStyle(
+                                    color: AppStyle.primaryColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: filterTechnicalNames.entries
+                                      .where((e) =>
+                                          tempFilters.contains(e.value))
+                                      .map(
+                                        (e) => _buildActiveFilterChip(
+                                          isDark,
+                                          e.key,
+                                          () => setDialogState(
+                                            () => tempFilters.remove(e.value),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                                const SizedBox(height: 18),
+                              ],
+                              Text(
+                                'Filters',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: filterTechnicalNames.keys.map((label) {
+                                  final tech = filterTechnicalNames[label]!;
+                                  final selected = tempFilters.contains(tech);
 
-                              return FilterChip(
+                                  return ChoiceChip(
                                 label: Text(
                                   label,
                                   style: TextStyle(
                                     fontSize: 13,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                     color: selected
                                         ? Colors.white
                                         : (isDark
-                                              ? Colors.white70
+                                              ? Colors.white
                                               : Colors.black87),
                                   ),
                                 ),
                                 selected: selected,
-                                selectedColor: isDark
-                                    ? Color(0xFF131313)
-                                    : AppStyle.primaryColor,
+                                selectedColor: AppStyle.primaryColor,
                                 backgroundColor: isDark
-                                    ? const Color(0xFF2A2A2A)
-                                    : Colors.white,
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : AppStyle.primaryColor
+                                        .withValues(alpha: 0.08),
+                                elevation: 0,
+                                pressElevation: 0,
+                                shadowColor: Colors.transparent,
+                                surfaceTintColor: Colors.transparent,
+                                showCheckmark: false,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.grey[600]!
+                                        : Colors.grey[300]!,
+                                  ),
                                 ),
-                                checkmarkColor: Colors.white,
                                 onSelected: (val) {
                                   setDialogState(() {
                                     if (val) {
@@ -529,64 +584,54 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                   });
                                 },
                               );
-                            }).toList(),
+                                }).toList(),
+                              ),
+                            ],
                           ),
                         ),
 
                         ListView(
-                          padding: const EdgeInsets.all(20),
-                          children: groupMap.keys.map((label) {
-                            final tech = groupMap[label]!;
-                            final isSelected = tempGroupBy == tech;
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    setDialogState(() {
-                                      tempGroupBy = tech;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    margin: const EdgeInsets.only(
-                                      bottom: 6,
-                                      left: 12,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          isSelected
-                                              ? Icons.radio_button_checked
-                                              : Icons.radio_button_unchecked,
-                                          color: isSelected
-                                              ? (isDark
-                                                    ? Colors.white
-                                                    : AppStyle.primaryColor)
-                                              : Colors.grey,
-                                          size: 22,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          label,
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.white70
-                                                : Colors.black87,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                'Group documents by',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
-                            );
-                          }).toList(),
+                              ),
+                            ),
+                            _buildGroupOption(
+                              isDark: isDark,
+                              label: 'None',
+                              subtitle: 'Display as a simple list',
+                              isSelected: tempGroupBy == null,
+                              onTap: () =>
+                                  setDialogState(() => tempGroupBy = null),
+                            ),
+                            for (final entry in groupMap.entries) ...[
+                              Divider(
+                                height: 1,
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[200],
+                              ),
+                              _buildGroupOption(
+                                isDark: isDark,
+                                label: entry.key,
+                                subtitle: 'Group by ${entry.key.toLowerCase()}',
+                                isSelected: tempGroupBy == entry.value,
+                                onTap: () => setDialogState(
+                                  () => tempGroupBy = entry.value,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -605,7 +650,9 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
+                          child: MoboButton.secondary(
+                            label: 'Clear All',
+                            borderRadius: 8,
                             onPressed: () {
                               setState(() {
                                 _selectedFilters.clear();
@@ -627,33 +674,13 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                               );
                               Navigator.pop(sheetContext);
                             },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: isDark
-                                  ? Colors.white
-                                  : Colors.black87,
-                              side: BorderSide(
-                                color: isDark
-                                    ? Colors.grey[600]!
-                                    : Colors.grey[300]!,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Clear All',
-                              style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.normal,
-                              ),
-                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
+                          child: MoboButton.primary(
+                            label: 'Apply',
+                            borderRadius: 8,
                             onPressed: () {
                               setState(() {
                                 _selectedFilters = List.from(tempFilters);
@@ -675,23 +702,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                               );
                               Navigator.pop(sheetContext);
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDark
-                                  ? Colors.white
-                                  : AppStyle.primaryColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Apply',
-                              style: TextStyle(
-                                color: isDark ? Colors.black : Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           ),
                         ),
                       ],
@@ -707,6 +717,102 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   }
 
   /// Builds grouped/collapsible view when user selects a "Group By" option.
+  /// A removable "Active Filters" pill (mobo tint + border, with an ✕).
+  Widget _buildActiveFilterChip(
+    bool isDark,
+    String label,
+    VoidCallback onRemove,
+  ) {
+    return Container(
+      padding: const EdgeInsets.only(left: 14, right: 8, top: 6, bottom: 6),
+      decoration: BoxDecoration(
+        color: AppStyle.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppStyle.primaryColor.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppStyle.primaryColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(
+              Icons.close,
+              size: 16,
+              color: AppStyle.primaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A single "Group By" radio option (title + description).
+  Widget _buildGroupOption({
+    required bool isDark,
+    required String label,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: isSelected
+                  ? (isDark ? Colors.white : AppStyle.primaryColor)
+                  : Colors.grey,
+              size: 22,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildGroupedView(AttachDocumentsState state, bool isDark) {
     return RefreshIndicator(
       onRefresh: () async {
@@ -880,33 +986,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
             },
             child: Scaffold(
               backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-              appBar: AppBar(
-                forceMaterialTransparency: true,
-                backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-                title: Text(
-                  'Attach Signed Document',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 22,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                leading: IconButton(
-                  icon: Icon(
-                    HugeIcons.strokeRoundedArrowLeft01,
-                    color: isDark ? Colors.white : Colors.black,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => Dashboard(initialIndex: 0),
-                      ),
-                    );
-                  },
-                ),
-              ),
               body: Column(
                 children: [
                   ListSearchBar(

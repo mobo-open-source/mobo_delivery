@@ -3,6 +3,7 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:odoo_delivery_app/Rating/review_service.dart';
 
 import '../shared/utils/globals.dart';
+import '../shared/widgets/buttons/mobo_button.dart';
 
 /// A customizable rating dialog that allows users to rate the app
 /// and optionally provide feedback.
@@ -179,47 +180,17 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                         ),
                         const SizedBox(height: 12),
 
-                        SizedBox(
-                          width: double.infinity,
+                        MoboButton.primary(
+                          label: '${_rating.toInt()}/5  CONTINUE',
                           height: 55,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_rating >= 4) {
-                                widget.onGoodReview(_rating, _commentController.text);
-                              } else {
-                                widget.onBadReview(_rating, _commentController.text);
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              elevation: 1,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '${_rating.toInt()}/5  ',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                Text(
-                                  'CONTINUE',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          borderRadius: 4,
+                          onPressed: () {
+                            if (_rating >= 4) {
+                              widget.onGoodReview(_rating, _commentController.text);
+                            } else {
+                              widget.onBadReview(_rating, _commentController.text);
+                            }
+                          },
                         ),
                       ],
                     ),

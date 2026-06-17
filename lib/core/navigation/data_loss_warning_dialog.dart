@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../shared/utils/globals.dart';
+import '../../shared/widgets/buttons/mobo_button.dart';
 
 /// Dialog shown when user is about to lose unsaved data.
 ///
@@ -86,61 +87,17 @@ class DataLossWarningDialog extends StatelessWidget {
               children: [
                 /// Cancel Button (Stay / Keep Editing)
                 Expanded(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[600]! : Colors.grey[300]!,
-                        ),
-                      ),
-                    ),
+                  child: MoboButton.secondary(
+                    label: cancelText,
                     onPressed: () => Navigator.pop(context, false),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        cancelText,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.grey[300]! : Colors.grey[700]!,
-                        ),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 /// Confirm Button (Leave / Discard)
                 Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                  child: MoboButton.primary(
+                    label: confirmText,
                     onPressed: () => Navigator.pop(context, true),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        confirmText,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDark ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   ),
                 ),
               ],

@@ -3,11 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/loaders/loading_indicator.dart';
-import '../../../../NavBars/AttachDocument/pages/attach_documents_page.dart';
 import '../../../../StoreToOffline/pending_sync_service.dart';
 
 import '../../../../Rating/review_service.dart';
@@ -241,59 +238,7 @@ return FadeTransition(
                 currentIndex: state.currentIndex,
                 pages: state.pages,
                 onTap: (index) {
-                  final bloc = context.read<DashboardBloc>();
-                  final page = state.pages[index];
-
-                  if (page['route'] != null) {
-                    bloc.add(ChangeTab(index));
-                  } else {
-                    final isDark =
-                        Theme.of(context).brightness == Brightness.dark;
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: isDark ? Colors.black87 : Colors.white,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
-                      isScrollControlled: true,
-                      builder: (context) {
-                        return SafeArea(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: Icon(
-                                  HugeIcons.strokeRoundedLink01,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
-                                title: Text(
-                                  'Attach Document',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: isDark
-                                        ? Colors.white
-                                        : Colors.black87,
-                                  ),
-                                ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const AttachDocumentsPage(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  }
+                  context.read<DashboardBloc>().add(ChangeTab(index));
                 },
               ),
             ),

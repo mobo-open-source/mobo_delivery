@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/utils/globals.dart';
 import '../models/stock_move.dart';
 
-/// A compact table-like widget displaying the list of products (stock moves) in a picking creation form.
+/// Product (stock move) section of the create-picking form.
 ///
-/// Shows:
-///   - Header row with columns: "Product", "Demand", "Quantity"
-///   - One row per added product with name, demanded quantity, and recorded quantity
-///   - "+ Add a line" tappable text at the bottom to open product selection dialog
-///
-/// Designed to be used inside a tab or scrollable section of the create-picking screen.
-/// Supports dark/light theme and dynamic rebuild when products are added/removed.
+/// Each added product is shown as a card — product thumbnail + name on top,
+/// then a Demand / Quantity metric row — matching the sale-order line design
+/// used in the mobo sales app. A styled "Add a line" button sits at the
+/// bottom to open the product selection dialog.
 class ProductTable extends StatelessWidget {
   /// List of stock move lines (products) currently added to the picking
   final List<StockMoveModel> moveProducts;
 
-  /// Callback invoked when user taps "+ Add a line" to select and add a new product
+  /// Callback invoked when user taps "Add a line" to select and add a product
   final VoidCallback onAddLine;
 
   const ProductTable({
@@ -28,106 +26,161 @@ class ProductTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    List<Widget> productRows = [];
-    for (var product in moveProducts) {
-      productRows.add(
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (moveProducts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 28),
+                child: Center(
+                  child: Text(
+                    'No products added yet',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white54 : Colors.grey[500],
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...moveProducts.map((product) => _buildProductCard(product, isDark)),
+            const SizedBox(height: 4),
+            _buildAddLineButton(isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A single product line rendered as a card (sale-order line style).
+  Widget _buildProductCard(StockMoveModel product, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 5,
-                child: Text(
-                  product.productName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.normal,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppStyle.primaryColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  HugeIcons.strokeRoundedPackage,
+                  color: AppStyle.primaryColor,
+                  size: 22,
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                flex: 2,
-                child: Text(
-                  product.productUomQty.toString(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.normal,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Text(
-                  product.quantity.toString(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.normal,
-                    color: isDark ? Colors.white : Colors.black,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    product.productName,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.grey[900],
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
             ],
           ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      "Product",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      "Demand",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      "Quantity",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _metric('DEMAND', _fmtQty(product.productUomQty), isDark),
               ),
+              Expanded(
+                child: _metric('QUANTITY', _fmtQty(product.quantity), isDark),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metric(String label, String value, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.grey[500] : Colors.grey[600],
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.grey[900],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Formats a quantity without a trailing ".0" for whole numbers.
+  String _fmtQty(double value) =>
+      value.truncateToDouble() == value ? value.toStringAsFixed(0) : '$value';
+
+  Widget _buildAddLineButton(bool isDark) {
+    return GestureDetector(
+      onTap: onAddLine,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? Colors.white24
+                : AppStyle.primaryColor.withValues(alpha: 0.5),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add,
+              size: 18,
+              color: isDark ? Colors.white : AppStyle.primaryColor,
             ),
-            const Divider(),
-
-            ...productRows,
-            const SizedBox(height: 12),
-
-            GestureDetector(
-              onTap: onAddLine,
-              child: Text(
-                "+ Add a line",
-                style: TextStyle(
-                  color: isDark ? Colors.white : AppStyle.primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+            const SizedBox(width: 6),
+            Text(
+              'Add a line',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppStyle.primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
               ),
             ),
           ],

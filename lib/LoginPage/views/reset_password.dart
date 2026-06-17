@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../../../shared/widgets/loaders/loading_widget.dart';
+import '../../shared/widgets/buttons/mobo_button.dart';
 import 'package:odoo_delivery_app/LoginPage/views/webview_screen.dart';
 
 import '../services/reset_password_service.dart';
@@ -426,49 +426,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
           ),
 
           const SizedBox(height: 24),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _sendResetEmail,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.black.withOpacity(.75),
-                disabledForegroundColor: Colors.white,
-                overlayColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _isLoading
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Sending',
-                          style: GoogleFonts.manrope(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const LoadingWidget(
-                          color: Colors.white,
-                          size: 28,
-                          variant: LoadingVariant.staggeredDots,
-                        ),
-                      ],
-                    )
-                  : Text(
-                      'Send',
-                      style: GoogleFonts.manrope(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
+          MoboButton.primary(
+            label: 'Send',
+            isLoading: _isLoading,
+            loadingLabel: 'Sending',
+            onPressed: _isLoading ? null : _sendResetEmail,
           ),
         ],
       ),
@@ -517,27 +479,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
 
   /// Builds the "Back to Login" button shown after success.
   Widget _buildBackToLoginButton() {
-    return SizedBox(
-      height: 48,
-      child: ElevatedButton(
-        onPressed: () => Navigator.of(context).pop(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.black.withOpacity(.75),
-          disabledForegroundColor: Colors.white,
-          overlayColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          'Back to Login',
-          style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ),
+    return MoboButton.primary(
+      label: 'Back to Login',
+      onPressed: () => Navigator.of(context).pop(),
     );
   }
 }

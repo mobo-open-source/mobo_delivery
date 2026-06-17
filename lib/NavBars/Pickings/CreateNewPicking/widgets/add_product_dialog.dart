@@ -1,6 +1,7 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../models/product.dart';
 
 /// Dialog for adding a new product line (stock move) to a picking creation form.
@@ -225,37 +226,20 @@ class _AddProductDialogState extends State<AddProductDialog> {
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(
+              child: MoboButton.secondary(
+                label: "CANCEL",
+                borderRadius: 8,
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white : Colors.black87,
-                  side: BorderSide(
-                    color: isDark ? Colors.white : Color(0xFFBB2649),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    "CANCEL",
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : AppStyle.primaryColor,
-                    ),
-                  ),
-                ),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: ElevatedButton.icon(
+              child: MoboButton.primary(
+                label: 'Add',
+                icon: Icons.add,
+                borderRadius: 8,
                 onPressed: () {
                   final enteredQty =
                       double.tryParse(qtyController.text.trim()) ?? 0.0;
@@ -276,31 +260,6 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     Navigator.of(context).pop();
                   }
                 },
-                icon: Icon(
-                  Icons.add,
-                  color: isDark ? Colors.black : Colors.white,
-                ),
-                label: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'Add',
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.black : Colors.white,
-                    ),
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? Colors.white
-                      : AppStyle.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
               ),
             ),
           ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import '../utils/globals.dart';
+import 'buttons/mobo_button.dart';
 
 /// Defines the type of error to display the appropriate Lottie animation and colors.
 enum ErrorType { network, server, general }
@@ -86,42 +86,20 @@ class ErrorStateWidget extends StatelessWidget {
               alignment: WrapAlignment.center,
               children: [
                 if (onRetry != null)
-                  OutlinedButton.icon(
+                  MoboButton.secondary(
+                    label: 'Retry',
+                    icon: Icons.refresh,
+                    fullWidth: false,
+                    borderRadius: 10,
                     onPressed: onRetry,
-                    icon: const Icon(Icons.refresh, size: 20),
-                    label: const Text('Retry'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
-                      side: BorderSide(
-                        color: isDark 
-                            ? Colors.grey[600]! 
-                            : AppStyle.primaryColor.withOpacity(0.4),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
                   ),
                 if (onContactSupport != null)
-                  ElevatedButton.icon(
+                  MoboButton.primary(
+                    label: 'Contact Support',
+                    icon: Icons.support_agent,
+                    fullWidth: false,
+                    borderRadius: 10,
                     onPressed: onContactSupport,
-                    icon: const Icon(Icons.support_agent, size: 20),
-                    label: const Text('Contact Support'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      backgroundColor: AppStyle.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
                   ),
               ],
             ),

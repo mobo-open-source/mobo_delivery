@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import '../utils/globals.dart';
+import 'buttons/mobo_button.dart';
 
 /// A generic placeholder widget displayed when a list or view has no data.
 /// Uses Lottie animations for a premium feel.
@@ -76,21 +76,11 @@ class EmptyState extends StatelessWidget {
               ],
               if (actionLabel != null && onAction != null) ...[
                 const SizedBox(height: 24),
-                OutlinedButton(
+                MoboButton.secondary(
+                  label: actionLabel!,
+                  fullWidth: false,
+                  borderRadius: 8,
                   onPressed: onAction,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
-                    side: BorderSide(
-                      color: isDark 
-                          ? Colors.grey[600]! 
-                          : AppStyle.primaryColor.withOpacity(0.3),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(actionLabel!),
                 ),
               ],
             ],

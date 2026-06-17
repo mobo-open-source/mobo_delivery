@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/globals.dart';
+import '../../shared/widgets/buttons/mobo_button.dart';
 import '../services/app_install_check.dart';
 import '../services/common_storage_service.dart';
 
@@ -273,34 +274,17 @@ class _TotpPageState extends State<TotpPage> {
           ),
         ),
         actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyle.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/login',
-                  (route) => false,
-                );
-              },
-              child: Text(
-                'Back to Login',
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ),
+          MoboButton.primary(
+            label: 'Back to Login',
+            borderRadius: 14,
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',
+                (route) => false,
+              );
+            },
           ),
         ],
       ),
@@ -346,29 +330,12 @@ class _TotpPageState extends State<TotpPage> {
           ),
         ),
         actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyle.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'Back to Login',
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ),
+          MoboButton.primary(
+            label: 'Back to Login',
+            borderRadius: 14,
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
           ),
         ],
       ),
@@ -956,45 +923,11 @@ class _TotpPageState extends State<TotpPage> {
 
           const SizedBox(height: 20),
 
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: (_verifying || !_isButtonEnabled) ? null : _submitTotp,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _verifying
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Authenticating',
-                          style: GoogleFonts.manrope(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const LoadingWidget(
-                          color: Colors.white,
-                          size: 28,
-                          variant: LoadingVariant.staggeredDots,
-                        ),
-                      ],
-                    )
-                  : Text(
-                      'Authenticate',
-                      style: GoogleFonts.manrope(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
+          MoboButton.primary(
+            label: 'Authenticate',
+            isLoading: _verifying,
+            loadingLabel: 'Authenticating',
+            onPressed: (_verifying || !_isButtonEnabled) ? null : _submitTotp,
           ),
         ],
       ),

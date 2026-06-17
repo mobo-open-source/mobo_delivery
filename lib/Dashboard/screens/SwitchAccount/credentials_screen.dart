@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import '../../../shared/widgets/loaders/loading_widget.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/SwitchAccount/server_url_screen.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
 import 'package:provider/provider.dart';
@@ -411,27 +411,10 @@ return FadeTransition(opacity: animation, child: child);
           ),
         ),
         actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyle.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Back to Add Account',
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ),
+          MoboButton.primary(
+            label: 'Back to Add Account',
+            borderRadius: 14,
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ],
       ),
@@ -478,27 +461,10 @@ return FadeTransition(opacity: animation, child: child);
           ),
         ),
         actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyle.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'OK',
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ),
+          MoboButton.primary(
+            label: 'OK',
+            borderRadius: 14,
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ],
       ),
@@ -549,29 +515,12 @@ return FadeTransition(opacity: animation, child: child);
           ),
         ),
         actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppStyle.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'Back to Add Account',
-                style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                ),
-              ),
-            ),
+          MoboButton.primary(
+            label: 'Back to Add Account',
+            borderRadius: 14,
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
           ),
         ],
       ),
@@ -789,47 +738,12 @@ return FadeTransition(opacity: animation, child: child);
                           ),
                         ),
                       const SizedBox(height: 30),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _addAccount,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isLoading
-                              ? Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Adding',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const LoadingWidget(
-                                      color: Colors.white,
-                                      size: 28,
-                                      variant: LoadingVariant.staggeredDots,
-                                    ),
-                                  ],
-                                )
-                              : const Text(
-                                  'Add Account',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
+                      MoboButton.primary(
+                        label: 'Add Account',
+                        borderRadius: 8,
+                        isLoading: _isLoading,
+                        loadingLabel: 'Adding',
+                        onPressed: _isLoading ? null : _addAccount,
                       ),
                       const SizedBox(height: 16),
                     ],

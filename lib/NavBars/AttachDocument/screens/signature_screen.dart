@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signature/signature.dart';
 import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../constants/constants.dart';
 
@@ -151,19 +152,9 @@ class _SignatureScreenState extends State<SignatureScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            ElevatedButton(
+            MoboButton.primary(
+              label: 'Done',
               onPressed: _saveSignature,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isDark ? Colors.white : AppStyle.primaryColor,
-                foregroundColor: Colors.white,
-              ),
-              child: Text(
-                'Done',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.black : Colors.white,
-                ),
-              ),
             ),
           ],
         ),

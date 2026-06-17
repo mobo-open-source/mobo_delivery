@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../buttons/mobo_button.dart';
+
 /// A highly customizable dialog component used throughout the app for alerts, confirmations, and simple inputs.
 class CommonDialog extends StatelessWidget {
   final String title;
@@ -46,9 +48,6 @@ class CommonDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primary = theme.primaryColor;
-
-    final primaryBg = destructivePrimary ? Colors.red[600] : primary;
-    final primaryFg = Colors.white;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -168,54 +167,23 @@ class CommonDialog extends StatelessWidget {
               children: [
                 if (secondaryLabel != null && onSecondary != null) ...[
                   Expanded(
-                    child: OutlinedButton(
+                    child: MoboButton.secondary(
+                      label: secondaryLabel!,
                       onPressed: onSecondary,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        foregroundColor: primary,
-                        side: BorderSide(color: primary, width: 1),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          secondaryLabel!,
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                 ],
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: onPrimary,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBg,
-                      foregroundColor: primaryFg,
-                      elevation: isDark ? 0 : 3,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        primaryLabel,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
+                  child: destructivePrimary
+                      ? MoboButton.danger(
+                          label: primaryLabel,
+                          onPressed: onPrimary,
+                        )
+                      : MoboButton.primary(
+                          label: primaryLabel,
+                          onPressed: onPrimary,
+                        ),
                 ),
               ],
             ),

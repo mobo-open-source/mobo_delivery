@@ -5,6 +5,7 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -563,93 +564,58 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                             ),
                         ],
                         const SizedBox(height: 30),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
-                                (_showManualDbInput && _manualDbController.text.isEmpty) ||
-                                (!_showManualDbInput && _selectedDatabase == null))
-                                ? null
-                                : () {
-                                    setState(() {
-                                      showError = true;
-                                    });
-                                    var url = _url.trim();
-                                    url = url.replaceFirst(
-                                      RegExp(r'^https?://'),
-                                      '',
+                        MoboButton.primary(
+                          label: 'Next',
+                          borderRadius: 8,
+                          isLoading: _isLoading,
+                          loadingLabel: 'Checking',
+                          onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
+                                  (_showManualDbInput && _manualDbController.text.isEmpty) ||
+                                  (!_showManualDbInput && _selectedDatabase == null))
+                              ? null
+                              : () {
+                                  setState(() {
+                                    showError = true;
+                                  });
+                                  var url = _url.trim();
+                                  url = url.replaceFirst(
+                                    RegExp(r'^https?://'),
+                                    '',
+                                  );
+                                  String finalDb = _showManualDbInput
+                                      ? _manualDbController.text.trim()
+                                      : _selectedDatabase!;
+                                  if (finalDb.isEmpty) {
+                                    setState(
+                                          () => _errorMessage =
+                                      "Database name is required",
                                     );
-                                    String finalDb = _showManualDbInput
-                                        ? _manualDbController.text.trim()
-                                        : _selectedDatabase!;
-                                    if (finalDb.isEmpty) {
-                                      setState(
-                                            () => _errorMessage =
-                                        "Database name is required",
-                                      );
-                                      return;
-                                    }
-                                    if (_urlHistory.containsKey(url)) {
-                                      final entry = _urlHistory[url]!;
+                                    return;
+                                  }
+                                  if (_urlHistory.containsKey(url)) {
+                                    final entry = _urlHistory[url]!;
 
-                                      if (!_showManualDbInput && (_selectedDatabase == null ||
-                                          _selectedDatabase!.isEmpty)) {
-                                        finalDb = entry['db'] ?? "";
-                                      }
+                                    if (!_showManualDbInput && (_selectedDatabase == null ||
+                                        _selectedDatabase!.isEmpty)) {
+                                      finalDb = entry['db'] ?? "";
                                     }
+                                  }
 
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => SwitchCredentialsScreen(
-                                          serverUrl: url,
-                                          database: finalDb,
-                                          protocol:
-                                              _workingProtocol ??
-                                              selectedProtocol,
-                                          urlInput: _url,
-                                          session: widget.session,
-                                        ),
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => SwitchCredentialsScreen(
+                                        serverUrl: url,
+                                        database: finalDb,
+                                        protocol:
+                                            _workingProtocol ??
+                                            selectedProtocol,
+                                        urlInput: _url,
+                                        session: widget.session,
                                       ),
-                                    );
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: _isLoading
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Checking',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const LoadingWidget(
-                                        color: Colors.white,
-                                        size: 28,
-                                        variant: LoadingVariant.staggeredDots,
-                                      ),
-                                    ],
-                                  )
-                                : const Text(
-                                    'Next',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
                                     ),
-                                  ),
-                          ),
+                                  );
+                                },
                         ),
                       ],
                     ),

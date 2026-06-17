@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../LoginPage/services/storage_service.dart';
 import '../../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/snackbar.dart';
 
 /// A confirmation dialog that handles user logout with loading feedback.
@@ -77,70 +78,22 @@ class _LogoutDialogState extends State<LogoutDialog> {
         Row(
           children: [
             Expanded(
-              child: ElevatedButton(
+              child: MoboButton.secondary(
+                label: "Cancel",
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white : Colors.black87,
-                  backgroundColor: isDark ? Colors.grey[800] : Colors.white,
-                  side: BorderSide(
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    "Cancel",
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : AppStyle.primaryColor,
-                    ),
-                  ),
-                ),
               ),
             ),
             const SizedBox(width: 10),
 
             Expanded(
-              child: ElevatedButton(
+              child: MoboButton.danger(
+                label: 'Log Out',
+                isLoading: isLogoutLoading,
                 onPressed: () async {
                   await _performLogout(context);
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? Colors.red[700]
-                      : Theme.of(context).colorScheme.error,
-                  foregroundColor: isDark
-                      ? Colors.white
-                      : Theme.of(context).colorScheme.onError,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  elevation: isDark ? 0 : 3,
-                ),
-                child: isLogoutLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'Log Out',
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
               ),
             ),
           ],

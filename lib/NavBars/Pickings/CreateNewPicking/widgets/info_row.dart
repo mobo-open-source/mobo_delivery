@@ -78,6 +78,12 @@ class InfoRow<T> extends StatelessWidget {
                     child: DropdownSearch<T>(
                       popupProps: PopupProps.menu(
                         showSearchBox: true,
+                        menuProps: MenuProps(
+                          backgroundColor:
+                              isDark ? Colors.grey[900] : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          elevation: 4,
+                        ),
                         searchFieldProps: TextFieldProps(
                           decoration: InputDecoration(
                             labelText: "Search",

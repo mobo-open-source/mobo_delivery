@@ -7,7 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../shared/widgets/loaders/loading_widget.dart';
+import '../../shared/widgets/buttons/mobo_button.dart';
 import '../services/network_service.dart';
 
 import 'credential_page.dart';
@@ -296,49 +296,63 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+          LayoutBuilder(
+            builder: (context, viewportConstraints) {
+              return Column(
                 children: [
-                  Image.asset(
-                    'assets/icons/delivery-icon.png',
-                    fit: BoxFit.fitWidth,
-                    height: 30,
-                    width: 30,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.delivery_dining,
-                        color: Color(0xFFC03355),
-                        size: 20,
-                      );
-                    },
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    'mobo delivery',
-                    style: const TextStyle(
-                      fontFamily: 'Yaro',
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white,
-                      fontSize: 24,
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 40, bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/icons/delivery-icon.png',
+                            fit: BoxFit.fitWidth,
+                            height: 30,
+                            width: 30,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.delivery_dining,
+                                color: Color(0xFFC03355),
+                                size: 20,
+                              );
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'mobo delivery',
+                            style: const TextStyle(
+                              fontFamily: 'Yaro',
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white,
+                              fontSize: 24,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 24.0,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: viewportConstraints.maxHeight - 180,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                         Text(
                           'Sign In',
                           style: GoogleFonts.montserrat(
@@ -375,120 +389,90 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                         ],
                         const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
+                        MoboButton.primary(
+                          label: 'Next',
                           height: 50,
-                          child: ElevatedButton(
-                            onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
-                                (_showManualDbInput && _manualDbController.text.isEmpty) ||
-                                (!_showManualDbInput && _selectedDatabase == null))
-                                ? null
-                                : () {
-                              setState(() {
-                                showError = true;
-                              });
-                              if (_errorMessage == null) {
-                                if (_formKey.currentState!
-                                    .validate()) {
-                                  var url = _urlController.text.trim();
-                                  url = url.replaceFirst(RegExp(r'^https?://'), '');
-                                  String finalDb = _showManualDbInput
-                                      ? _manualDbController.text.trim()
-                                      : _selectedDatabase ?? '';
-                                  if (finalDb.isEmpty) {
-                                    setState(
+                          isLoading: _isLoading,
+                          loadingLabel: 'Checking',
+                          onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
+                                  (_showManualDbInput && _manualDbController.text.isEmpty) ||
+                                  (!_showManualDbInput && _selectedDatabase == null))
+                              ? null
+                              : () {
+                                  setState(() {
+                                    showError = true;
+                                  });
+                                  if (_errorMessage == null) {
+                                    if (_formKey.currentState!.validate()) {
+                                      var url = _urlController.text.trim();
+                                      url = url.replaceFirst(RegExp(r'^https?://'), '');
+                                      String finalDb = _showManualDbInput
+                                          ? _manualDbController.text.trim()
+                                          : _selectedDatabase ?? '';
+                                      if (finalDb.isEmpty) {
+                                        setState(
                                           () => _errorMessage =
-                                      "Please select or enter a database",
-                                    );
-                                    return;
-                                  }
-                                  if (_urlHistory.containsKey(url)) {
-                                    final entry = _urlHistory[url]!;
+                                              "Please select or enter a database",
+                                        );
+                                        return;
+                                      }
+                                      if (_urlHistory.containsKey(url)) {
+                                        final entry = _urlHistory[url]!;
 
-                                    if (!_showManualDbInput && (_selectedDatabase == null ||
-                                        _selectedDatabase!.isEmpty)) {
-                                      finalDb = entry['db'] ?? "";
+                                        if (!_showManualDbInput && (_selectedDatabase == null ||
+                                            _selectedDatabase!.isEmpty)) {
+                                          finalDb = entry['db'] ?? "";
+                                        }
+                                      }
+                                      Navigator.push(
+                                        context,
+                                        PageRouteBuilder(
+                                          pageBuilder: (
+                                              context,
+                                              animation,
+                                              secondaryAnimation,
+                                              ) =>
+                                              CredentialsPage(
+                                                protocol: _workingProtocol ?? selectedProtocol,
+                                                url: url,
+                                                database: finalDb,
+                                              ),
+                                          transitionDuration:
+                                          const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          reverseTransitionDuration:
+                                          const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          transitionsBuilder: (
+                                              context,
+                                              animation,
+                                              secondaryAnimation,
+                                              child,
+                                              ) {
+return FadeTransition(
+                                              opacity: animation,
+                                              child: child,
+                                            );
+                                          },
+                                        ),
+                                      );
                                     }
                                   }
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (
-                                          context,
-                                          animation,
-                                          secondaryAnimation,
-                                          ) =>
-                                          CredentialsPage(
-                                            protocol: _workingProtocol ?? selectedProtocol,
-                                            url: url,
-                                            database: finalDb,
-                                          ),
-                                      transitionDuration:
-                                      const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      reverseTransitionDuration:
-                                      const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      transitionsBuilder: (
-                                          context,
-                                          animation,
-                                          secondaryAnimation,
-                                          child,
-                                          ) {
-return FadeTransition(
-                                          opacity: animation,
-                                          child: child,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _isLoading
-                                ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Checking',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                LoadingWidget(
-                                  color: Colors.white,
-                                  size: 28,
-                                  variant: LoadingVariant.staggeredDots,
-                                ),
+                                },
+                        ),
                               ],
-                            )
-                                : const Text(
-                              'Next',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+                ],
+              );
+            },
           ),
         ],
       ),

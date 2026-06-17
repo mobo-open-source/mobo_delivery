@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
 
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../providers/company_provider.dart';
 import 'mobo_checkbox.dart';
 
@@ -433,7 +434,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                     );
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
                       child: Material(
                         color: isActive
                             ? (primaryColor.withOpacity(0.1))
@@ -453,7 +454,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 8,
+                              vertical: 14,
                             ),
                             child: Row(
                               children: [
@@ -473,9 +474,10 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                 ),
                                 const SizedBox(width: 12),
                                 SizedBox(
-                                  width: 20,
-                                  height: 20,
+                                  width: 26,
+                                  height: 26,
                                   child: MoboCheckbox(
+                                    size: 26,
                                     value: isAllowed,
                                     onChanged: isLoading
                                         ? null
@@ -494,7 +496,6 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                               }
                                             });
                                           },
-                                    size: 18,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -516,7 +517,10 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: MoboButton.secondary(
+                        label: 'Reset',
+                        height: 48,
+                        borderRadius: 12,
                         onPressed: isLoading
                             ? null
                             : () {
@@ -529,71 +533,21 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                       .toSet();
                                 });
                               },
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 35),
-                          padding: const EdgeInsets.symmetric(vertical: 0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          side: BorderSide(color: primaryColor),
-                          foregroundColor: primaryColor,
-                        ),
-                        child: const Text(
-                          'Reset',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : () async {
-                          await _onConfirm();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 35),
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: isLoading
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Applying...',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const Text(
-                                'Confirm',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                      child: MoboButton.primary(
+                        label: 'Confirm',
+                        height: 48,
+                        borderRadius: 12,
+                        isLoading: isLoading,
+                        loadingLabel: 'Applying...',
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                await _onConfirm();
+                              },
                       ),
                     ),
                   ],

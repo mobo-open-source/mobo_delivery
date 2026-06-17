@@ -16,6 +16,7 @@ import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -1589,21 +1590,15 @@ return FadeTransition(opacity: animation, child: child);
             },
             child: const Text("Don't Send"),
           ),
-          ElevatedButton(
+          MoboButton.primary(
+            label: 'Send SMS',
+            fullWidth: false,
             onPressed: () async {
               Navigator.of(ctx).pop();
               await callWizardWithFallback(
                 const ['send_sms', 'action_send_sms'],
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text('Send SMS'),
           ),
         ],
       ),
@@ -1648,7 +1643,9 @@ return FadeTransition(opacity: animation, child: child);
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          MoboButton.primary(
+            label: confirmLabel,
+            fullWidth: false,
             onPressed: () async {
               Navigator.of(ctx).pop();
               setState(() => isSaving = true);
@@ -1679,14 +1676,6 @@ return FadeTransition(opacity: animation, child: child);
                 if (mounted) setState(() => isSaving = false);
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(confirmLabel),
           ),
         ],
       ),
@@ -1733,7 +1722,9 @@ return FadeTransition(opacity: animation, child: child);
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          MoboButton.primary(
+            label: 'Confirm',
+            fullWidth: false,
             onPressed: () async {
               Navigator.of(context).pop();
               setState(() => isSaving = true);
@@ -1765,12 +1756,6 @@ return FadeTransition(opacity: animation, child: child);
                 if (mounted) setState(() => isSaving = false);
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Confirm'),
           ),
         ],
       ),
@@ -1791,7 +1776,9 @@ return FadeTransition(opacity: animation, child: child);
           'Some products are not fully available. Would you like to create a backorder for the remaining quantities, or validate only what is available?',
         ),
         actions: [
-          TextButton(
+          MoboButton.danger(
+            label: 'No Backorder',
+            fullWidth: false,
             onPressed: () async {
               Navigator.of(context).pop();
               setState(() => isSaving = true);
@@ -1826,16 +1813,10 @@ return FadeTransition(opacity: animation, child: child);
                 }
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text('No Backorder'),
           ),
-          ElevatedButton(
+          MoboButton.primary(
+            label: 'Create Backorder',
+            fullWidth: false,
             onPressed: () async {
               Navigator.of(context).pop();
               setState(() => isSaving = true);
@@ -1870,14 +1851,6 @@ return FadeTransition(opacity: animation, child: child);
                 }
               }
             },
-            child: const Text('Create Backorder'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
           ),
         ],
       ),
@@ -2075,6 +2048,13 @@ return FadeTransition(opacity: animation, child: child);
                         },
                 ),
                 actions: [
+                  // Status badge (Done / Ready / …) pinned to the top right.
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: _buildStatusIndicator(pickings[0].state),
+                    ),
+                  ),
                   if (!_isEditing) ...[
                     if (pickings.isNotEmpty &&
                         !['done', 'cancel'].contains(pickings[0].state)) ...[
@@ -2376,10 +2356,6 @@ return FadeTransition(opacity: animation, child: child);
                                                   : Colors.black54,
                                             ),
                                           ),
-                                          const SizedBox(height: 8),
-                                          _buildStatusIndicator(
-                                            pickings[0].state,
-                                          ),
                                         ],
                                       ),
                                     ),
@@ -2396,87 +2372,23 @@ return FadeTransition(opacity: animation, child: child);
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Expanded(
-                          child: SizedBox(
+                          child: MoboButton.primary(
+                            label: "Detailed Operations",
+                            icon: Icons.list_alt,
                             height: 70,
-                            child: ElevatedButton.icon(
-                              onPressed: _stockMoveLine,
-                              icon: const Icon(Icons.list_alt),
-                              label: Text(
-                                "Detailed Operations",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppStyle.primaryColor,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark
-                                    ? Colors.grey[850]
-                                    : Colors.white,
-                                foregroundColor: isDark
-                                    ? Colors.white
-                                    : AppStyle.primaryColor,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppStyle.primaryColor.withValues(
-                                            alpha: 0.7,
-                                          ),
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
+                            borderRadius: 10,
+                            onPressed: _stockMoveLine,
                           ),
                         ),
                         if (pickings[0].returnCount > 0) ...[
                           const SizedBox(width: 10),
                           Expanded(
-                            child: SizedBox(
+                            child: MoboButton.secondary(
+                              label: "Return (${pickings[0].returnCount})",
+                              icon: HugeIcons.strokeRoundedDeliveryReturn02,
                               height: 70,
-                              child: ElevatedButton.icon(
-                                onPressed: _returnPicking,
-                                icon: const Icon(Icons.keyboard_return),
-                                label: Text(
-                                  "Return (${pickings[0].returnCount})",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppStyle.primaryColor,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.grey[850]
-                                      : Colors.white,
-                                  foregroundColor: isDark
-                                      ? Colors.white
-                                      : AppStyle.primaryColor,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(
-                                      color: isDark
-                                          ? Colors.white
-                                          : AppStyle.primaryColor.withValues(
-                                              alpha: 0.7,
-                                            ),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              borderRadius: 10,
+                              onPressed: _returnPicking,
                             ),
                           ),
                         ],
@@ -2836,55 +2748,21 @@ return FadeTransition(opacity: animation, child: child);
                     if (_isEditing) ...[
                       if (pickings.isNotEmpty &&
                           !['done', 'cancel'].contains(pickings[0].state)) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              if (_isEditing) {
-                                final listOfUpdates = _buildHeaderUpdates();
-                                if (listOfUpdates == null) return;
-                                await _saveChanges(
-                                  listOfUpdates,
-                                  widget.picking['item'] ??
-                                      widget.picking['name'] ??
-                                      'Picking Details',
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDark
-                                  ? Colors.white
-                                  : AppStyle.primaryColor,
-                              foregroundColor: isDark
-                                  ? Colors.black
-                                  : Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              elevation: 0,
-                              shadowColor: Colors.transparent,
-                              disabledBackgroundColor: isDark
-                                  ? Colors.grey[700]!
-                                  : Colors.grey[400]!,
-                            ),
-                            icon: Icon(
-                              HugeIcons.strokeRoundedNoteAdd,
-                              color: isDark ? Colors.black : Colors.white,
-                              size: 20,
-                            ),
-                            label: Text(
-                              "Save Delivery",
-                              style: TextStyle(
-                                color: isDark ? Colors.black : Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
+                        MoboButton.primary(
+                          label: "Save Delivery",
+                          icon: HugeIcons.strokeRoundedNoteAdd,
+                          onPressed: () async {
+                            if (_isEditing) {
+                              final listOfUpdates = _buildHeaderUpdates();
+                              if (listOfUpdates == null) return;
+                              await _saveChanges(
+                                listOfUpdates,
+                                widget.picking['item'] ??
+                                    widget.picking['name'] ??
+                                    'Picking Details',
+                              );
+                            }
+                          },
                         ),
                       ],
                     ],
@@ -3173,7 +3051,10 @@ return FadeTransition(opacity: animation, child: child);
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: MoboButton.secondary(
+                    label: 'DELETE',
+                    icon: Icons.delete,
+                    borderRadius: 8,
                     onPressed: () async {
                       setStateDialog(() {
                         _isLoading = true;
@@ -3198,36 +3079,14 @@ return FadeTransition(opacity: animation, child: child);
                         _isLoading = false;
                       });
                     },
-                    icon: const Icon(Icons.delete),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'DELETE',
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppStyle.primaryColor,
-                        ),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark
-                          ? Colors.black
-                          : AppStyle.primaryColor,
-                      side: BorderSide(
-                        color: isDark ? Colors.white : Color(0xFFBB2649),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: MoboButton.primary(
+                    label: 'SAVE',
+                    icon: Icons.save,
+                    borderRadius: 10,
                     onPressed: () async {
                       final enteredQty =
                           double.tryParse(qtyController.text.trim()) ?? 0.0;
@@ -3347,33 +3206,6 @@ return FadeTransition(opacity: animation, child: child);
                         );
                       }
                     },
-                    icon: const Icon(Icons.save),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'SAVE',
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.black : Colors.white,
-                        ),
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark
-                          ? Colors.white
-                          : AppStyle.primaryColor,
-                      foregroundColor: isDark ? Colors.black : Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
                   ),
                 ),
               ],
@@ -3576,40 +3408,21 @@ return FadeTransition(opacity: animation, child: child);
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: MoboButton.secondary(
+                      label: "CANCEL",
+                      borderRadius: 8,
                       onPressed: () {
                         Navigator.pop(context);
                       },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? Colors.white : Colors.black87,
-                        side: BorderSide(
-                          color: isDark ? Colors.white : Color(0xFFBB2649),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          "CANCEL",
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : AppStyle.primaryColor,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
 
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: MoboButton.primary(
+                      label: 'Add',
+                      icon: Icons.add,
+                      borderRadius: 8,
                       onPressed: () async {
                         setState(() {
                           isCreateSaving = true;
@@ -3803,31 +3616,6 @@ return FadeTransition(opacity: animation, child: child);
                           );
                         }
                       },
-                      icon: Icon(
-                        Icons.add,
-                        color: isDark ? Colors.black : Colors.white,
-                      ),
-                      label: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'Add',
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.black : Colors.white,
-                          ),
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark
-                            ? Colors.white
-                            : AppStyle.primaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -3965,10 +3753,11 @@ return FadeTransition(opacity: animation, child: child);
                       ),
                     ),
                     const SizedBox(height: 12),
-                    OutlinedButton.icon(
+                    MoboButton.secondary(
+                      label: 'Retry',
+                      icon: Icons.refresh,
+                      fullWidth: false,
                       onPressed: _fetchData,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
                     ),
                   ],
                 ),

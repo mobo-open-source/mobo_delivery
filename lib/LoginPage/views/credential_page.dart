@@ -6,7 +6,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import '../../../shared/widgets/loaders/loading_widget.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:odoo_delivery_app/LoginPage/views/reset_password.dart';
 import 'package:odoo_delivery_app/LoginPage/views/totp_page.dart';
@@ -17,6 +16,7 @@ import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../Dashboard/services/storage_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/globals.dart';
+import '../../shared/widgets/buttons/mobo_button.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../services/app_install_check.dart';
 import '../services/storage_service.dart';
@@ -656,51 +656,63 @@ return FadeTransition(opacity: animation, child: child);
             ),
           ),
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+          LayoutBuilder(
+            builder: (context, viewportConstraints) {
+              return Column(
                 children: [
-                  Image.asset(
-                    'assets/icons/delivery-icon.png',
-                    fit: BoxFit.fitWidth,
-                    height: 30,
-                    width: 30,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.delivery_dining,
-                        color: Color(0xFFC03355),
-                        size: 20,
-                      );
-                    },
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    'mobo delivery',
-                    style: const TextStyle(
-                      fontFamily: 'Yaro',
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white,
-                      fontSize: 24,
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 40, bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/icons/delivery-icon.png',
+                            fit: BoxFit.fitWidth,
+                            height: 30,
+                            width: 30,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.delivery_dining,
+                                color: Color(0xFFC03355),
+                                size: 20,
+                              );
+                            },
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'mobo delivery',
+                            style: const TextStyle(
+                              fontFamily: 'Yaro',
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white,
+                              fontSize: 24,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 16.0,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: viewportConstraints.maxHeight - 180,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                         Text(
                           'Sign In',
                           style: GoogleFonts.montserrat(
@@ -808,53 +820,24 @@ return FadeTransition(
                           ),
                         ],
                         const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
+                        MoboButton.primary(
+                          label: 'Sign In',
                           height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                          isLoading: _isLoading,
+                          loadingLabel: 'Signing',
+                          onPressed: _isLoading ? null : _login,
+                        ),
+                              ],
                             ),
-                            child: _isLoading
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Signing',
-                                        style: GoogleFonts.manrope(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const LoadingWidget(
-                                        color: Colors.white,
-                                        size: 28,
-                                        variant: LoadingVariant.staggeredDots,
-                                      ),
-                                    ],
-                                  )
-                                : Text(
-                                    "Sign In",
-                                    style: GoogleFonts.manrope(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+                ],
+              );
+            },
           ),
         ],
       ),

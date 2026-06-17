@@ -718,9 +718,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     });
   }
 
-  /// Builds a green teardrop pin for the current/source location.
+  /// Builds a teardrop pin (mobo color) for the current/source location.
   Widget _buildLocationPin() {
-    const color = Color(0xFF2ECC71);
+    const color = AppStyle.primaryColor;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -827,9 +827,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       ),
                       const SizedBox(height: 16),
 
+                      _fieldHeading('Pickings', isDark),
                       DropdownSearch<Map<String, dynamic>>.multiSelection(
                         popupProps: PopupPropsMultiSelection.menu(
                           showSearchBox: true,
+                          menuProps: MenuProps(
+                            borderRadius: BorderRadius.circular(12),
+                            backgroundColor:
+                                isDark ? Colors.grey[900] : Colors.white,
+                            elevation: 4,
+                          ),
                           selectionWidget: (context, item, isSelected) {
                             return Checkbox(
                               value: isSelected,
@@ -910,6 +917,51 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           dropdownSearchDecoration:
                               _fieldDecoration(isDark, 'Select Pickings'),
                         ),
+                        // Show selected pickings as mobo (pink) tags instead of
+                        // the plain comma-joined default.
+                        dropdownBuilder: (context, selectedItems) {
+                          if (selectedItems.isEmpty) {
+                            return Text(
+                              'Select Pickings',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.5),
+                              ),
+                            );
+                          }
+                          return Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: selectedItems.map((item) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppStyle.primaryColor
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppStyle.primaryColor
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Text(
+                                  item['name']?.toString() ?? '',
+                                  style: const TextStyle(
+                                    color: AppStyle.primaryColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
 
                       if (shouldValidate) ...[
@@ -926,8 +978,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         ),
                       ],
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 18),
 
+                      _fieldHeading('Source Location', isDark),
                       Focus(
                         onFocusChange: (hasFocus) async {
                           if (!hasFocus) {
@@ -940,7 +993,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           controller: sourceController,
                           style: TextStyle(fontSize: 14, color: onSurface),
                           decoration: _fieldDecoration(
-                              isDark, 'Source Location'),
+                              isDark, 'Search location'),
                           onChanged: (value) async {
                             final suggestions = await mapService
                                 .fetchSuggestions(value, _apiKey,
@@ -1030,10 +1083,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           ),
                         ),
 
-                      const SizedBox(height: 12),
                       ...List.generate(_stopSearchControllers.length, (index) {
                           return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              const SizedBox(height: 18),
+                              _fieldHeading('Stop ${index + 1}', isDark),
                               Focus(
                                 onFocusChange: (hasFocus) async {
                                   if (!hasFocus) {
@@ -1051,12 +1106,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                       fontSize: 14, color: onSurface),
                                   decoration: _fieldDecoration(
                                     isDark,
-                                    _stopSearchControllers[index]
-                                            .text
-                                            .trim()
-                                            .isEmpty
-                                        ? 'Add your stop'
-                                        : 'Stop ${index + 1}',
+                                    'Add your stop',
                                   ),
                                   onChanged: (value) async {
                                     final suggestions = await mapService
@@ -1290,13 +1340,33 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     });
   }
 
+  /// Left-aligned static heading shown above an input box in the bottom sheet.
+  Widget _fieldHeading(String text, bool isDark) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 6),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Returns a consistent [InputDecoration] for text fields in the bottom sheet.
+  /// The placeholder is shown as a hint (the visible label now sits above the
+  /// box via [_fieldHeading]).
   InputDecoration _fieldDecoration(bool isDark, String label) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final surfaceVariant = Theme.of(context).colorScheme.surfaceContainerHighest;
     return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: onSurface.withValues(alpha: 0.7)),
+      hintText: label,
+      hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.5)),
       isDense: true,
       filled: true,
       fillColor: isDark ? surfaceVariant : Colors.grey[50],

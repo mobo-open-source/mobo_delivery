@@ -1,5 +1,6 @@
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/widgets/snackbar.dart';
+import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../../shared/widgets/odoo_avatar.dart';
 import '../../../../shared/widgets/forms/custom_dropdown_field.dart';
@@ -676,19 +677,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               ),
             ),
             actions: [
-              TextButton(
+              MoboButton.secondary(
+                label: 'Cancel',
+                fullWidth: false,
+                borderRadius: 8,
                 onPressed: () {
                   Navigator.pop(ctx);
                   streetCtrl.dispose(); street2Ctrl.dispose(); cityCtrl.dispose(); zipCtrl.dispose();
                 },
-                style: TextButton.styleFrom(
-                  foregroundColor: isDark ? Colors.grey[400] : Colors.grey[700],
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w500)),
               ),
-              ElevatedButton(
+              MoboButton.primary(
+                label: 'Save',
+                fullWidth: false,
+                borderRadius: 8,
                 onPressed: () async {
                   if (streetCtrl.text.trim().isEmpty) {
                     CustomSnackbar.showError(ctx, 'Street address is required');
@@ -727,12 +728,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     }
                   }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.primaryColor, foregroundColor: Colors.white, elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w500)),
               ),
             ],
           );
@@ -942,7 +937,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                         const SizedBox(height: 12),
                         const Text('Failed to load profile'),
                         const SizedBox(height: 12),
-                        OutlinedButton(onPressed: _fetchUserProfile, child: const Text('Retry')),
+                        MoboButton.secondary(label: 'Retry', fullWidth: false, onPressed: _fetchUserProfile),
                       ]),
                     ),
                   )

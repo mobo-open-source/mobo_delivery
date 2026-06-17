@@ -7,6 +7,7 @@ import '../../../../NavBars/MapBox/pages/route_visualization_page.dart';
 
 import '../../../../NavBars/Pickings/PickingListPage/pages/pickings_grouped_page.dart';
 import '../../../../NavBars/ReturnManagement/pages/return_management_page.dart';
+import '../../../../NavBars/AttachDocument/pages/attach_documents_page.dart';
 import '../../../../StoreToOffline/attachment_and_notes.dart';
 import '../../../../StoreToOffline/picking_form.dart';
 import '../../../../StoreToOffline/picking_list.dart';
@@ -110,10 +111,10 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         },
 
         {
-          'title': 'Others',
-          'label': 'Others',
-          'icon': HugeIcons.strokeRoundedMore,
-          'route': null,
+          'title': 'Attach Documents',
+          'label': 'Documents',
+          'icon': HugeIcons.strokeRoundedDocumentAttachment,
+          'route': const AttachDocumentsPage(),
         },
       ],
     ));
