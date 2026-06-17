@@ -122,11 +122,9 @@ class MoboButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool enabled = onPressed != null && !isLoading;
 
-    // Resolved disabled colors (grey).
     final Color disabledBg = isDark ? Colors.grey[700]! : Colors.grey[300]!;
     final Color disabledFg = isDark ? Colors.white54 : Colors.grey[600]!;
 
-    // Resolved enabled colors per variant.
     late final Color enabledBg;
     late final Color enabledFg;
     late final Color enabledBorder;
@@ -151,9 +149,6 @@ class MoboButton extends StatelessWidget {
 
     final bool isSecondary = variant == MoboButtonVariant.secondary;
 
-    // Effective colors: computed at build time since `enabled` is known.
-    // The secondary variant keeps a transparent fill when disabled (it is an
-    // outlined button) and shows a grey border instead.
     final Color bg = enabled
         ? enabledBg
         : (isSecondary ? Colors.transparent : disabledBg);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/pages/picking_details_page.dart';
-import 'package:provider/provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../services/odoo_picking_form_service.dart';
 
@@ -104,9 +103,6 @@ class _ReturnListPageState extends State<ReturnListPage> {
         _returnDataList = fresh;
       });
     } catch (_) {
-      // Silent: keep the existing (possibly stale) data and let the user
-      // pull-to-refresh again if needed. We don't have a snackbar wired
-      // into this page and the rows still work for navigation.
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
     }

@@ -83,10 +83,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     odooService = serviceFactory(url, session);
     await _initializeOfflineClients();
 
-    // Render the dashboard immediately — name/email/picture populate
-    // asynchronously below. Previously this awaited `_loadUserProfile`,
-    // so any hang in the user-profile RPC (e.g., a slow Odoo response or
-    // a session-refresh deadlock) would leave the splash stuck forever.
     emit(state.copyWith(
       isLoading: false,
       currentIndex: event.initialIndex,
@@ -215,10 +211,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     await storageService.saveAccount(accountWithImage);
 
-    // One-shot retry: if we're online but the live fetch didn't succeed
-    // (raced with session refresh, transient network, etc.) AND the user's
-    // name still isn't on screen, try again after a short delay so the
-    // avatar / display name catch up automatically.
     if (isOnline && !liveFetchSucceeded && !_didProfileAutoRetry) {
       final stillEmpty = (userDetails?['name'] == null ||
           userDetails!['name'].toString().trim().isEmpty);

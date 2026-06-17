@@ -4,7 +4,6 @@ import 'package:hive_ce/hive.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:odoo_delivery_app/shared/utils/memory_page_manager.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';

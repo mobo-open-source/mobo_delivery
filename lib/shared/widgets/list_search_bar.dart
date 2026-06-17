@@ -62,8 +62,6 @@ class _ListSearchBarState extends State<ListSearchBar> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Black rounded-square filter button, flush to the left and
-                    // full field height (mobo color when filters are active).
                     GestureDetector(
                       onTap: widget.onFilterTap,
                       child: Container(

@@ -46,6 +46,12 @@ class AppTheme {
       secondary: secondaryColor,
     ),
     scaffoldBackgroundColor: Colors.grey[50],
+    // Disable Material 3's primary-colored surface tint so bottom sheets and
+    // dialogs don't get a pink shade in the background.
+    bottomSheetTheme: const BottomSheetThemeData(
+      surfaceTintColor: Colors.transparent,
+    ),
+    dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,
@@ -78,6 +84,10 @@ class AppTheme {
       secondary: secondaryColor,
     ),
     scaffoldBackgroundColor: const Color(0xFF181A20),
+    bottomSheetTheme: const BottomSheetThemeData(
+      surfaceTintColor: Colors.transparent,
+    ),
+    dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,

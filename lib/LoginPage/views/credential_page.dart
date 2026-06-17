@@ -9,15 +9,15 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:odoo_delivery_app/LoginPage/views/reset_password.dart';
 import 'package:odoo_delivery_app/LoginPage/views/totp_page.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../Dashboard/services/storage_service.dart';
 import '../../core/company/session/company_session_manager.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../../shared/utils/globals.dart';
-import '../../shared/widgets/buttons/mobo_button.dart';
 import '../../shared/widgets/snackbar.dart';
+import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
 import '../services/storage_service.dart';
 
@@ -458,11 +458,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
           _passwordController.text.trim(),
         );
 
-        // Best-effort fetch of the profile image so the Switch Account
-        // tile has its avatar from the moment this account is saved.
-        // Without this, the image stays empty until the user opens the
-        // dashboard (which doesn't always happen — e.g., immediate
-        // switch-account or background sign-in flows leave a blank tile).
         String profileImage = '';
         if (session.userId != null) {
           try {
@@ -820,11 +815,26 @@ return FadeTransition(
                           ),
                         ],
                         const SizedBox(height: 20),
-                        MoboButton.primary(
-                          label: 'Sign In',
-                          height: 50,
+                        LoginButton(
+                          text: 'Sign In',
                           isLoading: _isLoading,
-                          loadingLabel: 'Signing',
+                          loadingWidget: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Signing In',
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              LoadingAnimationWidget.staggeredDotsWave(
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ],
+                          ),
                           onPressed: _isLoading ? null : _login,
                         ),
                               ],

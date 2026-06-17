@@ -270,7 +270,6 @@ class OdooPickingFormService {
         );
         return partnerItems.map((item) => Partner.fromJson(item)).toList();
       }
-      // Online returned nothing — fall back to cache.
       return await _hiveService.getPartners();
     } catch (e) {
       debugPrint('loadPartners error: $e');
@@ -569,15 +568,12 @@ class OdooPickingFormService {
       'kwargs': {},
     });
 
-    // Wizard responses are act_window actions; pass them through so the
-    // UI can route to the matching dialog (backorder / sms / scrap / etc.).
     if (validate is Map &&
         (validate['type'] == 'ir.actions.act_window' ||
             validate['type'] == 'ir.actions.client')) {
       return validate;
     }
 
-    // Odoo returns True / None on a clean validate; treat both as success.
     return validate == null || validate == true || validate is! Map;
   }
 

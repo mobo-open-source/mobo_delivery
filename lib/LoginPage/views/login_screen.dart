@@ -5,9 +5,9 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../shared/widgets/buttons/mobo_button.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
+import '../widgets/login_button.dart';
 import '../services/network_service.dart';
 
 import 'credential_page.dart';
@@ -389,11 +389,26 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                         ],
                         const SizedBox(height: 24),
-                        MoboButton.primary(
-                          label: 'Next',
-                          height: 50,
+                        LoginButton(
+                          text: 'Next',
                           isLoading: _isLoading,
-                          loadingLabel: 'Checking',
+                          loadingWidget: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Checking',
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              LoadingAnimationWidget.staggeredDotsWave(
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ],
+                          ),
                           onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
                                   (_showManualDbInput && _manualDbController.text.isEmpty) ||
                                   (!_showManualDbInput && _selectedDatabase == null))

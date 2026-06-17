@@ -26,8 +26,7 @@ class StockMoveLineListPage extends StatelessWidget {
   ///   - 'quantity_product_uom' → double (done quantity in product's UoM)
   final List<Map<String, dynamic>> pickingStockLine;
 
-  const StockMoveLineListPage({Key? key, required this.pickingStockLine})
-    : super(key: key);
+  const StockMoveLineListPage({super.key, required this.pickingStockLine});
 
   /// Extracts display name from Odoo many2one field format [id, name].
   ///
@@ -87,133 +86,156 @@ class StockMoveLineListPage extends StatelessWidget {
                 ],
               ),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: pickingStockLine.length,
-              itemBuilder: (context, index) =>
-                  _buildMoveLineCard(pickingStockLine[index], isDark),
-            ),
+          : _buildTable(context, isDark),
     );
   }
 
-  /// A single move line rendered as an order-line-style card.
-  Widget _buildMoveLineCard(Map<String, dynamic> item, bool isDark) {
-    final product = getName(item['product_id']);
-    final location = getName(item['location_id']);
-    final lot = getName(item['lot_id']);
-    final qty = item['quantity_product_uom']?.toString() ?? 'N/A';
+  Widget _buildTable(BuildContext context, bool isDark) {
+    final verticalController = ScrollController();
+    final horizontalController = ScrollController();
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    return Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppStyle.primaryColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  HugeIcons.strokeRoundedPackage,
-                  color: AppStyle.primaryColor,
-                  size: 22,
-                ),
+      child: Scrollbar(
+        controller: verticalController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: verticalController,
+          scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            controller: horizontalController,
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: borderColor, width: 1),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    product,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.grey[900],
-                      height: 1.3,
+              clipBehavior: Clip.antiAlias,
+              child: Table(
+                border: TableBorder(
+                  horizontalInside: BorderSide(color: borderColor, width: 1),
+                ),
+                columnWidths: const {
+                  0: FixedColumnWidth(200),
+                  1: FixedColumnWidth(150),
+                  2: FixedColumnWidth(160),
+                  3: FixedColumnWidth(120),
+                },
+                children: [
+                  TableRow(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF3A3A3A)
+                          : const Color(0xFFF8F9FA),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    children: [
+                      _headerCell('Product', isDark),
+                      _headerCell('Pick From', isDark),
+                      _headerCell('Lot/Serial', isDark),
+                      _headerCell('Quantity', isDark),
+                    ],
                   ),
-                ),
+                  ...pickingStockLine.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    final lot = getName(item['lot_id']);
+                    final qty =
+                        item['quantity_product_uom']?.toString() ?? 'N/A';
+                    return TableRow(
+                      children: [
+                        _cell(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 22,
+                                child: Text('${index + 1}.',
+                                    style: _rowStyle(isDark)),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  getName(item['product_id']),
+                                  style: _rowStyle(isDark),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _cell(
+                          child: Text(getName(item['location_id']),
+                              style: _rowStyle(isDark)),
+                        ),
+                        _cell(
+                          child: Text(lot == 'N/A' ? '—' : lot,
+                              style: _rowStyle(isDark)),
+                        ),
+                        _cell(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppStyle.primaryColor,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                qty == 'N/A' ? '—' : qty,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 3,
-                child: _metric('PICK FROM', location, isDark),
-              ),
-              Expanded(
-                flex: 3,
-                child: _metric(
-                  'LOT/SERIAL',
-                  lot == 'N/A' ? '—' : lot,
-                  isDark,
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: _metric(
-                  'QUANTITY',
-                  qty == 'N/A' ? '—' : qty,
-                  isDark,
-                  alignEnd: true,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _metric(
-    String label,
-    String value,
-    bool isDark, {
-    bool alignEnd = false,
-  }) {
-    return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
+  TableCell _headerCell(String text, bool isDark) {
+    return TableCell(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          text,
           style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: isDark ? Colors.grey[500] : Colors.grey[600],
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          textAlign: alignEnd ? TextAlign.end : TextAlign.start,
-          style: TextStyle(
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : Colors.grey[900],
+            color: isDark ? Colors.white : Colors.grey[800],
           ),
         ),
-      ],
+      ),
     );
   }
+
+  TableCell _cell({required Widget child}) {
+    return TableCell(
+      verticalAlignment: TableCellVerticalAlignment.middle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: child,
+      ),
+    );
+  }
+
+  TextStyle _rowStyle(bool isDark) => TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: isDark ? Colors.grey[300] : Colors.grey[700],
+      );
 }

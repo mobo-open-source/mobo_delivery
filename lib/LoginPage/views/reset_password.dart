@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../../shared/widgets/buttons/mobo_button.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
+import '../widgets/login_button.dart';
 import 'package:odoo_delivery_app/LoginPage/views/webview_screen.dart';
 
 import '../services/reset_password_service.dart';
@@ -426,10 +427,26 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
           ),
 
           const SizedBox(height: 24),
-          MoboButton.primary(
-            label: 'Send',
+          LoginButton(
+            text: 'Send',
             isLoading: _isLoading,
-            loadingLabel: 'Sending',
+            loadingWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Sending',
+                  style: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                LoadingAnimationWidget.staggeredDotsWave(
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ],
+            ),
             onPressed: _isLoading ? null : _sendResetEmail,
           ),
         ],
@@ -479,8 +496,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
 
   /// Builds the "Back to Login" button shown after success.
   Widget _buildBackToLoginButton() {
-    return MoboButton.primary(
-      label: 'Back to Login',
+    return LoginButton(
+      text: 'Back to Login',
       onPressed: () => Navigator.of(context).pop(),
     );
   }

@@ -917,8 +917,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           dropdownSearchDecoration:
                               _fieldDecoration(isDark, 'Select Pickings'),
                         ),
-                        // Show selected pickings as mobo (pink) tags instead of
-                        // the plain comma-joined default.
                         dropdownBuilder: (context, selectedItems) {
                           if (selectedItems.isEmpty) {
                             return Text(

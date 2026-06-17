@@ -97,9 +97,13 @@ class ReturnManagementBloc
     Emitter<ReturnManagementState> emit,
   ) async {
     try {
-      emit(
-        state.copyWith(isFetchingMore: true),
-      );
+      // First page / pull-to-refresh → shimmer skeletons (full reload).
+      // Subsequent pages → keep the list and show the inline loader.
+      if (event.currentPage == 0) {
+        emit(state.copyWith(isLoading: true));
+      } else {
+        emit(state.copyWith(isFetchingMore: true));
+      }
 
       final count = await odooService.StockCount(
         searchText: event.searchText,

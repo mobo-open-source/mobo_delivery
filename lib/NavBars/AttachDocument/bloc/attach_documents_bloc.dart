@@ -3,6 +3,7 @@ import '../../../Rating/review_service.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
 import 'attach_documents_event.dart';
 import 'attach_documents_state.dart';
+import '../models/pending_attachment.dart';
 import '../services/odoo_attach_service.dart';
 
 /// BLoC responsible for managing the state of the document attachment screen.
@@ -148,32 +149,39 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
     searchQuery = event.searchQuery;
 
     try {
-      emit(
-      AttachDocumentsLoaded(
-        pickings: state is AttachDocumentsLoaded
-            ? (state as AttachDocumentsLoaded).pickings
-            : state is AttachDocumentsFileUploaded
-            ? (state as AttachDocumentsFileUploaded).pickings
-            : state is AttachDocumentsError
-            ? (state as AttachDocumentsError).pickings
-            : [],
-        currentPage: event.page,
-        isFetchingMore: true,
-        displayedCount: state is AttachDocumentsLoaded
-            ? (state as AttachDocumentsLoaded).displayedCount
-            : state is AttachDocumentsFileUploaded
-            ? (state as AttachDocumentsFileUploaded).displayedCount
-            : state is AttachDocumentsError
-            ? (state as AttachDocumentsError).displayedCount
-            : 0,
-        totalCount: state is AttachDocumentsLoaded
-            ? (state as AttachDocumentsLoaded).totalCount
-            : state is AttachDocumentsFileUploaded
-            ? (state as AttachDocumentsFileUploaded).totalCount
-            : state is AttachDocumentsError
-            ? (state as AttachDocumentsError).totalCount
-            : 0,
-      ));
+      // First page / pull-to-refresh → show shimmer skeletons (full reload).
+      // Subsequent pages → keep the list and show the inline footer loader.
+      if (event.page == 0) {
+        emit(AttachDocumentsLoading());
+      } else {
+        emit(
+          AttachDocumentsLoaded(
+            pickings: state is AttachDocumentsLoaded
+                ? (state as AttachDocumentsLoaded).pickings
+                : state is AttachDocumentsFileUploaded
+                ? (state as AttachDocumentsFileUploaded).pickings
+                : state is AttachDocumentsError
+                ? (state as AttachDocumentsError).pickings
+                : [],
+            currentPage: event.page,
+            isFetchingMore: true,
+            displayedCount: state is AttachDocumentsLoaded
+                ? (state as AttachDocumentsLoaded).displayedCount
+                : state is AttachDocumentsFileUploaded
+                ? (state as AttachDocumentsFileUploaded).displayedCount
+                : state is AttachDocumentsError
+                ? (state as AttachDocumentsError).displayedCount
+                : 0,
+            totalCount: state is AttachDocumentsLoaded
+                ? (state as AttachDocumentsLoaded).totalCount
+                : state is AttachDocumentsFileUploaded
+                ? (state as AttachDocumentsFileUploaded).totalCount
+                : state is AttachDocumentsError
+                ? (state as AttachDocumentsError).totalCount
+                : 0,
+          ),
+        );
+      }
 
       final totalCount = await _odooService.StockCount(
         searchText: event.searchQuery,
@@ -287,6 +295,28 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
         : currentState is AttachDocumentsError
         ? currentState.currentPage
         : 0;
+
+    final online = await _odooService.checkNetworkConnectivity();
+    if (!online) {
+      await HiveService().savePendingAttachment(
+        PendingAttachment(
+          pickingId: event.pickingId,
+          mimeType: event.mimeType,
+          base64File: event.base64File,
+          fileName: event.fileName,
+        ),
+      );
+      emit(AttachDocumentsFileUploaded(
+        success: true,
+        message: 'Saved offline — will upload when back online',
+        pickings: pickings,
+        isFetchingMore: isFetchingMore,
+        currentPage: currentPage,
+        displayedCount: displayedCount,
+        totalCount: totalCount,
+      ));
+      return;
+    }
 
     try {
       await _odooService.uploadFileToChatter(

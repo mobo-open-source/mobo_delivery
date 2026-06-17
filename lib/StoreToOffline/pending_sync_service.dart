@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../NavBars/AttachDocument/services/odoo_attach_service.dart';
 import '../NavBars/Pickings/CreateNewPicking/services/odoo_create_picking_service.dart';
 import '../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../NavBars/Pickings/PickingFormPage/services/odoo_picking_form_service.dart';
@@ -34,6 +36,25 @@ class PendingSyncService {
   final HiveService _hive = HiveService();
   final OdooPickingFormService _formService = OdooPickingFormService();
 
+  final ValueNotifier<int> pendingCount = ValueNotifier<int>(0);
+
+  Future<int> countPending() async {
+    await _hive.initialize();
+    final results = await Future.wait([
+      _hive.getPendingCreates(),
+      _hive.getPendingUpdates(),
+      _hive.getPendingProductUpdates(),
+      _hive.getPendingValidations(),
+      _hive.getPendingCancellations(),
+      _hive.getPendingAttachments(),
+    ]);
+    return results.fold<int>(0, (sum, list) => sum + list.length);
+  }
+
+  Future<void> refreshCount() async {
+    pendingCount.value = await countPending();
+  }
+
   Future<OdooCreatePickingService> _createServiceWithUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final url = prefs.getString('url') ?? '';
@@ -50,6 +71,8 @@ class PendingSyncService {
     _serverSub = ConnectivityService.instance.onServerChanged.listen((up) {
       if (up) syncAll();
     });
+    HiveService.onPendingQueueChanged = refreshCount;
+    refreshCount();
   }
 
   Future<void> stop() async {
@@ -72,10 +95,12 @@ class PendingSyncService {
       succeeded += await _drainProductUpdates(onFail: () => failed++);
       succeeded += await _drainValidations(onFail: () => failed++);
       succeeded += await _drainCancellations(onFail: () => failed++);
+      succeeded += await _drainAttachments(onFail: () => failed++);
 
       return SyncResult(succeeded: succeeded, failed: failed);
     } finally {
       _running = false;
+      await refreshCount();
     }
   }
 
@@ -103,10 +128,8 @@ class PendingSyncService {
           note: data['note']?.toString(),
         );
 
-        // Replay any product moves that were queued with the picking.
-        // Read the picking's actual company so the moves are stamped
-        // with the same company — otherwise multi-company record rules
-        // hide them from the picking view.
+        await _hive.remapPendingAttachmentsPickingId(c.pickingId, newPickingId);
+
         final products = data['products'];
         bool hasProducts = false;
         final pickingCompanyId =
@@ -154,8 +177,6 @@ class PendingSyncService {
               companyId: pickingCompanyId,
             );
           } catch (_) {
-            // Best-effort in headless sync. Picking + moves are saved;
-            // user can confirm manually from the picking detail page.
           }
         }
 
@@ -239,16 +260,11 @@ class PendingSyncService {
                   : (p.pickingName ?? 'Product');
           final uomId =
               _asInt(move['product_uom']) ?? _asInt(move['uom_id']) ?? 1;
-          // Fetch picking state so addProductToLine can confirm the new
-          // move when the picking is already past draft. Without this the
-          // synced move would stay orphaned in 'draft' and silently break
-          // subsequent validate / mark-as-todo on that picking.
           String? pickingState;
           try {
             final loaded = await _formService.loadPickings(p.pickingId);
             if (loaded.isNotEmpty) pickingState = loaded.first.state;
           } catch (_) {
-            // Best-effort; default to skipping the post-create confirm.
           }
           await _formService.addProductToLine(
             p.pickingId,
@@ -289,10 +305,6 @@ class PendingSyncService {
       try {
         final result = await _formService.validatePicking(v.pickingId);
         if (_isWizardAction(result)) {
-          // Wizard popped on the server (e.g. backorder confirmation).
-          // We can't drive it from background sync — keep the entry
-          // pending and surface it as "failed/retry" so the user sees
-          // it and can finish from the picking detail page.
           onFail();
         } else if (result == true) {
           await _hive.clearPendingValidation(v.pickingId);
@@ -316,8 +328,6 @@ class PendingSyncService {
       try {
         final result = await _formService.cancelPicking(c.pickingId);
         if (_isWizardAction(result)) {
-          // Same handling as validation: wizard requires UI, leave
-          // queued and let the user finish it manually.
           onFail();
         } else if (result == true) {
           await _hive.clearPendingCancellation(c.pickingId);
@@ -325,6 +335,29 @@ class PendingSyncService {
         } else {
           onFail();
         }
+      } catch (_) {
+        onFail();
+      }
+    }
+    return ok;
+  }
+
+  Future<int> _drainAttachments({required void Function() onFail}) async {
+    final map = await _hive.getPendingAttachmentsMap();
+    if (map.isEmpty) return 0;
+    final service = OdooAttachService();
+    int ok = 0;
+    for (final entry in map.entries) {
+      final att = entry.value;
+      try {
+        await service.uploadFileToChatter(
+          att.mimeType,
+          att.base64File,
+          att.pickingId,
+          att.fileName,
+        );
+        await _hive.clearPendingAttachmentByKey(entry.key);
+        ok++;
       } catch (_) {
         onFail();
       }

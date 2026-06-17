@@ -7,13 +7,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/globals.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../../shared/widgets/buttons/mobo_button.dart';
+import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
 import '../services/common_storage_service.dart';
 
@@ -621,8 +622,6 @@ class _TotpPageState extends State<TotpPage> {
           return;
         }
         final session = await CompanySessionManager.getCurrentSession();
-        // Best-effort profile image fetch so the new account's avatar
-        // is populated in Switch Account from the start.
         String profileImage = '';
         if (session?.userId != null) {
           try {
@@ -923,10 +922,26 @@ class _TotpPageState extends State<TotpPage> {
 
           const SizedBox(height: 20),
 
-          MoboButton.primary(
-            label: 'Authenticate',
+          LoginButton(
+            text: 'Authenticate',
             isLoading: _verifying,
-            loadingLabel: 'Authenticating',
+            loadingWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Authenticating',
+                  style: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                LoadingAnimationWidget.staggeredDotsWave(
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ],
+            ),
             onPressed: (_verifying || !_isButtonEnabled) ? null : _submitTotp,
           ),
         ],

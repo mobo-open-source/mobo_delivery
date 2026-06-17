@@ -221,9 +221,6 @@ class CompanyProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    // Auto-retry once if the list is still empty after the first attempt.
-    // Covers transient failures at app start: session refresh racing with
-    // other early RPCs, DNS not warmed up, brief connectivity blip, etc.
     if (_companies.isEmpty && !_didAutoRetry) {
       _didAutoRetry = true;
       Timer(const Duration(seconds: 3), () {

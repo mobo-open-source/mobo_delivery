@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../LoginPage/models/session_model.dart';
 import '../../LoginPage/services/storage_service.dart';
@@ -702,15 +700,12 @@ return FadeTransition(opacity: animation, child: child);
       return;
     }
 
-    // Snapshot the current session for rollback if re-auth fails.
     final prevSession = await CompanySessionManager.getCurrentSession();
     final prefs = await SharedPreferences.getInstance();
     final prevUrl = prefs.getString('url');
     final prevDatabase =
         prefs.getString('selectedDatabase') ?? prefs.getString('database');
 
-    // Apply the new account's prefs so loginAndSaveSession uses the right
-    // URL/database. If re-auth fails we roll these back from the snapshot.
     try {
       await storageService.saveSession(
         SessionModel(
@@ -744,10 +739,6 @@ return FadeTransition(opacity: animation, child: child);
       return;
     }
 
-    // Try the actual sign-in for the target account. If it fails for ANY
-    // reason — bad password, timeout, connectivity — we restore the
-    // previous prefs and stay on the configuration page so the user is
-    // never left on a broken dashboard with destroyed offline data.
     bool reauthOk = false;
     String? reauthReason;
     try {
@@ -780,8 +771,6 @@ return FadeTransition(opacity: animation, child: child);
       return;
     }
 
-    // Re-auth succeeded — safe to wipe the old user's offline cache and
-    // jump to the dashboard for the new account.
     await HiveService().clearAllData();
 
     if (!mounted) return;
@@ -812,8 +801,6 @@ return FadeTransition(opacity: animation, child: child);
       }
       await CompanySessionManager.clearSessionCache();
     } catch (_) {
-      // Best-effort rollback; the next RPC will trigger a session refresh
-      // via the stored credentials anyway.
     }
   }
 

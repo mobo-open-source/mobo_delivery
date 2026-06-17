@@ -106,10 +106,6 @@ class PickingForm {
   /// Handles type safety and fallbacks for missing/invalid fields.
   /// Uses safe casting with defaults where possible.
   factory PickingForm.fromJson(Map<String, dynamic> json) {
-    // Odoo returns Many2one fields as [id, display_name]. The service used to
-    // expect a flat `location_id_int` key that doesn't exist in Odoo's response,
-    // which left `locationIdInt` always null and forced an extra round-trip
-    // (`getPickingLocations`) every time the user added a product.
     int? extractId(dynamic raw) {
       if (raw is List && raw.isNotEmpty && raw.first is int) {
         return raw.first as int;

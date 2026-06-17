@@ -63,8 +63,6 @@ class StockMove {
   /// Handles safe parsing with fallbacks for missing/invalid fields.
   /// Converts numeric fields to double safely.
   factory StockMove.fromJson(Map<String, dynamic> json) {
-    // product_uom is a Many2one returned as [id, name]; extract the int id.
-    // Falls back to reading the legacy product_uom_id key (used by toJson/Hive).
     int? extractUomId(dynamic raw) {
       if (raw is List && raw.isNotEmpty && raw.first is int) return raw.first as int;
       if (raw is int) return raw;

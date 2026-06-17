@@ -6,7 +6,6 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/SwitchAccount/server_url_screen.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../LoginPage/models/session_model.dart';
@@ -208,8 +207,6 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
         return;
       }
 
-      // Best-effort fetch of the profile image so the new account's
-      // avatar shows in Switch Account from the start.
       String profileImage = '';
       if (session?.userId != null) {
         try {

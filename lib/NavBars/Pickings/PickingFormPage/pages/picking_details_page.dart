@@ -10,7 +10,6 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:provider/provider.dart';
 import '../../../../shared/widgets/loaders/shimmer_skeleton.dart' as sk;
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
@@ -36,8 +35,6 @@ import '../models/stock_move.dart';
 import '../services/odoo_picking_form_service.dart';
 import '../widgets/info_row.dart';
 import 'stock_move_line_list_page.dart';
-import 'return_list_page.dart';
-import 'package:intl/intl.dart';
 import '../../../ReturnManagement/services/odoo_return_service.dart';
 import '../../../ReturnManagement/widgets/picking_bottom_sheet.dart';
 
@@ -262,12 +259,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     final pickingId = int.parse(widget.picking['id'].toString());
     debugPrint('[PickingDetail] Reload START id=$pickingId');
 
-    // Run picking header and moves in parallel.
     final results = await Future.wait<dynamic>([
       odooPickingFormService.loadPickings(pickingId),
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
         debugPrint('[PickingDetail] Reload moves FAILED id=$pickingId: $e\n$st');
-        return moveProducts; // keep whatever is already displayed
+        return moveProducts;
       }),
     ]);
 
@@ -285,8 +281,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       return;
     }
 
-    // Only fetch partner details if the image hasn't been loaded yet.
-    // A state change (validate/cancel/etc.) never changes the partner.
     if (_cachedImage == null) {
       final partnerId = freshPickings[0].partnerId?.isNotEmpty == true
           ? freshPickings[0].partnerId![0]
@@ -336,9 +330,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         ? pickings[0].partnerId![0]
         : null;
 
-    // Load moves and partner details concurrently, but handle moves failure
-    // separately so a bad field / RPC error is shown to the user rather than
-    // silently leaving the product table empty.
     final results = await Future.wait<dynamic>([
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
         debugPrint('[PickingDetail] loadProductMoves FAILED id=$pickingId: $e\n$st');
@@ -350,7 +341,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           );
           CustomSnackbar.showError(context, msg);
         }
-        // Preserve whatever came from the Hive cache (set by _loadOfflineData).
         return moveProducts;
       }),
       partnerIdForDetails != null
@@ -423,8 +413,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         'opTypes=${freshOpTypes.length}',
       );
       setState(() {
-        // Only overwrite cached data if the fresh fetch actually returned results.
-        // A silent RPC failure returns [] and must not wipe the Hive-loaded cache.
         if (freshProducts.isNotEmpty) products = freshProducts;
         if (freshPartners.isNotEmpty) partnerList = freshPartners;
         if (freshUsers.isNotEmpty) userList = freshUsers;
@@ -432,7 +420,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       });
     } catch (e) {
       debugPrint('[EditDropdowns] load failed: $e');
-      // Dropdowns fall back to cached / empty values; edit mode still works.
     }
   }
 
@@ -448,7 +435,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     try {
       final pickingId = int.parse(widget.picking['id'].toString());
 
-      // Load global master data first so dropdown caches are immediately populated
       final productsData = await _hiveService.getProducts();
       final partnersData = await _hiveService.getPartners();
       final usersData = await _hiveService.getUsers();
@@ -565,7 +551,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       return 'Your session has expired. Please log in again.';
     }
 
-    // 1. Modern Odoo nests the human-readable message inside `arguments`.
     final argsMatch = RegExp(
       r'"arguments":\s*\[\s*"((?:[^"\\]|\\.)*)"',
     ).firstMatch(raw);
@@ -574,7 +559,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (unescaped.trim().isNotEmpty) return unescaped;
     }
 
-    // 2. JSON "message" key — allow escaped quotes and newlines.
     final msgMatch = RegExp(
       r'"message":\s*"((?:[^"\\]|\\.)*)"',
     ).firstMatch(raw);
@@ -583,7 +567,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (unescaped.trim().isNotEmpty) return unescaped;
     }
 
-    // 3. Plain "OdooException: UserError: ..." style.
     final errorMarkers = [
       'UserError',
       'ValidationError',
@@ -602,7 +585,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       }
     }
 
-    // 4. Legacy `data.message` pattern.
     final dataMatch = RegExp(
       r'data\.message["\s:]+([^"}\n]+)',
     ).firstMatch(raw);
@@ -626,7 +608,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   /// Validates the picking (online → immediate, offline → queue)
   /// Prevents validation if empty or no quantities reserved
   Future<void> _validatePicking() async {
-    // 1. Minimum check: picking must have moves
     if (moveProducts.isEmpty) {
       CustomSnackbar.showWarning(
         context,
@@ -635,9 +616,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       return;
     }
 
-    // 2. We removed the strict hasZeroQuantity check here.
-    // If quantities are zero, Odoo will return an "Immediate Transfer" or "Backorder" wizard.
-    // This allows the user to follow the standard Odoo workflow.
 
     final odooPickingFormService = OdooPickingFormService();
     await odooPickingFormService.initializeOdooClient();
@@ -674,10 +652,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           }
         }
       } else {
-        // Offline case
         try {
           final pickingData = pickings.firstWhere((p) => p.id == pickingId);
-          // We don't set to 'draft', we keep current state but queue for sync
           await _hiveService.savePendingValidation(
             pickingId,
             pickingData.toJson(),
@@ -1086,27 +1062,206 @@ return FadeTransition(opacity: animation, child: child);
 
     if (!mounted) return;
 
-    final sourcePickingId = int.parse(widget.picking['id'].toString());
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => ReturnListPage(
-          returnDataList: returnDataList,
-          odooService: odooPickingFormService,
-          sourcePickingId: sourcePickingId,
+    _showReturnsDialog(returnDataList, odooPickingFormService);
+  }
+
+  void _showReturnsDialog(
+    List<Map<String, dynamic>> returns,
+    OdooPickingFormService service,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 12, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Return Pickings',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        splashRadius: 20,
+                        icon: Icon(
+                          Icons.close,
+                          color: isDark ? Colors.white : Colors.black54,
+                        ),
+                        onPressed: () => Navigator.pop(dialogCtx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: returns.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32),
+                            child: Center(
+                              child: Text(
+                                'No Return Pickings Found',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? Colors.white54
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.only(right: 8),
+                            itemCount: returns.length,
+                            itemBuilder: (_, i) => _buildReturnDialogCard(
+                              returns[i],
+                              isDark,
+                              dialogCtx,
+                              service,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReturnDialogCard(
+    Map<String, dynamic> data,
+    bool isDark,
+    BuildContext dialogCtx,
+    OdooPickingFormService service,
+  ) {
+    final state = (data['state'] ?? '').toString();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
         ),
-        transitionDuration: const Duration(milliseconds: 300),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
-        },
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.pop(dialogCtx);
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, _) => PickingDetailsPage(
+                  picking: {
+                    ...data,
+                    'item': data['name'] ?? 'Return Picking',
+                  },
+                  odooService: service,
+                  isPickingForm: false,
+                  isReturnCreate: false,
+                  isReturnPicking: true,
+                ),
+                transitionsBuilder: (context, animation, _, child) =>
+                    FadeTransition(opacity: animation, child: child),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        cleanOdooValue(data['name']),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : AppStyle.primaryColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildStatusIndicator(state),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildReturnKv('Partner:', cleanOdooValue(data['partner_id']),
+                    isDark),
+                const SizedBox(height: 4),
+                _buildReturnKv(
+                  'Scheduled:',
+                  cleanOdooValue(data['scheduled_date']),
+                  isDark,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  /// Clears edit-mode selection caches after a save so a subsequent edit
-  /// session starts from the freshly reloaded picking instead of reusing
-  /// stale per-session selections.
+  Widget _buildReturnKv(String label, String value, bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.grey[500] : Colors.grey[500],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.grey[300] : Colors.grey[700],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   void _resetEditSelections() {
     selectedPartnerId = null;
     _selectedUserId = null;
@@ -1126,9 +1281,6 @@ return FadeTransition(opacity: animation, child: child);
     _noteController.text =
         (p.note ?? '').replaceAll(RegExp(r'<[^>]*>'), '');
   }
-
-  PickingForm? get _currentPicking =>
-      pickings.isEmpty ? null : pickings[0];
 
   Map<String, dynamic>? _buildHeaderUpdates() {
     if (pickings.isEmpty) return null;
@@ -1472,10 +1624,6 @@ return FadeTransition(opacity: animation, child: child);
         );
         return;
       default:
-        // Unknown / custom-module wizard. Best effort: call `process` (the
-        // Odoo convention for "OK" on most stock wizards) when the user
-        // accepts. If a module needs a different method the user can still
-        // open the wizard in the Odoo web UI.
         await _showGenericConfirmDialog(
           pickingId: pickingId,
           wizardModel: resModel,
@@ -1534,8 +1682,6 @@ return FadeTransition(opacity: animation, child: child);
             lastError = null;
             break;
           } catch (e) {
-            // Most likely "AttributeError: method not found" on this Odoo
-            // version. Try the next candidate before surfacing the error.
             final raw = e.toString();
             final looksLikeMissingMethod =
                 raw.contains('AttributeError') ||
@@ -1705,8 +1851,6 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Future<void> _showImmediateTransferDialog(int pickingId, success) async {
-    // Odoo already created the wizard record and returned its ID in res_id.
-    // We must call process() on that specific record, not on picking IDs.
     final int? wizardId = success['res_id'] is int ? success['res_id'] as int : null;
 
     await showDialog(
@@ -1763,8 +1907,6 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Future<void> _showBackorderDialog(int pickingId, success) async {
-    // Odoo already created the wizard record and returned its ID in res_id.
-    // Both "No Backorder" and "Create Backorder" must call methods on that record.
     final int? wizardId = success['res_id'] is int ? success['res_id'] as int : null;
 
     await showDialog(
@@ -2048,7 +2190,6 @@ return FadeTransition(opacity: animation, child: child);
                         },
                 ),
                 actions: [
-                  // Status badge (Done / Ready / …) pinned to the top right.
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.only(right: 4),
@@ -2061,8 +2202,6 @@ return FadeTransition(opacity: animation, child: child);
                       IconButton(
                         onPressed: () async {
                           setState(() => _isEditing = true);
-                          // If dropdowns never loaded (background fetch failed),
-                          // trigger a reload now so they're available in edit mode.
                           if (partnerList.isEmpty || operationTypesList.isEmpty || userList.isEmpty || products.isEmpty) {
                             unawaited(() async {
                               final svc = OdooPickingFormService();
@@ -2170,8 +2309,6 @@ return FadeTransition(opacity: animation, child: child);
                             }
 
                             items.addAll([
-                              // Validate is only valid for confirmed/assigned states.
-                              // Draft pickings must use "Mark as Todo" first.
                               if (!['draft'].contains(pickings[0].state))
                                 PopupMenuItem(
                                   value: 'validate',
@@ -2371,27 +2508,27 @@ return FadeTransition(opacity: animation, child: child);
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Expanded(
-                          child: MoboButton.primary(
-                            label: "Detailed Operations",
-                            icon: Icons.list_alt,
-                            height: 70,
-                            borderRadius: 10,
-                            onPressed: _stockMoveLine,
-                          ),
-                        ),
                         if (pickings[0].returnCount > 0) ...[
-                          const SizedBox(width: 10),
                           Expanded(
                             child: MoboButton.secondary(
                               label: "Return (${pickings[0].returnCount})",
                               icon: HugeIcons.strokeRoundedDeliveryReturn02,
-                              height: 70,
+                              height: 52,
                               borderRadius: 10,
                               onPressed: _returnPicking,
                             ),
                           ),
+                          const SizedBox(width: 10),
                         ],
+                        Expanded(
+                          child: MoboButton.primary(
+                            label: "Detailed Operations",
+                            icon: Icons.list_alt,
+                            height: 52,
+                            borderRadius: 10,
+                            onPressed: _stockMoveLine,
+                          ),
+                        ),
                       ],
                     ),
                     SizedBox(height: 24),
@@ -2727,16 +2864,18 @@ return FadeTransition(opacity: animation, child: child);
                                       },
                                     ),
                                   ),
-                                  SizedBox(
-                                    height: 300,
-                                    child: TabBarView(
-                                      controller: tabController,
-                                      children: [
-                                        _KeepAliveTab(child: _productTable(isDark)),
-                                        _KeepAliveTab(child: _additionalInfo()),
-                                        _notesTab(),
-                                      ],
-                                    ),
+                                  AnimatedBuilder(
+                                    animation: tabController.animation!,
+                                    builder: (context, _) {
+                                      switch (tabController.index) {
+                                        case 1:
+                                          return _additionalInfo();
+                                        case 2:
+                                          return _notesTab();
+                                        default:
+                                          return _productTable(isDark);
+                                      }
+                                    },
                                   ),
                                 ],
                               );
@@ -3640,96 +3779,21 @@ return FadeTransition(opacity: animation, child: child);
 
 
   Widget _productTable(isDark) {
-    List<Widget> productRows = moveProducts.asMap().entries.map((entry) {
-      int index = entry.key;
-      StockMove product = entry.value;
-      return GestureDetector(
-        onTap: () {
-          if (pickings[0].state != 'done' && pickings[0].state != 'cancel') {
-            setState(() {
-              _errorMessage = "";
-              selectedPicking = product.productId?[0];
-              selectedPickingName = product.productId?[1];
-            });
-            final qtyController =
-                TextEditingController(text: product.quantity.toString());
-            showDialog(
-              context: context,
-              builder: (context) =>
-                  _editProductLine(context, product, index, qtyController),
-            ).whenComplete(() {
-              Future.delayed(
-                const Duration(milliseconds: 400),
-                qtyController.dispose,
-              );
-            });
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            children: [
-              Expanded(flex: 5, child: Text(product.productId?[1] ?? '')),
-              Expanded(flex: 2, child: Text(product.productUomQty.toString())),
-              Expanded(flex: 2, child: Text(product.quantity.toString())),
-            ],
-          ),
-        ),
-      );
-    }).toList();
+    final bool canEdit =
+        pickings[0].state != 'done' && pickings[0].state != 'cancel';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      "Product",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      "Demand",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      "Quantity",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(),
-            // Show a visible warning when moves are empty but the picking
-            // is in a state that normally has products (assigned / confirmed).
-            if (productRows.isEmpty &&
-                ['assigned', 'confirmed', 'waiting'].contains(pickings[0].state) &&
-                isOnlineAvailability)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
+    if (moveProducts.isEmpty) {
+      final bool showWarn = ['assigned', 'confirmed', 'waiting']
+              .contains(pickings[0].state) &&
+          isOnlineAvailability;
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showWarn)
+                Column(
                   children: [
                     Icon(Icons.warning_amber_rounded,
                         color: Colors.orange[700], size: 32),
@@ -3760,45 +3824,248 @@ return FadeTransition(opacity: animation, child: child);
                       onPressed: _fetchData,
                     ),
                   ],
-                ),
-              ),
-            ...productRows,
-            const SizedBox(height: 12),
-            if (pickings[0].state != 'done' && pickings[0].state != 'cancel')
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _errorMessage = "";
-                    selectedPicking = 0;
-                    selectedPickingName = null;
-                    selectedPickingUom = null;
-                  });
-                  final qtyController = TextEditingController(text: '1');
-                  showDialog(
-                    context: context,
-                    builder: (context) =>
-                        _addProductLine(context, qtyController),
-                  ).whenComplete(() {
-                    Future.delayed(
-                      const Duration(milliseconds: 400),
-                      qtyController.dispose,
-                    );
-                  });
-                },
-                child: Text(
-                  "+ Add a line",
-                  style: TextStyle(
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No products added yet',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white54 : Colors.grey[500],
+                      ),
+                    ),
                   ),
                 ),
+              const SizedBox(height: 16),
+              if (canEdit) _addLineButton(isDark),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: borderColor, width: 1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Table(
+                      border: TableBorder(
+                        horizontalInside:
+                            BorderSide(color: borderColor, width: 1),
+                      ),
+                      columnWidths: const {
+                        0: FixedColumnWidth(200),
+                        1: FixedColumnWidth(120),
+                        2: FixedColumnWidth(130),
+                      },
+                      children: [
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF3A3A3A)
+                                : const Color(0xFFF8F9FA),
+                          ),
+                          children: [
+                            _moveHeaderCell('Product', isDark),
+                            _moveHeaderCell('Demand', isDark),
+                            _moveHeaderCell('Quantity', isDark),
+                          ],
+                        ),
+                        ...moveProducts.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final product = entry.value;
+                          final name = product.productId?[1]?.toString() ?? '';
+                          final VoidCallback? tap =
+                              canEdit ? () => _openEditLine(product, index) : null;
+                          return TableRow(
+                            children: [
+                              _moveCell(
+                                onTap: tap,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      width: 22,
+                                      child: Text('${index + 1}.',
+                                          style: _moveRowStyle(isDark)),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: _moveRowStyle(isDark),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              _moveCell(
+                                onTap: tap,
+                                child: Text(
+                                  _fmtMoveQty(product.productUomQty),
+                                  style: _moveRowStyle(isDark),
+                                ),
+                              ),
+                              _moveCell(
+                                onTap: tap,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppStyle.primaryColor,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      _fmtMoveQty(product.quantity),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+          const SizedBox(height: 12),
+          if (canEdit) _addLineButton(isDark),
+        ],
+      ),
+    );
+  }
+
+  void _openEditLine(StockMove product, int index) {
+    setState(() {
+      _errorMessage = "";
+      selectedPicking = product.productId?[0];
+      selectedPickingName = product.productId?[1];
+    });
+    final qtyController =
+        TextEditingController(text: product.quantity.toString());
+    showDialog(
+      context: context,
+      builder: (context) =>
+          _editProductLine(context, product, index, qtyController),
+    ).whenComplete(() {
+      Future.delayed(const Duration(milliseconds: 400), qtyController.dispose);
+    });
+  }
+
+  Widget _addLineButton(bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _errorMessage = "";
+          selectedPicking = 0;
+          selectedPickingName = null;
+          selectedPickingUom = null;
+        });
+        final qtyController = TextEditingController(text: '1');
+        showDialog(
+          context: context,
+          builder: (context) => _addProductLine(context, qtyController),
+        ).whenComplete(() {
+          Future.delayed(
+            const Duration(milliseconds: 400),
+            qtyController.dispose,
+          );
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? Colors.white24
+                : AppStyle.primaryColor.withValues(alpha: 0.5),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add,
+              size: 18,
+              color: isDark ? Colors.white : AppStyle.primaryColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Add a line',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppStyle.primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
               ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  TableCell _moveHeaderCell(String text, bool isDark) {
+    return TableCell(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.grey[800],
+          ),
+        ),
+      ),
+    );
+  }
+
+  TableCell _moveCell({required Widget child, VoidCallback? onTap}) {
+    return TableCell(
+      verticalAlignment: TableCellVerticalAlignment.middle,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  TextStyle _moveRowStyle(bool isDark) => TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: isDark ? Colors.grey[300] : Colors.grey[700],
+      );
+
+  String _fmtMoveQty(num value) =>
+      value == value.truncate() ? value.toInt().toString() : '$value';
 
   Widget _additionalInfo() {
     final picking = pickings[0];
@@ -4001,7 +4268,8 @@ return FadeTransition(opacity: animation, child: child);
         ),
       );
     } else {
-      return _KeepAliveTab(
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 28),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -4026,36 +4294,12 @@ return FadeTransition(opacity: animation, child: child);
       );
     }
 
-    return _KeepAliveTab(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [body],
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [body],
       ),
     );
-  }
-}
-
-class _KeepAliveTab extends StatefulWidget {
-  final Widget child;
-  const _KeepAliveTab({required this.child});
-
-  @override
-  State<_KeepAliveTab> createState() => _KeepAliveTabState();
-}
-
-class _KeepAliveTabState extends State<_KeepAliveTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
   }
 }

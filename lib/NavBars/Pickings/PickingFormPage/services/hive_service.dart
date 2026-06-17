@@ -1,4 +1,5 @@
 import 'package:hive_ce/hive.dart';
+import '../../../AttachDocument/models/pending_attachment.dart';
 import '../../CreateNewPicking/models/Hive/pending_creates.dart';
 import '../models/operation_type.dart';
 import '../models/partner.dart';
@@ -34,15 +35,13 @@ class HiveService {
   static const String _pendingUpdatesBox = 'pending_updates';
   static const String _pendingCreatesBox = 'pending_creates';
   static const String _productUpdatesBox = 'product_updates';
+  static const String _pendingAttachmentsBox = 'pending_attachments';
   static const String _operationTypeBoxName = 'operation_type_box';
   static const String _partnerDetailsBoxName = 'partner_details_box';
   late Box<int> _totalCountBox;
 
-  /// Registers all necessary Hive adapters and opens all required boxes.
-  ///
-  /// Must be called early (usually in main() or app init phase).
-  /// Safe to call multiple times — checks if adapter is already registered.
-  /// Opens boxes lazily only when needed, but pre-opens most here for simplicity.
+  static void Function()? onPendingQueueChanged;
+
   Future<void> initialize() async {
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(PickingFormAdapter());
     if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(ProductAdapter());
@@ -55,6 +54,7 @@ class HiveService {
     if (!Hive.isAdapterRegistered(9)) Hive.registerAdapter(ProductUpdatesAdapter());
     if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(OperationTypeAdapter());
     if (!Hive.isAdapterRegistered(12)) Hive.registerAdapter(PartnerDetailsAdapter());
+    if (!Hive.isAdapterRegistered(11)) Hive.registerAdapter(PendingAttachmentAdapter());
 
     await Hive.openBox<PickingForm>(_pickingBoxName);
     await Hive.openBox<PickingForm>(_pickingReturnBoxName);
@@ -67,6 +67,7 @@ class HiveService {
     await Hive.openBox<PendingUpdates>(_pendingUpdatesBox);
     await Hive.openBox<PendingCreates>(_pendingCreatesBox);
     await Hive.openBox<ProductUpdates>(_productUpdatesBox);
+    await Hive.openBox<PendingAttachment>(_pendingAttachmentsBox);
     await Hive.openBox<OperationType>(_operationTypeBoxName);
     await Hive.openBox<PartnerDetails>(_partnerDetailsBoxName);
 
@@ -88,6 +89,7 @@ class HiveService {
       pickingData: pickingData,
     );
     await box.put('pending_$pickingId', pendingValidation);
+    onPendingQueueChanged?.call();
   }
 
   Future<List<PendingValidation>> getPendingValidations() async {
@@ -113,6 +115,7 @@ class HiveService {
     final box = Hive.box<PendingValidation>(_pendingCancellationsBox);
     final pendingCancellation = PendingValidation(pickingId: pickingId, pickingData: pickingData);
     await box.put('pending_cancellation_$pickingId', pendingCancellation);
+    onPendingQueueChanged?.call();
   }
 
   Future<List<PendingValidation>> getPendingCancellations() async {
@@ -140,6 +143,7 @@ class HiveService {
       pickingData: pickingData,
     );
     await box.put('pending_updates_$pickingId', pendingUpdates);
+    onPendingQueueChanged?.call();
   }
 
   Future<List<PendingUpdates>> getPendingUpdates() async {
@@ -186,6 +190,7 @@ class HiveService {
     );
 
     await box.put('pending_creates_$localId', pendingCreates);
+    onPendingQueueChanged?.call();
   }
 
   Future<List<PendingCreates>> getPendingCreates() async {
@@ -217,6 +222,58 @@ class HiveService {
     );
 
     await box.put('product_updates$localId', productUpdates);
+    onPendingQueueChanged?.call();
+  }
+
+  Future<void> savePendingAttachment(PendingAttachment attachment) async {
+    if (!Hive.isBoxOpen(_pendingAttachmentsBox)) {
+      await Hive.openBox<PendingAttachment>(_pendingAttachmentsBox);
+    }
+    final box = Hive.box<PendingAttachment>(_pendingAttachmentsBox);
+    await box.put('att_${DateTime.now().microsecondsSinceEpoch}', attachment);
+    onPendingQueueChanged?.call();
+  }
+
+  Future<List<PendingAttachment>> getPendingAttachments() async {
+    if (!Hive.isBoxOpen(_pendingAttachmentsBox)) {
+      await Hive.openBox<PendingAttachment>(_pendingAttachmentsBox);
+    }
+    return Hive.box<PendingAttachment>(_pendingAttachmentsBox).values.toList();
+  }
+
+  Future<Map<dynamic, PendingAttachment>> getPendingAttachmentsMap() async {
+    if (!Hive.isBoxOpen(_pendingAttachmentsBox)) {
+      await Hive.openBox<PendingAttachment>(_pendingAttachmentsBox);
+    }
+    return Hive.box<PendingAttachment>(_pendingAttachmentsBox).toMap();
+  }
+
+  Future<void> clearPendingAttachmentByKey(dynamic key) async {
+    final box = Hive.box<PendingAttachment>(_pendingAttachmentsBox);
+    await box.delete(key);
+    onPendingQueueChanged?.call();
+  }
+
+  Future<void> remapPendingAttachmentsPickingId(int oldId, int newId) async {
+    if (!Hive.isBoxOpen(_pendingAttachmentsBox)) {
+      await Hive.openBox<PendingAttachment>(_pendingAttachmentsBox);
+    }
+    final box = Hive.box<PendingAttachment>(_pendingAttachmentsBox);
+    for (final key in box.keys.toList()) {
+      final att = box.get(key);
+      if (att != null && att.pickingId == oldId) {
+        await box.put(
+          key,
+          PendingAttachment(
+            pickingId: newId,
+            mimeType: att.mimeType,
+            base64File: att.base64File,
+            fileName: att.fileName,
+            pickingName: att.pickingName,
+          ),
+        );
+      }
+    }
   }
 
   Future<List<ProductUpdates>> getPendingProductUpdates() async {
@@ -374,6 +431,7 @@ class HiveService {
     await Hive.box<PendingUpdates>(_pendingUpdatesBox).clear();
     await Hive.box<PendingCreates>(_pendingCreatesBox).clear();
     await Hive.box<ProductUpdates>(_productUpdatesBox).clear();
+    await Hive.box<PendingAttachment>(_pendingAttachmentsBox).clear();
     await Hive.box<OperationType>(_operationTypeBoxName).clear();
     await Hive.box<PartnerDetails>(_partnerDetailsBoxName).clear();
   }

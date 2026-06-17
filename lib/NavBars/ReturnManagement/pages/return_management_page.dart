@@ -548,7 +548,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         );
       },
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         itemCount: state.groupedPickings.length,
         itemBuilder: (context, index) {
           final groupNameRaw = state.groupedPickings.keys.elementAt(index);
@@ -970,10 +970,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           return Scaffold(
             backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
             body: BlocListener<ReturnManagementBloc, ReturnManagementState>(
-              // Transient errors (search failure, action failure, refresh
-              // failure while a list is already on screen) surface as a
-              // snackbar instead of replacing the whole page with the error
-              // widget — the user keeps the data they had.
               listenWhen: (prev, curr) =>
                   prev.error != curr.error &&
                   curr.error != null &&
@@ -987,9 +983,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                       ? state.filteredPickings
                       : state.pickings;
 
-                  // Page-level error widget only when we have NOTHING to show.
-                  // If pickings are already loaded, a follow-up error is a
-                  // transient one handled by the listener above.
                   final showFullPageError =
                       state.error != null && state.pickings.isEmpty;
 
@@ -1040,8 +1033,11 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                     );
                                   },
                                   child: ListView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      16,
                                     ),
                                     physics:
                                         const AlwaysScrollableScrollPhysics(),
@@ -1083,7 +1079,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     final hasPagination = state.totalCount > 0;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

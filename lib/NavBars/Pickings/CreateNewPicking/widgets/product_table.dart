@@ -28,29 +28,27 @@ class ProductTable extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (moveProducts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 28),
-                child: Center(
-                  child: Text(
-                    'No products added yet',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? Colors.white54 : Colors.grey[500],
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (moveProducts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              child: Center(
+                child: Text(
+                  'No products added yet',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white54 : Colors.grey[500],
                   ),
                 ),
-              )
-            else
-              ...moveProducts.map((product) => _buildProductCard(product, isDark)),
-            const SizedBox(height: 4),
-            _buildAddLineButton(isDark),
-          ],
-        ),
+              ),
+            )
+          else
+            ...moveProducts.map((product) => _buildProductCard(product, isDark)),
+          const SizedBox(height: 4),
+          _buildAddLineButton(isDark),
+        ],
       ),
     );
   }

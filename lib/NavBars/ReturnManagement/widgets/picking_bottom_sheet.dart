@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:provider/provider.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -187,8 +186,6 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                           decimal: true,
                         ),
                         onChanged: (_) {
-                          // Rebuild so the Return button enables/disables
-                          // as soon as a quantity is entered or cleared.
                           setState(() => _inlineError = null);
                         },
                         decoration: const InputDecoration(

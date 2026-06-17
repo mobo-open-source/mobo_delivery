@@ -849,8 +849,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             },
           ),
 
-          // Hide the filter-indicator + pagination arrows on the empty /
-          // "No Pickings Found" screen — there is nothing to page through.
           if (!isLoading && !catchError && filteredLocations.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -882,46 +880,56 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[800] : Colors.grey[100],
+                            color: isDark ? Colors.white10 : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                              width: 1,
+                              color:
+                                  isDark ? Colors.white24 : Colors.grey.shade300,
                             ),
                           ),
                           child: Text(
                             rangeText,
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              fontSize: 14,
+                              fontWeight: FontWeight.normal,
                             ),
                           ),
                         ),
-                        // Only show an arrow when it can actually be used.
-                        // A single page of results (no previous, no next)
-                        // shows no arrows at all, instead of two greyed-out
-                        // ones the user can't tap.
-                        if (currentPage > 0 || hasNext)
-                          const SizedBox(width: 8),
-
-                        if (currentPage > 0)
-                          _buildPaginationArrow(
-                            icon: HugeIcons.strokeRoundedArrowLeft01,
-                            onPressed: () => _loadPrevPage(firstLoc!),
-                            isDark: isDark,
-                            enabled: true,
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            HugeIcons.strokeRoundedArrowLeft01,
+                            size: 25,
+                            color: currentPage > 0
+                                ? (isDark ? Colors.white70 : Colors.black87)
+                                : (isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey.withValues(alpha: 0.7)),
                           ),
-
-                        if (hasNext)
-                          _buildPaginationArrow(
-                            icon: HugeIcons.strokeRoundedArrowRight01,
-                            onPressed: () => _loadNextPage(firstLoc!),
-                            isDark: isDark,
-                            enabled: true,
+                          onPressed: currentPage > 0
+                              ? () => _loadPrevPage(firstLoc!)
+                              : null,
+                        ),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            HugeIcons.strokeRoundedArrowRight01,
+                            size: 25,
+                            color: hasNext
+                                ? (isDark ? Colors.white70 : Colors.black87)
+                                : (isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey.withValues(alpha: 0.7)),
                           ),
+                          onPressed:
+                              hasNext ? () => _loadNextPage(firstLoc!) : null,
+                        ),
                       ],
                     );
                   }),
@@ -1180,7 +1188,7 @@ return FadeTransition(opacity: animation, child: child);
         : cleanOdooValue(rawScheduled);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1336,10 +1344,10 @@ return FadeTransition(opacity: animation, child: child);
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
         label,
@@ -1347,32 +1355,6 @@ return FadeTransition(opacity: animation, child: child);
           color: textColor,
           fontSize: 12,
           fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  /// Helper to build consistent pagination arrows (Matching mobo_sales style)
-  Widget _buildPaginationArrow({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    required bool isDark,
-    required bool enabled,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2.0),
-      child: InkWell(
-        onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(8.0),
-          child: HugeIcon(
-            icon: icon,
-            size: 20,
-            color: enabled
-                ? (isDark ? Colors.white : Colors.black87)
-                : (isDark ? Colors.grey[600]! : Colors.grey[400]!),
-          ),
         ),
       ),
     );

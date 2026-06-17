@@ -3,13 +3,11 @@ import 'package:shimmer/shimmer.dart';
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
-import '../../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../PickingFormPage/pages/picking_details_page.dart';
 import '../../PickingFormPage/services/hive_service.dart';
@@ -96,7 +94,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
   /// Shows an error if critical dropdowns (partner + operation type) couldn't be populated at all.
   Future<void> _initializeData() async {
     try {
-      // 1. Always load offline data first as a robust baseline
       await _loadOfflineData();
 
       final initResults = await Future.wait([
@@ -140,7 +137,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
         });
       }
 
-      // If the two required dropdowns are still empty after all fallbacks, surface an error.
       if (mounted && partnerList.isEmpty && operationTypes.isEmpty) {
         setState(() {
           _errorMessage =
@@ -168,50 +164,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
     }
   }
 
-  /// Fills only the lists that are currently empty from the Hive cache.
-  /// Called after an online load where individual RPC calls silently returned [].
-  Future<void> _loadOfflineDataForEmpty() async {
-    try {
-      if (products.isEmpty) {
-        final productsData = await _hiveService.getProducts();
-        products = productsData
-            .map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id))
-            .toList();
-      }
-      if (partnerList.isEmpty) {
-        final partnersData = await _hiveService.getPartners();
-        partnerList = partnersData
-            .map((p) => PartnerModel(id: p.id, name: p.name))
-            .toList();
-      }
-      if (users.isEmpty) {
-        final usersData = await _hiveService.getUsers();
-        users = usersData
-            .map((u) => UserModel(id: u.id, name: u.name))
-            .toList();
-      }
-      if (operationTypes.isEmpty) {
-        final operationsData = await _hiveService.getOperationTypes();
-        operationTypes = operationsData
-            .map(
-              (o) => OperationTypeModel(
-                id: o.id,
-                name: o.name,
-                defaultLocationSrcId: o.defaultLocationSrcId,
-                defaultLocationDestId: o.defaultLocationDestId,
-              ),
-            )
-            .toList();
-      }
-    } catch (e) {
-      debugPrint("Error loading offline fallback data: $e");
-    }
-  }
-
-  /// Loads cached dropdown data from Hive when offline.
-  ///
-  /// Maps Hive models to UI models.
-  /// Sets error message if any load fails.
   Future<void> _loadOfflineData() async {
     try {
       final productsData = await _hiveService.getProducts();
@@ -355,12 +307,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           throw Exception("Invalid locations");
         }
 
-        // Read the picking's company once so we stamp every subsequent
-        // move (and the confirm RPC) with the same company. Without
-        // this, in multi-company setups Odoo silently saves the moves
-        // under the user's primary company — they exist in the DB but
-        // record rules hide them from the picking, which surfaces as
-        // "products didn't get added".
         final pickingCompanyId =
             await odooService.getPickingCompanyId(pickingId);
 
@@ -391,9 +337,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
               companyId: pickingCompanyId,
             );
           } catch (e) {
-            // Picking + moves already exist on the server. Surface the
-            // confirm failure so the user knows the products are in
-            // draft and can be confirmed from the picking detail page.
             if (mounted) {
               CustomSnackbar.showWarning(
                 context,
@@ -830,35 +773,39 @@ return FadeTransition(opacity: animation, child: child);
                                   },
                                 ),
                               ),
-                              SizedBox(
-                                height: 300,
-                                child: TabBarView(
-                                  controller: tabController,
-                                  children: [
-                                    ProductTable(
-                                      moveProducts: moveProducts,
-                                      onAddLine: _showAddProductDialog,
-                                    ),
-                                    AdditionalInfo(
-                                      selectedShippingPolicy:
-                                          _selectedShippingPolicy,
-                                      onShippingPolicyChanged: (value) {
-                                        setState(() {
-                                          _selectedShippingPolicy = value;
-                                        });
-                                      },
-                                      userList: users,
-                                      selectedUserId: _selectedUserId,
-                                      onUserChanged: (value) {
-                                        setState(() {
-                                          _selectedUserId = value?.id;
-                                          _selectedUserName = value?.name;
-                                        });
-                                      },
-                                    ),
-                                    NotesTab(noteController: _noteController),
-                                  ],
-                                ),
+                              AnimatedBuilder(
+                                animation: tabController.animation!,
+                                builder: (context, _) {
+                                  switch (tabController.index) {
+                                    case 1:
+                                      return AdditionalInfo(
+                                        selectedShippingPolicy:
+                                            _selectedShippingPolicy,
+                                        onShippingPolicyChanged: (value) {
+                                          setState(() {
+                                            _selectedShippingPolicy = value;
+                                          });
+                                        },
+                                        userList: users,
+                                        selectedUserId: _selectedUserId,
+                                        onUserChanged: (value) {
+                                          setState(() {
+                                            _selectedUserId = value?.id;
+                                            _selectedUserName = value?.name;
+                                          });
+                                        },
+                                      );
+                                    case 2:
+                                      return NotesTab(
+                                        noteController: _noteController,
+                                      );
+                                    default:
+                                      return ProductTable(
+                                        moveProducts: moveProducts,
+                                        onAddLine: _showAddProductDialog,
+                                      );
+                                  }
+                                },
                               ),
                             ],
                           );
@@ -871,7 +818,6 @@ return FadeTransition(opacity: animation, child: child);
                 MoboButton.primary(
                   label: "Create Picking",
                   icon: HugeIcons.strokeRoundedNoteAdd,
-                  // Stay disabled (grey) until the required data is selected.
                   onPressed: (_selectedPartnerId != null &&
                           _selectedOperationTypeId != null)
                       ? _createPicking
@@ -968,7 +914,6 @@ return FadeTransition(opacity: animation, child: child);
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Simulating "Delivery Information" container
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -989,7 +934,6 @@ return FadeTransition(opacity: animation, child: child);
               ),
             ),
             const SizedBox(height: 24),
-            // Simulating Tabs
             Row(
               children: List.generate(3, (index) => Expanded(
                 child: Padding(
@@ -999,7 +943,6 @@ return FadeTransition(opacity: animation, child: child);
               )),
             ),
             const SizedBox(height: 16),
-            // Simulating Tab Content
             Container(
               height: 200,
               width: double.infinity,
@@ -1009,7 +952,6 @@ return FadeTransition(opacity: animation, child: child);
               ),
             ),
             const SizedBox(height: 24),
-            // Simulating Button
             Container(
               height: 56,
               width: double.infinity,

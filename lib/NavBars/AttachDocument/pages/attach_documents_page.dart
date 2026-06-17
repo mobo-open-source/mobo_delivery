@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/list_search_bar.dart';
 import '../../../shared/widgets/error_state_widget.dart';
-import '../../../shared/widgets/loading_overlay.dart';
+import '../../../shared/widgets/loaders/loading_widget.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -279,10 +279,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                         result['fileName'],
                       ),
                     );
-                    CustomSnackbar.showSuccess(
-                      parentContext,
-                      'File uploaded successfully.',
-                    );
                   } catch (e) {
                     CustomSnackbar.showError(
                       context,
@@ -338,10 +334,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         final base64File = base64Encode(fileBytes);
         parentContext.read<AttachDocumentsBloc>().add(
           UploadFile(mimeType, base64File, picking['id'], fileName),
-        );
-        CustomSnackbar.showSuccess(
-          parentContext,
-          'File uploaded successfully.',
         );
       } else {
         CustomSnackbar.showError(context, 'File picking cancelled.');
@@ -1010,18 +1002,15 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                   ),
                   Expanded(
                     child: BlocConsumer<AttachDocumentsBloc, AttachDocumentsState>(
-                      // Transient errors (upload failure, refresh failure,
-                      // paginate-more failure) surface as a snackbar — the
-                      // existing list stays on screen. Only emit the page-
-                      // level error widget when there is truly nothing to
-                      // show (initial fetch failed with no cached data).
                       listenWhen: (prev, curr) =>
-                          curr is AttachDocumentsError &&
-                          curr.pickings.isNotEmpty &&
-                          prev != curr,
+                          prev != curr &&
+                          (curr is AttachDocumentsError ||
+                              curr is AttachDocumentsFileUploaded),
                       listener: (context, state) {
                         if (state is AttachDocumentsError) {
                           CustomSnackbar.showError(context, state.message);
+                        } else if (state is AttachDocumentsFileUploaded) {
+                          CustomSnackbar.showSuccess(context, state.message);
                         }
                       },
                       builder: (context, state) {
@@ -1098,12 +1087,10 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             ? state.totalCount
                             : 0;
 
-                        return Stack(
+                        return Column(
                           children: [
-                            Column(
-                              children: [
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
@@ -1286,6 +1273,10 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                             );
                                           },
                                           child: ListView.builder(
+                                            padding: const EdgeInsets.only(
+                                              top: 4,
+                                              bottom: 16,
+                                            ),
                                             itemCount: pickings.length,
                                             itemBuilder: (context, index) {
                                               final picking = pickings[index];
@@ -1307,7 +1298,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
 
                                               return Column(
                                                 children: [
-                                                  SizedBox(height: 10,),
                                                   Padding(
                                                     padding: const EdgeInsets.symmetric(
                                                       horizontal: 16,
@@ -1329,7 +1319,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           ),
                                                         ],
                                                       ),
-                                                      margin: const EdgeInsets.only(bottom: 8),
+                                                      margin: const EdgeInsets.only(bottom: 12),
                                                       child: ListTile(
                                                         title: Text(
                                                           picking['name'] ??
@@ -1396,15 +1386,35 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                           ),
                                         ),
                                       ),
+                                if (isFetchingMore)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 14),
+                                    child: Center(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const LoadingWidget(
+                                            size: 26,
+                                            variant:
+                                                LoadingVariant.staggeredDots,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            'Loading more documents...',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                               ],
-                            ),
-                            if (isFetchingMore)
-                              const LoadingOverlay(
-                                message: 'Loading more documents...',
-                                isFullPage: false,
-                              ),
-                          ],
-                        );
+                            );
                       },
                     ),
                   ),

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/loaders/loading_indicator.dart';
 import '../../../../StoreToOffline/pending_sync_service.dart';
+import '../../../../StoreToOffline/sync_center_page.dart';
 
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
@@ -144,6 +145,35 @@ class _DashboardState extends State<Dashboard> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            ValueListenableBuilder<int>(
+                              valueListenable:
+                                  PendingSyncService.instance.pendingCount,
+                              builder: (context, count, _) {
+                                if (count <= 0) return const SizedBox.shrink();
+                                return IconButton(
+                                  tooltip: 'Offline sync ($count pending)',
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const SyncCenterPage(),
+                                      ),
+                                    ).then((_) => PendingSyncService.instance
+                                        .refreshCount());
+                                  },
+                                  icon: Badge(
+                                    label: Text('$count'),
+                                    backgroundColor: AppStyle.primaryColor,
+                                    child: Icon(
+                                      Icons.cloud_upload_outlined,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                             CompanySelectorWidget(
                               onCompanyChanged: () async {
                                 if (!context.mounted) return;

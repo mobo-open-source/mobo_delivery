@@ -25,20 +25,18 @@ class NotesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InfoRow(
-              label: "Note",
-              value: null,
-              isEditing: true,
-              controller: noteController,
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InfoRow(
+            label: "Note",
+            value: null,
+            isEditing: true,
+            controller: noteController,
+          ),
+        ],
       ),
     );
   }

@@ -1,3 +1,9 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/company/session/company_session_manager.dart';
 
 /// Service layer responsible for all Odoo RPC interactions related to attaching documents
@@ -25,14 +31,28 @@ class OdooAttachService {
     if (session == null) throw Exception("No active session");
   }
 
-  /// Returns the total count of stock pickings matching the given search text and filters.
-  ///
-  /// Used for:
-  ///   - Pagination UI (showing total pages/items)
-  ///   - Displaying "X results found"
-  ///
-  /// Builds domain dynamically based on search and selected filters.
-  /// Throws on network/auth failure.
+  Future<bool> checkNetworkConnectivity() async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (!connectivityResult.any((r) => r != ConnectivityResult.none)) {
+        return false;
+      }
+      final prefs = await SharedPreferences.getInstance();
+      var host = (prefs.getString('url') ?? '').trim();
+      host = host.replaceFirst(RegExp(r'^https?://'), '').split('/').first;
+      if (host.isEmpty) host = 'example.com';
+      final result = await InternetAddress.lookup(host)
+          .timeout(const Duration(seconds: 3));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } on SocketException {
+      return false;
+    } on TimeoutException {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<int> StockCount({String? searchText, List<String>? filters}) async {
     try {
       List<dynamic> domain = [];

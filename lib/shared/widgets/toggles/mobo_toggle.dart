@@ -29,8 +29,6 @@ class MoboToggle extends StatelessWidget {
           height: 32,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            // ON  -> mobo fill, white thumb (right)
-            // OFF -> white track, mobo border + mobo thumb (left)
             color: value
                 ? primaryColor
                 : (isDark ? Colors.transparent : Colors.white),
