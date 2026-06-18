@@ -2,6 +2,7 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../models/product.dart';
 
 /// Dialog for adding a new product line (stock move) to a picking creation form.
@@ -84,12 +85,11 @@ class _AddProductDialogState extends State<AddProductDialog> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  RequiredLabel(
                     "Product",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white60 : Colors.black87,
-                    ),
+                    isRequired: true,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white60 : Colors.black87,
                   ),
                   const SizedBox(height: 5),
                   DropdownSearch<ProductModel>(
@@ -129,23 +129,23 @@ class _AddProductDialogState extends State<AddProductDialog> {
                           Icons.inventory_2,
                           color: isDark ? Colors.grey[400] : Colors.grey[500],
                         ),
+                        filled: true,
+                        fillColor: isDark
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xffF8FAFB),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: isDark ? Colors.white24 : Colors.transparent,
-                            width: 1.5,
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: isDark
-                                ? Colors.white
-                                : AppStyle.primaryColor,
-                            width: 2,
+                            color: AppStyle.primaryColor,
+                            width: 1,
                           ),
                         ),
                       ),
@@ -160,49 +160,21 @@ class _AddProductDialogState extends State<AddProductDialog> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  RequiredLabel(
                     "Quantity",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white60 : Colors.black87,
-                    ),
+                    isRequired: true,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white60 : Colors.black87,
                   ),
                   const SizedBox(height: 5),
-                  TextField(
+                  MoboTextField(
                     controller: qtyController,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      hintText: 'Add Quantity',
-                      hintStyle: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white60 : Colors.black87,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.format_list_numbered,
-                        color: isDark ? Colors.grey[400] : Colors.grey[500],
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white24 : Colors.transparent,
-                          width: 1.5,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark ? Colors.white : AppStyle.primaryColor,
-                          width: 2,
-                        ),
-                      ),
-                    ),
+                    hintText: 'Add Quantity',
                     keyboardType: TextInputType.number,
+                    prefixIcon: Icon(
+                      Icons.format_list_numbered,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    ),
                   ),
                 ],
               ),

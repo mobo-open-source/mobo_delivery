@@ -5,8 +5,8 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
+import '../../../LoginPage/widgets/login_button.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -510,7 +510,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                           alignment: Alignment.center,
                           child: Text(
                             "Add Account",
-                            style: GoogleFonts.montserrat(
+                            style: GoogleFonts.manrope(
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                               fontSize: 25,
@@ -564,11 +564,14 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                             ),
                         ],
                         const SizedBox(height: 30),
-                        MoboButton.primary(
-                          label: 'Next',
-                          borderRadius: 8,
+                        LoginButton(
+                          text: 'Next',
                           isLoading: _isLoading,
-                          loadingLabel: 'Checking',
+                          loadingWidget: const LoadingWidget(
+                            color: Colors.white,
+                            size: 26,
+                            variant: LoadingVariant.staggeredDots,
+                          ),
                           onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
                                   (_showManualDbInput && _manualDbController.text.isEmpty) ||
                                   (!_showManualDbInput && _selectedDatabase == null))

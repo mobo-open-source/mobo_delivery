@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../PickingFormPage/pages/picking_details_page.dart';
 import '../../PickingFormPage/services/hive_service.dart';
@@ -559,14 +560,12 @@ return FadeTransition(opacity: animation, child: child);
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            RequiredLabel(
                               'Delivery Address',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w400,
-                                color: isDark
-                                    ? Colors.white70
-                                    : const Color(0xff7F7F7F),
-                              ),
+                              isRequired: true,
+                              color: isDark
+                                  ? Colors.white70
+                                  : const Color(0xff7F7F7F),
                             ),
 
                             const SizedBox(height: 8),
@@ -588,14 +587,12 @@ return FadeTransition(opacity: animation, child: child);
                             ),
                             const SizedBox(height: 12),
 
-                            Text(
+                            RequiredLabel(
                               'Operation Type',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w400,
-                                color: isDark
-                                    ? Colors.white70
-                                    : const Color(0xff7F7F7F),
-                              ),
+                              isRequired: true,
+                              color: isDark
+                                  ? Colors.white70
+                                  : const Color(0xff7F7F7F),
                             ),
 
                             const SizedBox(height: 8),
@@ -702,21 +699,8 @@ return FadeTransition(opacity: animation, child: child);
 
                 Container(
                   margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[850] : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withOpacity(0.18)
-                            : Colors.black.withOpacity(0.06),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(2.0),
                     child: DefaultTabController(
                       length: 3,
                       child: Builder(
@@ -773,39 +757,72 @@ return FadeTransition(opacity: animation, child: child);
                                   },
                                 ),
                               ),
-                              AnimatedBuilder(
-                                animation: tabController.animation!,
-                                builder: (context, _) {
-                                  switch (tabController.index) {
-                                    case 1:
-                                      return AdditionalInfo(
-                                        selectedShippingPolicy:
-                                            _selectedShippingPolicy,
-                                        onShippingPolicyChanged: (value) {
-                                          setState(() {
-                                            _selectedShippingPolicy = value;
-                                          });
-                                        },
-                                        userList: users,
-                                        selectedUserId: _selectedUserId,
-                                        onUserChanged: (value) {
-                                          setState(() {
-                                            _selectedUserId = value?.id;
-                                            _selectedUserName = value?.name;
-                                          });
-                                        },
-                                      );
-                                    case 2:
-                                      return NotesTab(
-                                        noteController: _noteController,
-                                      );
-                                    default:
-                                      return ProductTable(
-                                        moveProducts: moveProducts,
-                                        onAddLine: _showAddProductDialog,
-                                      );
-                                  }
-                                },
+                              Container(
+                                width: double.infinity,
+                                clipBehavior: Clip.antiAlias,
+                                decoration: BoxDecoration(
+                                  color:
+                                      isDark ? Colors.grey[850] : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: isDark
+                                          ? Colors.black.withOpacity(0.18)
+                                          : Colors.black.withOpacity(0.06),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                // Swipe the body to move to the adjacent section.
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.translucent,
+                                  onHorizontalDragEnd: (details) {
+                                    final v = details.primaryVelocity ?? 0;
+                                    if (v < -250 && tabController.index < 2) {
+                                      tabController
+                                          .animateTo(tabController.index + 1);
+                                    } else if (v > 250 &&
+                                        tabController.index > 0) {
+                                      tabController
+                                          .animateTo(tabController.index - 1);
+                                    }
+                                  },
+                                  child: AnimatedBuilder(
+                                    animation: tabController.animation!,
+                                    builder: (context, _) {
+                                      switch (tabController.index) {
+                                        case 1:
+                                          return AdditionalInfo(
+                                            selectedShippingPolicy:
+                                                _selectedShippingPolicy,
+                                            onShippingPolicyChanged: (value) {
+                                              setState(() {
+                                                _selectedShippingPolicy = value;
+                                              });
+                                            },
+                                            userList: users,
+                                            selectedUserId: _selectedUserId,
+                                            onUserChanged: (value) {
+                                              setState(() {
+                                                _selectedUserId = value?.id;
+                                                _selectedUserName = value?.name;
+                                              });
+                                            },
+                                          );
+                                        case 2:
+                                          return NotesTab(
+                                            noteController: _noteController,
+                                          );
+                                        default:
+                                          return ProductTable(
+                                            moveProducts: moveProducts,
+                                            onAddLine: _showAddProductDialog,
+                                          );
+                                      }
+                                    },
+                                  ),
+                                ),
                               ),
                             ],
                           );
@@ -869,13 +886,18 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Widget _buildStyledTab(String text, double selectedness) {
-    final bgColor =
-        Color.lerp(Colors.transparent, Colors.black, selectedness)!;
-    final textColor =
-        Color.lerp(Colors.grey[600], Colors.white, selectedness)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Match the sales app's order-details tabs: unselected = white pill with a
+    // grey border, selected = solid black. Lerp gives a smooth transition.
+    final bgColor = Color.lerp(Colors.white, Colors.black, selectedness)!;
+    final textColor = Color.lerp(
+      isDark ? Colors.grey[400] : Colors.grey[700],
+      Colors.white,
+      selectedness,
+    )!;
     final borderColor = Color.lerp(
-      Colors.grey.shade400,
-      Colors.transparent,
+      isDark ? Colors.grey[600] : Colors.grey[300],
+      Colors.black,
       selectedness,
     )!;
     return Tab(
@@ -885,7 +907,7 @@ return FadeTransition(opacity: animation, child: child);
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: 1),
         ),
         child: Text(

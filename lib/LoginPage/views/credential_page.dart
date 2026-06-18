@@ -653,64 +653,63 @@ return FadeTransition(opacity: animation, child: child);
 
           LayoutBuilder(
             builder: (context, viewportConstraints) {
-              return Column(
-                children: [
-                  SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 40, bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/icons/delivery-icon.png',
-                            fit: BoxFit.fitWidth,
-                            height: 30,
-                            width: 30,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.delivery_dining,
-                                color: Color(0xFFC03355),
-                                size: 20,
-                              );
-                            },
-                          ),
-                          SizedBox(width: 10),
-                          Text(
-                            'mobo delivery',
-                            style: const TextStyle(
-                              fontFamily: 'Yaro',
-                              fontWeight: FontWeight.w400,
-                              color: Colors.white,
-                              fontSize: 24,
-                            ),
-                          ),
-                        ],
-                      ),
+              return SafeArea(
+                bottom: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: viewportConstraints.maxHeight -
+                          MediaQuery.of(context).viewPadding.top,
                     ),
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 16.0,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: viewportConstraints.maxHeight - 180,
+                    child: Column(
+                      // Heading + form scroll together so the keyboard pushes
+                      // the whole block up on small devices instead of pinning
+                      // the "mobo delivery" header.
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16, bottom: 28),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/icons/delivery-icon.png',
+                                fit: BoxFit.fitWidth,
+                                height: 30,
+                                width: 30,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.delivery_dining,
+                                    color: Color(0xFFC03355),
+                                    size: 20,
+                                  );
+                                },
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'mobo delivery',
+                                style: const TextStyle(
+                                  fontFamily: 'Yaro',
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 400),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 400),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                         Text(
                           'Sign In',
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.manrope(
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                             fontSize: 32,
@@ -728,7 +727,7 @@ return FadeTransition(opacity: animation, child: child);
                         const SizedBox(height: 30),
                         _buildInputField(
                           controller: _usernameController,
-                          label: "Username",
+                          label: "Email",
                           icon: HugeIcons.strokeRoundedUser03,
                           focusNode: _usernameFocusNode,
                           textInputAction: TextInputAction.next,
@@ -841,12 +840,11 @@ return FadeTransition(
                             ),
                           ),
                         ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-                ],
-              );
+                );
             },
           ),
         ],

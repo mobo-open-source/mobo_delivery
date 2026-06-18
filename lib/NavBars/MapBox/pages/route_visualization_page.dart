@@ -17,6 +17,7 @@ import '../services/odoo_map_service.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/error_state_widget.dart';
+import '../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../widgets/navigation_header.dart';
 import '../widgets/remaining_info_card.dart';
 import '../widgets/route_info_card.dart';
@@ -798,7 +799,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         ? MediaQuery.of(context).size.height * 0.5
                         : MediaQuery.of(context).size.height * 0.25,
                   ),
-                  child: Padding(
+                  child: Stack(
+                    children: [
+                      Padding(
                     padding: const EdgeInsets.all(16),
                     child: SingleChildScrollView(
                       physics: const ClampingScrollPhysics(),
@@ -827,8 +830,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       ),
                       const SizedBox(height: 16),
 
-                      _fieldHeading('Pickings', isDark),
-                      DropdownSearch<Map<String, dynamic>>.multiSelection(
+                      _fieldHeading('Pickings', isDark, isRequired: true),
+                      Container(
+                        decoration: _fieldShadow,
+                        child:
+                            DropdownSearch<Map<String, dynamic>>.multiSelection(
                         popupProps: PopupPropsMultiSelection.menu(
                           showSearchBox: true,
                           menuProps: MenuProps(
@@ -960,6 +966,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                             }).toList(),
                           );
                         },
+                        ),
                       ),
 
                       if (shouldValidate) ...[
@@ -987,11 +994,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                             sheetSetState(() => _sourceSuggestions.clear());
                           }
                         },
-                        child: TextField(
+                        child: MoboTextField(
                           controller: sourceController,
-                          style: TextStyle(fontSize: 14, color: onSurface),
-                          decoration: _fieldDecoration(
-                              isDark, 'Search location'),
+                          hintText: 'Search location',
                           onChanged: (value) async {
                             final suggestions = await mapService
                                 .fetchSuggestions(value, _apiKey,
@@ -1073,14 +1078,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           ),
                         ),
 
-                      if (isFetchingStops)
-                        const Center(
-                          child: LoadingWidget(
-                            size: 30,
-                            variant: LoadingVariant.staggeredDots,
-                          ),
-                        ),
-
                       ...List.generate(_stopSearchControllers.length, (index) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1098,14 +1095,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                     }
                                   }
                                 },
-                                child: TextField(
+                                child: MoboTextField(
                                   controller: _stopSearchControllers[index],
-                                  style: TextStyle(
-                                      fontSize: 14, color: onSurface),
-                                  decoration: _fieldDecoration(
-                                    isDark,
-                                    'Add your stop',
-                                  ),
+                                  hintText: 'Add your stop',
                                   onChanged: (value) async {
                                     final suggestions = await mapService
                                         .fetchSuggestions(value, _apiKey,
@@ -1300,10 +1292,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                               icon: const Icon(
                                   HugeIcons.strokeRoundedNavigation03,
                                   size: 18),
-                              label: const Text(
-                                'Show Directions',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w600),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Show Directions',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600),
+                                ),
                               ),
                             ),
                           ),
@@ -1313,9 +1311,29 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     ],
                   ),
                 ),
+                      ),
+                      if (isFetchingStops)
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                            child: Container(
+                              color: (isDark ? Colors.black : Colors.white)
+                                  .withValues(alpha: 0.6),
+                              child: const Center(
+                                child: LoadingWidget(
+                                  size: 40,
+                                  variant: LoadingVariant.staggeredDots,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            ),
             );
           },
         );
@@ -1339,59 +1357,75 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   }
 
   /// Left-aligned static heading shown above an input box in the bottom sheet.
-  Widget _fieldHeading(String text, bool isDark) {
+  /// When [isRequired] is true a red `*` marks the field as mandatory.
+  Widget _fieldHeading(String text, bool isDark, {bool isRequired = false}) {
+    final style = TextStyle(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: isDark ? Colors.white70 : Colors.black87,
+    );
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 6),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white70 : Colors.black87,
+        child: RichText(
+          text: TextSpan(
+            text: text,
+            style: style,
+            children: isRequired
+                ? const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Color(0xFFD32F2F)),
+                    ),
+                  ]
+                : null,
           ),
         ),
       ),
     );
   }
 
-  /// Returns a consistent [InputDecoration] for text fields in the bottom sheet.
-  /// The placeholder is shown as a hint (the visible label now sits above the
-  /// box via [_fieldHeading]).
+  /// Returns a borderless, filled [InputDecoration] matching the [MoboTextField]
+  /// design — no resting border, soft fill, brand-colored focus ring. Used by
+  /// the Pickings dropdown (and its search box) so it matches the text fields.
   InputDecoration _fieldDecoration(bool isDark, String label) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    final surfaceVariant = Theme.of(context).colorScheme.surfaceContainerHighest;
+    final fill = isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB);
+    OutlineInputBorder borderOf(Color color, double width) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return InputDecoration(
       hintText: label,
       hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.5)),
       isDense: true,
       filled: true,
-      fillColor: isDark ? surfaceVariant : Colors.grey[50],
+      fillColor: fill,
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: onSurface),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: onSurface.withValues(alpha: 0.4)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: onSurface, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: onSurface.withValues(alpha: 0.4)),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: onSurface, width: 1.5),
-      ),
+      border: borderOf(Colors.transparent, 0),
+      enabledBorder: borderOf(Colors.transparent, 0),
+      focusedBorder: borderOf(AppStyle.primaryColor, 1),
+      errorBorder: borderOf(Colors.transparent, 0),
+      focusedErrorBorder: borderOf(AppStyle.primaryColor, 1),
     );
   }
+
+  /// Soft shadow used behind filled fields so they get the elevated
+  /// "no border + shadow" look of [MoboTextField].
+  BoxDecoration get _fieldShadow => BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            spreadRadius: 1,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {

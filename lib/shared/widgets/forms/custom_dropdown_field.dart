@@ -12,6 +12,9 @@ class CustomDropdownField extends StatelessWidget {
   final List<DropdownMenuItem<String>> items;
   final bool showBorder;
 
+  /// When true a red `*` is appended to [labelText] to mark a mandatory field.
+  final bool isRequired;
+
   const CustomDropdownField({
     required this.value,
     required this.labelText,
@@ -21,6 +24,7 @@ class CustomDropdownField extends StatelessWidget {
     this.hintText,
     this.isDark = false,
     this.showBorder = false,
+    this.isRequired = false,
     super.key,
   });
 
@@ -29,12 +33,22 @@ class CustomDropdownField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          labelText,
-          style: GoogleFonts.manrope(
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
+        RichText(
+          text: TextSpan(
+            text: labelText,
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+            ),
+            children: isRequired
+                ? const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Color(0xFFD32F2F)),
+                    ),
+                  ]
+                : null,
           ),
         ),
         const SizedBox(height: 8),

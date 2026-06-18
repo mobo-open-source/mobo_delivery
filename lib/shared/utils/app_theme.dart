@@ -44,14 +44,25 @@ class AppTheme {
       brightness: Brightness.light,
       primary: primaryColor,
       secondary: secondaryColor,
+      // Material 3 tints every elevated surface (dialogs, menus, dropdowns,
+      // cards, nav bars…) with this color. Derived from the pink primary it
+      // produced a pink shade everywhere, so disable it app-wide.
+      surfaceTint: Colors.transparent,
+      // fromSeed also derives a faintly pink `surface`; force it neutral so
+      // dialogs/sheets/cards that fall back to the default surface stay white.
+      surface: Colors.white,
     ),
     scaffoldBackgroundColor: Colors.grey[50],
-    // Disable Material 3's primary-colored surface tint so bottom sheets and
-    // dialogs don't get a pink shade in the background.
+    // Disable Material 3's primary-colored surface tint AND pin a neutral
+    // background so dialogs / bottom sheets never pick up a pink shade.
     bottomSheetTheme: const BottomSheetThemeData(
       surfaceTintColor: Colors.transparent,
+      backgroundColor: Colors.white,
     ),
-    dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
+    dialogTheme: const DialogThemeData(
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: Colors.white,
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,
@@ -82,12 +93,20 @@ class AppTheme {
       brightness: Brightness.dark,
       primary: primaryColor,
       secondary: secondaryColor,
+      // See light theme: disable Material 3's pink surface tint app-wide and
+      // force a neutral dark surface (fromSeed tints it pink otherwise).
+      surfaceTint: Colors.transparent,
+      surface: const Color(0xFF2C2C2C),
     ),
     scaffoldBackgroundColor: const Color(0xFF181A20),
     bottomSheetTheme: const BottomSheetThemeData(
       surfaceTintColor: Colors.transparent,
+      backgroundColor: Color(0xFF2C2C2C),
     ),
-    dialogTheme: const DialogThemeData(surfaceTintColor: Colors.transparent),
+    dialogTheme: const DialogThemeData(
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: Color(0xFF2C2C2C),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,

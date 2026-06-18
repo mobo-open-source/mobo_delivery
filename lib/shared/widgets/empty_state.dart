@@ -4,7 +4,14 @@ import 'buttons/mobo_button.dart';
 
 /// A generic placeholder widget displayed when a list or view has no data.
 /// Uses Lottie animations for a premium feel.
+///
+/// When [lottieAsset] is omitted the shared "ghost" empty animation is shown,
+/// so every empty list/page stays visually consistent. Pass a different asset
+/// only when a screen genuinely needs a distinct illustration.
 class EmptyState extends StatelessWidget {
+  /// The default empty-state animation used across the app.
+  static const String ghostAsset = 'assets/lotties/empty_ghost.json';
+
   final String title;
   final String? subtitle;
   final String? lottieAsset;
@@ -34,25 +41,18 @@ class EmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (lottieAsset != null)
-                Lottie.asset(
-                  lottieAsset!,
-                  width: 220,
-                  height: 220,
-                  repeat: true,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stack) => Icon(
-                    Icons.inbox_outlined,
-                    size: 80,
-                    color: isDark ? Colors.grey[700] : Colors.grey[400],
-                  ),
-                )
-              else
-                Icon(
+              Lottie.asset(
+                lottieAsset ?? ghostAsset,
+                width: 220,
+                height: 220,
+                repeat: true,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stack) => Icon(
                   Icons.inbox_outlined,
                   size: 80,
                   color: isDark ? Colors.grey[700] : Colors.grey[400],
                 ),
+              ),
               const SizedBox(height: 16),
               Text(
                 title,

@@ -36,7 +36,6 @@ class _ListSearchBarState extends State<ListSearchBar> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = Theme.of(context).primaryColor;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -67,17 +66,16 @@ class _ListSearchBarState extends State<ListSearchBar> {
                       child: Container(
                         width: 52,
                         alignment: Alignment.center,
-                        color: widget.hasActiveFilters
-                            ? primary
-                            : (isDark ? Colors.white : Colors.black),
+                        // Keep the filter button black (white in dark mode)
+                        // regardless of active filters — it must not switch to
+                        // the primary color when a filter/search is applied.
+                        color: isDark ? Colors.white : Colors.black,
                         child: SvgPicture.asset(
                           'assets/icons/filter.svg',
                           width: 18,
                           height: 15,
                           colorFilter: ColorFilter.mode(
-                            (!widget.hasActiveFilters && isDark)
-                                ? Colors.black
-                                : Colors.white,
+                            isDark ? Colors.black : Colors.white,
                             BlendMode.srcIn,
                           ),
                         ),

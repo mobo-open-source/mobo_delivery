@@ -375,6 +375,12 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
             widget.provider.isSwitching ||
             _applying;
 
+        // The Reset/Confirm buttons must stay stable: they should only show a
+        // busy/disabled state while the user's own apply action is running.
+        // Background list loading/refreshing (e.g. the initialize() that runs
+        // each time the sheet opens) must NOT flip the buttons' colors.
+        final isApplying = _applying || widget.provider.isSwitching;
+
         return Container(
           width: widget.width ?? 280,
           constraints: const BoxConstraints(maxHeight: 350),
@@ -521,7 +527,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                         label: 'Reset',
                         height: 48,
                         borderRadius: 12,
-                        onPressed: isLoading
+                        onPressed: isApplying
                             ? null
                             : () {
                                 setState(() {
@@ -541,9 +547,9 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                         label: 'Confirm',
                         height: 48,
                         borderRadius: 12,
-                        isLoading: isLoading,
+                        isLoading: isApplying,
                         loadingLabel: 'Applying...',
-                        onPressed: isLoading
+                        onPressed: isApplying
                             ? null
                             : () async {
                                 await _onConfirm();

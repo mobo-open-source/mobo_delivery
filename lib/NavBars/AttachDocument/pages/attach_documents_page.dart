@@ -606,13 +606,15 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                               onTap: () =>
                                   setDialogState(() => tempGroupBy = null),
                             ),
-                            for (final entry in groupMap.entries) ...[
-                              Divider(
-                                height: 1,
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[200],
-                              ),
+                            // Single divider after "None" only — the remaining
+                            // options are listed without lines between them.
+                            Divider(
+                              height: 1,
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
+                            ),
+                            for (final entry in groupMap.entries)
                               _buildGroupOption(
                                 isDark: isDark,
                                 label: entry.key,
@@ -622,7 +624,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                   () => tempGroupBy = entry.value,
                                 ),
                               ),
-                            ],
                           ],
                         ),
                       ],
@@ -1232,7 +1233,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                           subtitle: (hasFilters || hasGroupBy || _searchController.text.isNotEmpty)
                                               ? 'Try adjusting your filters or search term'
                                               : 'There are no attachments available.',
-                                          lottieAsset: 'assets/lotties/no_data.json',
                                           actionLabel: (hasFilters || hasGroupBy || _searchController.text.isNotEmpty) ? 'Clear All Filters' : null,
                                           onAction: (hasFilters || hasGroupBy || _searchController.text.isNotEmpty) ? () {
                                             setState(() {

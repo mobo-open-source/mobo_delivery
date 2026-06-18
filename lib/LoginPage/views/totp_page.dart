@@ -790,7 +790,7 @@ class _TotpPageState extends State<TotpPage> {
         const SizedBox(height: 24),
         Text(
           'Two-factor Authentication',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.manrope(
             fontWeight: FontWeight.w600,
             color: Colors.white,
             fontSize: 25,
@@ -800,7 +800,7 @@ class _TotpPageState extends State<TotpPage> {
         const SizedBox(height: 16),
         Text(
           'To login, enter below the six-digit authentication code provided by your Authenticator app.',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.manrope(
             fontSize: 14,
             color: Colors.white70,
             height: 1.4,

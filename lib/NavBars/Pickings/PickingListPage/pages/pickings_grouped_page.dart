@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/company/session/company_session_manager.dart';
+import '../../../../Dashboard/screens/dashboard/bloc/dashboard_bloc.dart';
+import '../../../../Dashboard/screens/dashboard/bloc/dashboard_state.dart';
 import '../../../../Dashboard/infrastructure/profile_refresh_bus.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
@@ -14,6 +17,7 @@ import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/list_search_bar.dart';
+import '../../../../shared/widgets/greeting_header.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loaders/list_shimmer.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
@@ -551,13 +555,15 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                               onTap: () =>
                                   setDialogState(() => tempGroupBy = null),
                             ),
-                            for (final entry in groupMap.entries) ...[
-                              Divider(
-                                height: 1,
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[200],
-                              ),
+                            // Single divider after "None" only — the remaining
+                            // options are listed without lines between them.
+                            Divider(
+                              height: 1,
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
+                            ),
+                            for (final entry in groupMap.entries)
                               _buildGroupOption(
                                 isDark: isDark,
                                 label: entry.key,
@@ -567,7 +573,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                   () => tempGroupBy = entry.value,
                                 ),
                               ),
-                            ],
                           ],
                         ),
                       ],
@@ -832,6 +837,15 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       body: Column(
         children: [
+          BlocBuilder<DashboardBloc, DashboardState>(
+            buildWhen: (a, b) =>
+                a.userName != b.userName ||
+                a.profilePicBytes != b.profilePicBytes,
+            builder: (context, dashState) => GreetingHeader(
+              userName: dashState.userName,
+              imageBytes: dashState.profilePicBytes,
+            ),
+          ),
           ListSearchBar(
             controller: _searchController,
             hintText: 'Search by location or item...',

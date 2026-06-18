@@ -149,7 +149,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
           ),
           title: Text(
             widget.title,
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.manrope(
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -240,7 +240,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             const SizedBox(height: 24),
             Text(
               'Unable to Load Page',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.manrope(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : Colors.black,

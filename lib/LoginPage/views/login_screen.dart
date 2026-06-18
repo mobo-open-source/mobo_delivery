@@ -355,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                         Text(
                           'Sign In',
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.manrope(
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                             fontSize: 32,
@@ -363,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'use proper information to continue',
+                          'Enter your credentials to continue',
                           style: GoogleFonts.manrope(
                             color: Colors.white70,
                             fontSize: 14,

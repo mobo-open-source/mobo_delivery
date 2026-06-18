@@ -345,24 +345,11 @@ class _ConfigurationState extends State<Configuration> {
   }
 
   Widget _buildEmptyAccountState(bool isDark) {
+    // Matches the sales app: a simple text-only empty state (no illustration).
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              HugeIcons.strokeRoundedUserAdd01,
-              size: 30,
-              color: Theme.of(context).primaryColor,
-            ),
-          ),
-          const SizedBox(height: 16),
           Text(
             'No Other Accounts',
             style: TextStyle(

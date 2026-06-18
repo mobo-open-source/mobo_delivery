@@ -79,7 +79,7 @@ class _InAppWebPageState extends State<InAppWebPage> {
         forceMaterialTransparency: true,
         title: Text(
           widget.title ?? 'Web Page',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.manrope(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
             color: isDark ? Colors.white : Colors.black,

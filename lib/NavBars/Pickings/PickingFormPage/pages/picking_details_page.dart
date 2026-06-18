@@ -19,6 +19,7 @@ import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
+import '../../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/snackbar.dart';
@@ -84,6 +85,72 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   bool isDataAvailable = true;
   bool _isEditing = false;
 
+  /// Snapshot of the editable header fields taken when edit mode is entered.
+  /// The "Save Delivery" button is only enabled while the current values
+  /// differ from this baseline (i.e. the user actually changed something).
+  String? _editBaseline;
+
+  /// True when the header has unsaved edits relative to [_editBaseline].
+  bool get _isHeaderDirty =>
+      _editBaseline != null &&
+      (_buildHeaderUpdates()?.toString() ?? '') != _editBaseline;
+
+  // ── Staged product-line changes ───────────────────────────────────────────
+  // Product add/edit/delete in edit mode only stage locally; they are committed
+  // to the backend together with the header when the user taps "Save Delivery".
+
+  /// Snapshot of [moveProducts] when edit mode was entered, used to revert on
+  /// discard.
+  List<StockMove>? _moveBaseline;
+
+  /// Newly added (not-yet-saved) lines, identified by a negative temp id.
+  final List<StockMove> _stagedNewMoves = [];
+
+  /// Existing lines whose quantity/product was edited: backend moveId → value.
+  final Map<int, StockMove> _stagedEditedMoves = {};
+
+  /// Existing lines marked for deletion (backend move ids).
+  final Set<int> _stagedDeletedMoveIds = {};
+
+  /// Generates temp ids for staged new lines (negative, decreasing).
+  int _tempMoveIdSeq = -1;
+
+  bool get _hasStagedProductChanges =>
+      _stagedNewMoves.isNotEmpty ||
+      _stagedEditedMoves.isNotEmpty ||
+      _stagedDeletedMoveIds.isNotEmpty;
+
+  /// True when the picking has any unsaved edit (header OR product lines).
+  bool get _isDeliveryDirty => _isHeaderDirty || _hasStagedProductChanges;
+
+  void _clearStagedProductChanges() {
+    _stagedNewMoves.clear();
+    _stagedEditedMoves.clear();
+    _stagedDeletedMoveIds.clear();
+    _tempMoveIdSeq = -1;
+    _moveBaseline = null;
+  }
+
+  /// Stages a new product line and rebuilds the page. Defined on the State so
+  /// its `setState` is the page's — the add dialog's `StatefulBuilder` shadows
+  /// `setState`, so mutating from inside it would only rebuild the dialog.
+  void _stageNewMove(StockMove move) {
+    setState(() {
+      moveProducts.add(move);
+      _stagedNewMoves.add(move);
+    });
+  }
+
+  /// Re-evaluates the dirty state after a free-text edit (source document,
+  /// note, dates). Deferred to the next frame so it is safe to fire while a
+  /// controller's text is being set programmatically (sync / date pickers).
+  void _onEditFieldChanged() {
+    if (!_isEditing || !mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   int? selectedPartnerId;
   int? selectedPicking;
   int? selectedPickingUom;
@@ -126,6 +193,18 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     _startNetworkCheck();
     _initializeHive();
     _fetchData();
+
+    // Watch the free-text editable header fields so the Save button reflects
+    // changes as the user types (dropdowns/date pickers already setState).
+    for (final c in [
+      scheduledDateController,
+      deadlineController,
+      dateDoneController,
+      sourceDocController,
+      _noteController,
+    ]) {
+      c.addListener(_onEditFieldChanged);
+    }
   }
 
   @override
@@ -1115,19 +1194,11 @@ return FadeTransition(opacity: animation, child: child);
                   const SizedBox(height: 4),
                   Flexible(
                     child: returns.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: Text(
-                                'No Return Pickings Found',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isDark
-                                      ? Colors.white54
-                                      : Colors.grey[600],
-                                ),
-                              ),
-                            ),
+                        ? const EmptyState(
+                            title: 'No Return Pickings Found',
+                            subtitle:
+                                'There are no return pickings available.',
+                            padding: EdgeInsets.symmetric(vertical: 24),
                           )
                         : ListView.builder(
                             shrinkWrap: true,
@@ -1269,6 +1340,7 @@ return FadeTransition(opacity: animation, child: child);
     _selectedPickingTypeId = null;
     _selectedLocationId = null;
     _selectedLocationDestId = null;
+    _clearStagedProductChanges();
   }
 
   void _syncControllersFromPicking() {
@@ -1280,6 +1352,13 @@ return FadeTransition(opacity: animation, child: child);
     sourceDocController.text = p.origin ?? '';
     _noteController.text =
         (p.note ?? '').replaceAll(RegExp(r'<[^>]*>'), '');
+
+    // The form now mirrors the freshly-persisted picking (e.g. after a product
+    // line was added/edited, which reloads the record). Reset the dirty
+    // baseline so "Save Delivery" reflects changes made *from this point on*.
+    if (_isEditing) {
+      _editBaseline = _buildHeaderUpdates()?.toString() ?? '';
+    }
   }
 
   Map<String, dynamic>? _buildHeaderUpdates() {
@@ -1478,6 +1557,212 @@ return FadeTransition(opacity: animation, child: child);
     } finally {
       if (mounted) setState(() => isSaving = false);
       debugPrint('[PickingDetail] Save END id=$pickingId');
+    }
+  }
+
+  /// Resolves the source/destination location ids for a picking, trying the
+  /// loaded picking, the route arguments, then a backend lookup.
+  Future<({int? srcId, int? destId})> _resolvePickingLocations(
+    int pickingId,
+    OdooPickingFormService service,
+  ) async {
+    int? srcId;
+    int? destId;
+    if (pickings.isNotEmpty) {
+      srcId = pickings[0].locationIdInt;
+      destId = pickings[0].locationDestIdInt;
+    }
+    if (srcId == null || destId == null) {
+      srcId = int.tryParse(widget.picking['location_id_int']?.toString() ?? '');
+      destId =
+          int.tryParse(widget.picking['location_dest_id_int']?.toString() ?? '');
+    }
+    if (srcId == null || destId == null) {
+      final locations = await service.getPickingLocations(pickingId);
+      srcId = locations.locationId;
+      destId = locations.locationDestId;
+    }
+    return (srcId: srcId, destId: destId);
+  }
+
+  /// Commits the whole delivery edit: staged product-line changes (add / edit /
+  /// delete) plus the header, in one "Save Delivery" action. When there are no
+  /// staged product changes it delegates to [_saveChanges] (header only).
+  Future<void> _commitDelivery(String title) async {
+    final headerUpdates = _buildHeaderUpdates() ?? <String, dynamic>{};
+
+    // Header-only change → existing flow handles online/offline + reload.
+    if (!_hasStagedProductChanges) {
+      await _saveChanges(headerUpdates, title);
+      return;
+    }
+
+    final int pickingId;
+    try {
+      pickingId = int.parse(widget.picking['id'].toString());
+    } catch (_) {
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Could not save: this picking has an invalid id.',
+        );
+      }
+      return;
+    }
+
+    final service = OdooPickingFormService();
+    try {
+      await service.initializeOdooClient();
+    } catch (_) {
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Could not save: session is not ready. Please try again.',
+        );
+      }
+      return;
+    }
+
+    if (mounted) setState(() => isSaving = true);
+    final isOnline = isOnlineAvailability;
+
+    try {
+      if (isOnline) {
+        // 1. Header (only if it actually changed).
+        if (_isHeaderDirty && headerUpdates.isNotEmpty) {
+          final ok = await service
+              .saveChanges(pickingId, headerUpdates)
+              .timeout(const Duration(seconds: 20));
+          if (!ok) throw Exception('Failed to save the delivery details.');
+        }
+        // 2. Deletions of existing lines.
+        for (final moveId in _stagedDeletedMoveIds) {
+          await service.deleteProductMove(moveId, pickingId);
+        }
+        // 3. Edits of existing lines.
+        for (final entry in _stagedEditedMoves.entries) {
+          await service.updateProductMove(
+            entry.key,
+            entry.value.productId![0] as int,
+            entry.value.quantity,
+          );
+        }
+        // 4. New lines.
+        if (_stagedNewMoves.isNotEmpty) {
+          final loc = await _resolvePickingLocations(pickingId, service);
+          if (loc.srcId == null || loc.destId == null) {
+            throw Exception(
+              'This picking has no source or destination location configured.',
+            );
+          }
+          final pickingState = pickings.isNotEmpty ? pickings[0].state : null;
+          for (final m in _stagedNewMoves) {
+            await service.addProductToLine(
+              pickingId,
+              m.productId![0] as int,
+              (m.productId!.length > 1 ? m.productId![1] : 'Unnamed')
+                  .toString(),
+              m.productUomId ?? 1,
+              m.productUomQty,
+              loc.srcId!,
+              loc.destId!,
+              pickingState: pickingState,
+            );
+          }
+          if (pickings.isNotEmpty &&
+              !['draft', 'cancel', 'done'].contains(pickings[0].state)) {
+            try {
+              await service.checkAvailability(pickingId);
+            } catch (e) {
+              debugPrint('[PickingDetail] checkAvailability failed: $e');
+            }
+          }
+        }
+        // 5. Reload, exit edit, clear staging.
+        try {
+          await _loadSavingData().timeout(const Duration(seconds: 15));
+        } catch (_) {
+          if (mounted) {
+            CustomSnackbar.showWarning(
+              context,
+              'Saved, but failed to reload latest data. Pull to refresh.',
+            );
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _isEditing = false;
+            _resetEditSelections();
+          });
+          _syncControllersFromPicking();
+          CustomSnackbar.showSuccess(context, 'Delivery saved.');
+        }
+      } else {
+        // OFFLINE: queue header + product add/edit. (Line deletions have no
+        // offline queue, so they are applied only once back online.)
+        if (_isHeaderDirty && headerUpdates.isNotEmpty) {
+          await _hiveService.savePendingUpdates(pickingId, {
+            'title': title,
+            'partner_name': null,
+            'user_name': null,
+            'updates': headerUpdates,
+          });
+        }
+        final locationIdInt =
+            int.tryParse(widget.picking['location_id_int']?.toString() ?? '');
+        final locationDestIdInt = int.tryParse(
+          widget.picking['location_dest_id_int']?.toString() ?? '',
+        );
+        for (final m in _stagedNewMoves) {
+          await _hiveService.savePendingProductUpdates(
+            pickingId,
+            {
+              'move': {
+                'product_id': m.productId,
+                'quantity': m.quantity,
+                'quantity_product_uom': '',
+              },
+              'pickingId': pickingId,
+              'pickingName': title,
+            },
+            (m.productId!.length > 1 ? m.productId![1] : 'Unnamed').toString(),
+          );
+        }
+        for (final entry in _stagedEditedMoves.entries) {
+          await _hiveService.savePendingProductUpdates(
+            pickingId,
+            {
+              'move': entry.value.toJson(),
+              'timestamp': DateTime.now(),
+              'location_id_int': locationIdInt,
+              'location_dest_id_int': locationDestIdInt,
+            },
+            title,
+          );
+        }
+        if (mounted) {
+          final hadDeletes = _stagedDeletedMoveIds.isNotEmpty;
+          setState(() {
+            _isEditing = false;
+            _resetEditSelections();
+          });
+          CustomSnackbar.showWarning(
+            context,
+            hadDeletes
+                ? 'Saved offline. Line removals will apply once back online.'
+                : 'Changes saved offline. Will sync when online.',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Could not save: ${e.toString().replaceFirst('Exception: ', '')}',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isSaving = false);
     }
   }
 
@@ -2190,18 +2475,24 @@ return FadeTransition(opacity: animation, child: child);
                         },
                 ),
                 actions: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: _buildStatusIndicator(pickings[0].state),
-                    ),
-                  ),
                   if (!_isEditing) ...[
                     if (pickings.isNotEmpty &&
                         !['done', 'cancel'].contains(pickings[0].state)) ...[
                       IconButton(
                         onPressed: () async {
-                          setState(() => _isEditing = true);
+                          setState(() {
+                            _isEditing = true;
+                            // Baseline of the current header + product lines so
+                            // Save stays disabled until something changes, and
+                            // staged product edits can be reverted on discard.
+                            _editBaseline =
+                                _buildHeaderUpdates()?.toString() ?? '';
+                            _moveBaseline = List<StockMove>.from(moveProducts);
+                            _stagedNewMoves.clear();
+                            _stagedEditedMoves.clear();
+                            _stagedDeletedMoveIds.clear();
+                            _tempMoveIdSeq = -1;
+                          });
                           if (partnerList.isEmpty || operationTypesList.isEmpty || userList.isEmpty || products.isEmpty) {
                             unawaited(() async {
                               final svc = OdooPickingFormService();
@@ -2255,11 +2546,9 @@ return FadeTransition(opacity: animation, child: child);
                                   value: 'mark_as_todo',
                                   child: Row(
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.task_alt,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black54,
+                                        color: Colors.green,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 12),
@@ -2338,11 +2627,9 @@ return FadeTransition(opacity: animation, child: child);
                                 value: 'cancel',
                                 child: Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.cancel_outlined,
-                                      color: isDark
-                                          ? Colors.white
-                                          : Colors.black54,
+                                      color: Colors.red,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
@@ -2499,6 +2786,8 @@ return FadeTransition(opacity: animation, child: child);
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              _buildStatusIndicator(pickings[0].state),
                             ],
                           ),
                         ),
@@ -2787,19 +3076,6 @@ return FadeTransition(opacity: animation, child: child);
                     ),
                     Container(
                       margin: const EdgeInsets.only(bottom: 24),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[850] : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.18)
-                                : Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(2.0),
                         child: DefaultTabController(
@@ -2864,18 +3140,59 @@ return FadeTransition(opacity: animation, child: child);
                                       },
                                     ),
                                   ),
-                                  AnimatedBuilder(
-                                    animation: tabController.animation!,
-                                    builder: (context, _) {
-                                      switch (tabController.index) {
-                                        case 1:
-                                          return _additionalInfo();
-                                        case 2:
-                                          return _notesTab();
-                                        default:
-                                          return _productTable(isDark);
-                                      }
-                                    },
+                                  Container(
+                                    width: double.infinity,
+                                    clipBehavior: Clip.antiAlias,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.grey[850]
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: isDark
+                                              ? Colors.black
+                                                  .withValues(alpha: 0.18)
+                                              : Colors.black
+                                                  .withValues(alpha: 0.06),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    // Swipe the body left/right to move to the
+                                    // adjacent tab section (like the sales app).
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.translucent,
+                                      onHorizontalDragEnd: (details) {
+                                        final v =
+                                            details.primaryVelocity ?? 0;
+                                        if (v < -250 &&
+                                            tabController.index < 2) {
+                                          tabController.animateTo(
+                                            tabController.index + 1,
+                                          );
+                                        } else if (v > 250 &&
+                                            tabController.index > 0) {
+                                          tabController.animateTo(
+                                            tabController.index - 1,
+                                          );
+                                        }
+                                      },
+                                      child: AnimatedBuilder(
+                                        animation: tabController.animation!,
+                                        builder: (context, _) {
+                                          switch (tabController.index) {
+                                            case 1:
+                                              return _additionalInfo();
+                                            case 2:
+                                              return _notesTab();
+                                            default:
+                                              return _productTable(isDark);
+                                          }
+                                        },
+                                      ),
+                                    ),
                                   ),
                                 ],
                               );
@@ -2890,18 +3207,17 @@ return FadeTransition(opacity: animation, child: child);
                         MoboButton.primary(
                           label: "Save Delivery",
                           icon: HugeIcons.strokeRoundedNoteAdd,
-                          onPressed: () async {
-                            if (_isEditing) {
-                              final listOfUpdates = _buildHeaderUpdates();
-                              if (listOfUpdates == null) return;
-                              await _saveChanges(
-                                listOfUpdates,
-                                widget.picking['item'] ??
-                                    widget.picking['name'] ??
-                                    'Picking Details',
-                              );
-                            }
-                          },
+                          onPressed: _isDeliveryDirty
+                              ? () async {
+                                  if (_isEditing) {
+                                    await _commitDelivery(
+                                      widget.picking['item'] ??
+                                          widget.picking['name'] ??
+                                          'Picking Details',
+                                    );
+                                  }
+                                }
+                              : null,
                         ),
                       ],
                     ],
@@ -2917,13 +3233,18 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Widget _buildStyledTab(String text, double selectedness) {
-    final bgColor =
-        Color.lerp(Colors.transparent, Colors.black, selectedness)!;
-    final textColor =
-        Color.lerp(Colors.grey[600], Colors.white, selectedness)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Match the sales app's order-details tabs: unselected = white pill with a
+    // grey border, selected = solid black. Lerp gives a smooth transition.
+    final bgColor = Color.lerp(Colors.white, Colors.black, selectedness)!;
+    final textColor = Color.lerp(
+      isDark ? Colors.grey[400] : Colors.grey[700],
+      Colors.white,
+      selectedness,
+    )!;
     final borderColor = Color.lerp(
-      Colors.grey.shade400,
-      Colors.transparent,
+      isDark ? Colors.grey[600] : Colors.grey[300],
+      Colors.black,
       selectedness,
     )!;
     return Tab(
@@ -2933,7 +3254,7 @@ return FadeTransition(opacity: animation, child: child);
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: 1),
         ),
         child: Text(
@@ -2967,6 +3288,10 @@ return FadeTransition(opacity: animation, child: child);
       if (!discard) return false;
       setState(() {
         _isEditing = false;
+        // Revert staged product-line changes back to the pre-edit snapshot.
+        if (_moveBaseline != null) {
+          moveProducts = List<StockMove>.from(_moveBaseline!);
+        }
         _resetEditSelections();
       });
       _syncControllersFromPicking();
@@ -2986,6 +3311,8 @@ return FadeTransition(opacity: animation, child: child);
     return StatefulBuilder(
       builder: (context, setStateDialog) {
         return AlertDialog(
+          backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -3018,12 +3345,11 @@ return FadeTransition(opacity: animation, child: child);
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          RequiredLabel(
                             "Product",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white60 : Colors.black87,
-                            ),
+                            isRequired: true,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white60 : Colors.black87,
                           ),
                           const SizedBox(height: 5),
                           DropdownSearch<Map<String, dynamic>>(
@@ -3075,25 +3401,23 @@ return FadeTransition(opacity: animation, child: child);
                                       ? Colors.grey[400]
                                       : Colors.grey[500],
                                 ),
+                                filled: true,
+                                fillColor: isDark
+                                    ? const Color(0xFF2A2A2A)
+                                    : const Color(0xffF8FAFB),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
                                 ),
                                 enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: isDark
-                                        ? Colors.white24
-                                        : Colors.transparent,
-                                    width: 1.5,
-                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
                                 ),
                                 focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppStyle.primaryColor,
-                                    width: 2,
+                                    color: AppStyle.primaryColor,
+                                    width: 1,
                                   ),
                                 ),
                               ),
@@ -3108,55 +3432,22 @@ return FadeTransition(opacity: animation, child: child);
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          RequiredLabel(
                             "Quantity",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white60 : Colors.black87,
-                            ),
+                            isRequired: true,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white60 : Colors.black87,
                           ),
                           const SizedBox(height: 5),
-                          TextField(
+                          MoboTextField(
                             controller: qtyController,
-                            decoration: InputDecoration(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              hintText: 'Add Quantity',
-                              hintStyle: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.white60 : Colors.black87,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.format_list_numbered,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[500],
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: isDark
-                                      ? Colors.white24
-                                      : Colors.transparent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppStyle.primaryColor,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
+                            hintText: 'Add Quantity',
                             keyboardType: TextInputType.number,
+                            prefixIcon: Icon(
+                              Icons.format_list_numbered,
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[500],
+                            ),
                           ),
                         ],
                       ),
@@ -3195,6 +3486,23 @@ return FadeTransition(opacity: animation, child: child);
                     icon: Icons.delete,
                     borderRadius: 8,
                     onPressed: () async {
+                      // In edit mode the deletion is only staged; it is applied
+                      // to the backend on "Save Delivery". Outside edit mode it
+                      // commits immediately (quick inline edit).
+                      if (_isEditing) {
+                        setState(() {
+                          if (product.id < 0) {
+                            _stagedNewMoves
+                                .removeWhere((m) => m.id == product.id);
+                          } else {
+                            _stagedDeletedMoveIds.add(product.id);
+                            _stagedEditedMoves.remove(product.id);
+                          }
+                          moveProducts.removeAt(index);
+                        });
+                        Navigator.of(context).pop();
+                        return;
+                      }
                       setStateDialog(() {
                         _isLoading = true;
                       });
@@ -3235,115 +3543,124 @@ return FadeTransition(opacity: animation, child: child);
                           'Please select a product.',
                         );
                         return;
-                      } else if (enteredQty > 0) {
-                        if (pickings.isNotEmpty &&
-                            ['done', 'cancel'].contains(pickings[0].state)) {
-                          CustomSnackbar.showError(
-                            context,
-                            'Cannot edit a line on a ${pickings[0].state} picking.',
-                          );
-                          return;
-                        }
-
-                        setStateDialog(() {
-                          _isLoading = true;
-                          _errorMessage = '';
-                        });
-                        final odooPickingFormService = OdooPickingFormService();
-                        await odooPickingFormService.initializeOdooClient();
-                        final pickingId = int.parse(
-                          widget.picking['id'].toString(),
-                        );
-                        final moveUpdate = StockMove(
-                          id: product.id,
-                          productId: [
-                            selectedPicking!,
-                            selectedPickingName ?? 'Unnamed',
-                          ],
-                          productUomQty: product.productUomQty,
-                          quantity: enteredQty,
-                        );
-                        final isOnline = isOnlineAvailability;
-                        if (isOnline) {
-                          try {
-                            await odooPickingFormService.updateProductMove(
-                              product.id,
-                              selectedPicking!,
-                              enteredQty,
-                            );
-                            setState(() {
-                              moveProducts[index] = StockMove(
-                                id: product.id,
-                                productId: [
-                                  selectedPicking!,
-                                  selectedPickingName ?? 'Unnamed',
-                                ],
-                                productUomQty: product.productUomQty,
-                                quantity: enteredQty,
-                              );
-                            });
-                            await _loadSavingData();
-                            if (!context.mounted) return;
-                            setStateDialog(() => _isLoading = false);
-                            Navigator.of(context).pop();
-                            CustomSnackbar.showSuccess(
-                              context,
-                              'Product line updated.',
-                            );
-                          } catch (e) {
-                            if (!context.mounted) return;
-                            setStateDialog(() => _isLoading = false);
-                            CustomSnackbar.showError(
-                              context,
-                              'Failed to update product: ${e.toString().replaceFirst('Exception: ', '')}',
-                            );
-                          }
-                          return;
-                        } else {
-                          final locationIdInt =
-                              widget.picking['location_id_int'] != null
-                              ? int.tryParse(
-                                  widget.picking['location_id_int'].toString(),
-                                )
-                              : null;
-
-                          final locationDestIdInt =
-                              widget.picking['location_dest_id_int'] != null
-                              ? int.tryParse(
-                                  widget.picking['location_dest_id_int']
-                                      .toString(),
-                                )
-                              : null;
-                          await _hiveService.savePendingProductUpdates(
-                            pickingId,
-                            {
-                              'move': moveUpdate.toJson(),
-                              'timestamp': DateTime.now(),
-                              'location_id_int': locationIdInt,
-                              'location_dest_id_int': locationDestIdInt,
-                            },
-                            widget.picking['item'] ??
-                                widget.picking['name'] ??
-                                'Picking Details',
-                          );
-
-                          setState(() {
-                            moveProducts[index] = moveUpdate;
-                          });
-                        }
-
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                        setStateDialog(() {
-                          _isLoading = false;
-                        });
-                      } else {
+                      }
+                      if (enteredQty <= 0) {
                         CustomSnackbar.showError(
                           context,
                           'Quantity must be greater than zero.',
                         );
+                        return;
                       }
+                      if (pickings.isNotEmpty &&
+                          ['done', 'cancel'].contains(pickings[0].state)) {
+                        CustomSnackbar.showError(
+                          context,
+                          'Cannot edit a line on a ${pickings[0].state} picking.',
+                        );
+                        return;
+                      }
+
+                      final moveUpdate = StockMove(
+                        id: product.id,
+                        productId: [
+                          selectedPicking!,
+                          selectedPickingName ?? 'Unnamed',
+                        ],
+                        productUomQty: product.productUomQty,
+                        quantity: enteredQty,
+                        productUomId: product.productUomId,
+                      );
+
+                      // Edit mode → stage; committed on "Save Delivery".
+                      if (_isEditing) {
+                        setState(() {
+                          moveProducts[index] = moveUpdate;
+                          if (product.id < 0) {
+                            final i = _stagedNewMoves
+                                .indexWhere((m) => m.id == product.id);
+                            if (i != -1) _stagedNewMoves[i] = moveUpdate;
+                          } else {
+                            _stagedEditedMoves[product.id] = moveUpdate;
+                          }
+                        });
+                        Navigator.of(context).pop();
+                        return;
+                      }
+
+                      // View mode → commit immediately.
+                      setStateDialog(() {
+                        _isLoading = true;
+                        _errorMessage = '';
+                      });
+                      final odooPickingFormService = OdooPickingFormService();
+                      await odooPickingFormService.initializeOdooClient();
+                      final pickingId = int.parse(
+                        widget.picking['id'].toString(),
+                      );
+                      final isOnline = isOnlineAvailability;
+                      if (isOnline) {
+                        try {
+                          await odooPickingFormService.updateProductMove(
+                            product.id,
+                            selectedPicking!,
+                            enteredQty,
+                          );
+                          setState(() {
+                            moveProducts[index] = moveUpdate;
+                          });
+                          await _loadSavingData();
+                          if (!context.mounted) return;
+                          setStateDialog(() => _isLoading = false);
+                          Navigator.of(context).pop();
+                          CustomSnackbar.showSuccess(
+                            context,
+                            'Product line updated.',
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          setStateDialog(() => _isLoading = false);
+                          CustomSnackbar.showError(
+                            context,
+                            'Failed to update product: ${e.toString().replaceFirst('Exception: ', '')}',
+                          );
+                        }
+                        return;
+                      } else {
+                        final locationIdInt =
+                            widget.picking['location_id_int'] != null
+                            ? int.tryParse(
+                                widget.picking['location_id_int'].toString(),
+                              )
+                            : null;
+                        final locationDestIdInt =
+                            widget.picking['location_dest_id_int'] != null
+                            ? int.tryParse(
+                                widget.picking['location_dest_id_int']
+                                    .toString(),
+                              )
+                            : null;
+                        await _hiveService.savePendingProductUpdates(
+                          pickingId,
+                          {
+                            'move': moveUpdate.toJson(),
+                            'timestamp': DateTime.now(),
+                            'location_id_int': locationIdInt,
+                            'location_dest_id_int': locationDestIdInt,
+                          },
+                          widget.picking['item'] ??
+                              widget.picking['name'] ??
+                              'Picking Details',
+                        );
+                        setState(() {
+                          moveProducts[index] = moveUpdate;
+                        });
+                      }
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                      setStateDialog(() {
+                        _isLoading = false;
+                      });
                     },
                   ),
                 ),
@@ -3395,12 +3712,11 @@ return FadeTransition(opacity: animation, child: child);
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        RequiredLabel(
                           "Product",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white60 : Colors.black87,
-                          ),
+                          isRequired: true,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white60 : Colors.black87,
                         ),
                         const SizedBox(height: 5),
                         DropdownSearch<Map<String, dynamic>>(
@@ -3445,25 +3761,23 @@ return FadeTransition(opacity: animation, child: child);
                                     ? Colors.grey[400]
                                     : Colors.grey[500],
                               ),
+                              filled: true,
+                              fillColor: isDark
+                                  ? const Color(0xFF2A2A2A)
+                                  : const Color(0xffF8FAFB),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: isDark
-                                      ? Colors.white24
-                                      : Colors.transparent,
-                                  width: 1.5,
-                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppStyle.primaryColor,
-                                  width: 2,
+                                  color: AppStyle.primaryColor,
+                                  width: 1,
                                 ),
                               ),
                             ),
@@ -3477,55 +3791,21 @@ return FadeTransition(opacity: animation, child: child);
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        RequiredLabel(
                           "Quantity",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white60 : Colors.black87,
-                          ),
+                          isRequired: true,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white60 : Colors.black87,
                         ),
                         const SizedBox(height: 5),
-                        TextField(
+                        MoboTextField(
                           controller: qtyController,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            hintText: 'Add Quantity',
-                            hintStyle: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white60 : Colors.black87,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.format_list_numbered,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[500],
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: isDark
-                                    ? Colors.white24
-                                    : Colors.transparent,
-                                width: 1.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: isDark
-                                    ? Colors.white
-                                    : AppStyle.primaryColor,
-                                width: 2,
-                              ),
-                            ),
-                          ),
+                          hintText: 'Add Quantity',
                           keyboardType: TextInputType.number,
+                          prefixIcon: Icon(
+                            Icons.format_list_numbered,
+                            color: isDark ? Colors.grey[400] : Colors.grey[500],
+                          ),
                         ),
                       ],
                     ),
@@ -3587,6 +3867,28 @@ return FadeTransition(opacity: animation, child: child);
                                 'Cannot add products to a ${pickings[0].state} picking.',
                               );
                             }
+                            return;
+                          }
+
+                          // Edit mode → stage the new line locally; it is
+                          // created in the backend on "Save Delivery".
+                          if (_isEditing) {
+                            final newMove = StockMove(
+                              id: _tempMoveIdSeq--,
+                              productId: [
+                                selectedPicking!,
+                                selectedPickingName ?? 'Unnamed',
+                              ],
+                              productUomQty: enteredQty,
+                              quantity: enteredQty,
+                              productUomId: selectedPickingUom,
+                            );
+                            isCreateSaving = false;
+                            selectedPicking = 0;
+                            selectedPickingName = null;
+                            // Rebuilds the PAGE (not just this dialog).
+                            _stageNewMove(newMove);
+                            Navigator.of(context).pop();
                             return;
                           }
 

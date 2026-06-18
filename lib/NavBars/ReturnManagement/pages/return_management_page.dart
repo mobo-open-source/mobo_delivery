@@ -347,13 +347,15 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                               onTap: () =>
                                   setDialogState(() => tempGroupBy = null),
                             ),
-                            for (final entry in groupMap.entries) ...[
-                              Divider(
-                                height: 1,
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[200],
-                              ),
+                            // Single divider after "None" only — the remaining
+                            // options are listed without lines between them.
+                            Divider(
+                              height: 1,
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[200],
+                            ),
+                            for (final entry in groupMap.entries)
                               _buildGroupOption(
                                 isDark: isDark,
                                 label: entry.key,
@@ -363,7 +365,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                   () => tempGroupBy = entry.value,
                                 ),
                               ),
-                            ],
                           ],
                         ),
                       ],
@@ -916,7 +917,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       subtitle: hasAnyFilter
           ? 'Try adjusting your filters or search term'
           : 'There are no return items available.',
-      lottieAsset: 'assets/lotties/no_data.json',
       actionLabel: hasAnyFilter ? 'Clear All Filters' : null,
       onAction: hasAnyFilter
           ? () {

@@ -15,6 +15,9 @@ class CustomTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool readOnly;
 
+  /// When true a red `*` is appended to [labelText] to mark a mandatory field.
+  final bool isRequired;
+
   const CustomTextField({
     required this.controller,
     required this.labelText,
@@ -27,6 +30,7 @@ class CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.onChanged,
     this.readOnly = false,
+    this.isRequired = false,
     super.key,
   });
 
@@ -35,12 +39,22 @@ class CustomTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          labelText,
-          style: GoogleFonts.manrope(
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
+        RichText(
+          text: TextSpan(
+            text: labelText,
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+            ),
+            children: isRequired
+                ? const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Color(0xFFD32F2F)),
+                    ),
+                  ]
+                : null,
           ),
         ),
         const SizedBox(height: 8),

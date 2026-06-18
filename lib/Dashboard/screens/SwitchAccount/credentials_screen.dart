@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../shared/widgets/loaders/loading_widget.dart';
+import '../../../LoginPage/widgets/login_button.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/SwitchAccount/server_url_screen.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -689,7 +691,7 @@ return FadeTransition(opacity: animation, child: child);
                         alignment: Alignment.center,
                         child: Text(
                           "Add Account",
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.manrope(
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                             fontSize: 25,
@@ -735,11 +737,14 @@ return FadeTransition(opacity: animation, child: child);
                           ),
                         ),
                       const SizedBox(height: 30),
-                      MoboButton.primary(
-                        label: 'Add Account',
-                        borderRadius: 8,
+                      LoginButton(
+                        text: 'Add Account',
                         isLoading: _isLoading,
-                        loadingLabel: 'Adding',
+                        loadingWidget: const LoadingWidget(
+                          color: Colors.white,
+                          size: 26,
+                          variant: LoadingVariant.staggeredDots,
+                        ),
                         onPressed: _isLoading ? null : _addAccount,
                       ),
                       const SizedBox(height: 16),

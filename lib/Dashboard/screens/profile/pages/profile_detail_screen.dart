@@ -638,6 +638,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     CustomTextField(
                       controller: streetCtrl, labelText: 'Street Address',
                       hintText: 'Enter street address', isDark: isDark,
+                      isRequired: true,
                       validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
                     ),
                     const SizedBox(height: 16),
@@ -652,6 +653,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     CustomDropdownField(
                       value: safeCountryId?.toString(),
                       labelText: 'Country', hintText: 'Select Country', isDark: isDark,
+                      isRequired: true,
                       items: countryItems,
                       onChanged: _isLoadingCountries ? null : (val) {
                         setDlg(() { selectedCountryId = val != null ? int.tryParse(val) : null; selectedStateId = null; _states = []; });

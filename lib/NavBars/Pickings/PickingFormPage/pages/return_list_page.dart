@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/pages/picking_details_page.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../services/odoo_picking_form_service.dart';
 
 /// Displays a list of return pickings (reverse transfers) related to a source picking.
@@ -176,15 +177,11 @@ return FadeTransition(opacity: animation, child: child);
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                    Center(
-                      child: Text(
-                        'No Return Pickings Found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: isDark ? Colors.white : Colors.black54,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.7,
+                      child: const EmptyState(
+                        title: 'No Return Pickings Found',
+                        subtitle: 'There are no return pickings available.',
                       ),
                     ),
                   ],

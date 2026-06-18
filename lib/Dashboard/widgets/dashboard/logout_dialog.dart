@@ -136,7 +136,7 @@ class _LogoutDialogState extends State<LogoutDialog> {
                 const SizedBox(height: 20),
                 Text(
                   "Logging out...",
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.manrope(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
@@ -145,7 +145,7 @@ class _LogoutDialogState extends State<LogoutDialog> {
                 Text(
                   "Please wait while we process your request.",
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.manrope(
                     fontSize: 14,
                     color: Colors.grey,
                   ),

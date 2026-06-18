@@ -264,7 +264,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
         Text(
           onboardingData[currentIndex]['title']!,
           textAlign: TextAlign.center,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.manrope(
             fontSize: fontSize,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -285,7 +285,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
         Text(
           onboardingData[currentIndex]['description']!,
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.manrope(
             fontSize: descSize,
             color: Colors.white.withOpacity(0.8),
             height: 1.6,
@@ -323,7 +323,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
             ),
             child: Text(
               'Get Started',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.manrope(
                 fontSize: isDesktop ? 18 : 17,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,

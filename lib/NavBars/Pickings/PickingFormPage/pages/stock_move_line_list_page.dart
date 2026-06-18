@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/widgets/empty_state.dart';
 
 /// Displays the detailed list of stock move lines (individual product movements)
 /// for a given stock picking / transfer.
@@ -65,26 +66,9 @@ class StockMoveLineListPage extends StatelessWidget {
         ),
       ),
       body: pickingStockLine.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    HugeIcons.strokeRoundedDeliveryBox02,
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
-                    size: 80,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No Stock Move Lines Found',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: isDark ? Colors.white : AppStyle.primaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+          ? const EmptyState(
+              title: 'No Stock Move Lines Found',
+              subtitle: 'There are no stock move lines available.',
             )
           : _buildTable(context, isDark),
     );

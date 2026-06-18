@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../../Rating/review_service.dart';
+import '../../Update/update_available_page.dart';
+import '../../Update/version_check_service.dart';
 import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -59,8 +61,35 @@ class _SplashScreenState extends State<SplashScreen> {
   /// This method runs once during initialization and does not repeat.
   Future<void> _startAuthCheck() async {
     await Future.delayed(const Duration(seconds: 3));
+
+    // Offer a (non-blocking) update before entering the app. The page is only
+    // shown when the store reports a newer version; the user can tap "Maybe
+    // Later" to dismiss it and continue. Any lookup failure (offline,
+    // throttled, not-yet-published) silently continues to auth.
+    await _maybeShowUpdatePage();
+    if (!mounted) return;
+
     final authModel = await _authController.checkLoginStatus();
     await _authController.handleAuthentication(context, authModel);
+  }
+
+  /// Shows the optional update page when a newer store version exists, and
+  /// waits until the user dismisses it before returning so auth can resume.
+  Future<void> _maybeShowUpdatePage() async {
+    final service = VersionCheckService();
+    final result = await service.check();
+    if (!result.updateAvailable || !mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UpdateAvailablePage(
+          latestVersion: result.storeVersion!,
+          isRequired: false,
+          onUpdate: service.openStore,
+          onSkip: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
   }
 
   @override

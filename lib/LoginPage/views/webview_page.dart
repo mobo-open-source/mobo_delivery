@@ -144,7 +144,7 @@ class _WebViewPageState extends State<WebViewPage> {
           ),
           title: Text(
             widget.title,
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.manrope(
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -235,7 +235,7 @@ class _WebViewPageState extends State<WebViewPage> {
             const SizedBox(height: 24),
             Text(
               'Unable to Load Page',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.manrope(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : Colors.black,
@@ -245,7 +245,7 @@ class _WebViewPageState extends State<WebViewPage> {
             const SizedBox(height: 8),
             Text(
               _errorMessage ?? 'An error occurred while loading the page.',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.manrope(
                 fontSize: 14,
                 color: isDark ? Colors.grey[400] : Colors.grey[600],
                 height: 1.4,
@@ -264,7 +264,7 @@ class _WebViewPageState extends State<WebViewPage> {
                   ),
                   label: Text(
                     'Go Back',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.manrope(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
