@@ -244,6 +244,70 @@ class OdooAttachService {
     }
   }
 
+  /// Fetches the metadata of all attachments already linked to a picking.
+  ///
+  /// Queries `ir.attachment` for records with `res_model = 'stock.picking'` and
+  /// `res_id = pickingId`. The heavy `datas` (file content) is intentionally
+  /// NOT fetched here — only lightweight metadata for the list. Use
+  /// [downloadAttachmentBytes] to fetch a single file's content on demand.
+  ///
+  /// Returns newest-first. Returns an empty list on failure.
+  Future<List<Map<String, dynamic>>> fetchPickingAttachments(
+    int pickingId,
+  ) async {
+    try {
+      final attachments = await CompanySessionManager.callKwWithCompany({
+        'model': 'ir.attachment',
+        'method': 'search_read',
+        'args': [
+          [
+            ['res_model', '=', 'stock.picking'],
+            ['res_id', '=', pickingId],
+          ],
+        ],
+        'kwargs': {
+          'fields': [
+            'id',
+            'name',
+            'mimetype',
+            'file_size',
+            'create_date',
+          ],
+          'order': 'create_date desc',
+        },
+      });
+      return List<Map<String, dynamic>>.from(attachments ?? []);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Downloads a single attachment's content as base64 (`datas`).
+  ///
+  /// Returns the base64 string, or null if unavailable / on failure. Callers
+  /// decode it to bytes for in-app preview or save it to a temp file.
+  Future<String?> downloadAttachmentBytes(int attachmentId) async {
+    try {
+      final result = await CompanySessionManager.callKwWithCompany({
+        'model': 'ir.attachment',
+        'method': 'read',
+        'args': [
+          [attachmentId],
+          ['datas'],
+        ],
+        'kwargs': {},
+      });
+      if (result is List && result.isNotEmpty) {
+        final row = result.first as Map<String, dynamic>;
+        final datas = row['datas'];
+        if (datas is String && datas.isNotEmpty) return datas;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Uploads a file (signature/image/PDF/etc.) as an attachment to a specific stock picking.
   ///
   /// Creates an `ir.attachment` record linked to `stock.picking` via `res_model` and `res_id`.

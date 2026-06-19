@@ -1,7 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,7 +11,6 @@ import '../../../shared/widgets/loaders/loading_widget.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../../../Dashboard/infrastructure/profile_refresh_bus.dart';
 import '../../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../../Dashboard/services/storage_service.dart';
@@ -25,8 +23,8 @@ import '../../Pickings/PickingFormPage/services/hive_service.dart';
 import '../bloc/attach_documents_bloc.dart';
 import '../bloc/attach_documents_event.dart';
 import '../bloc/attach_documents_state.dart';
-import '../screens/signature_screen.dart';
 import '../services/odoo_attach_service.dart';
+import 'picking_documents_page.dart';
 import '../utils/utils.dart';
 import '../constants/constants.dart';
 
@@ -132,218 +130,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  /// Shows bottom sheet with attachment options: Signature or File Upload.
-  void _showAttachmentOptions(
-    BuildContext context,
-    Map<String, dynamic> picking,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor:
-      Theme.of(context).brightness == Brightness.dark
-          ? Colors.grey[900]
-          : Colors.grey[50],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (modalContext) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: Icon(
-                  HugeIcons.strokeRoundedSignature,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                title: Text(
-                  "Signature",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(modalContext);
-                  _showSignatureOptions(context, picking);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  HugeIcons.strokeRoundedUploadSquare02,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                title: Text(
-                  "Upload Images or PDF",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                onTap: () => _pickAndUploadFile(context, picking, [
-                  'jpg',
-                  'jpeg',
-                  'png',
-                  'pdf',
-                ]),
-              ),
-              ListTile(
-                leading: Icon(
-                  HugeIcons.strokeRoundedLink01,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                title: Text(
-                  "Attach Document",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                onTap: () => _pickAndUploadFile(context, picking, [
-                  'pdf',
-                  'doc',
-                  'docx',
-                  'xls',
-                  'xlsx',
-                  'txt',
-                ]),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// Displays secondary bottom sheet for signature-specific choices:
-  /// Draw in-app or upload existing signature file.
-  void _showSignatureOptions(
-    BuildContext parentContext,
-    Map<String, dynamic> picking,
-  ) {
-    final isDark = Theme.of(parentContext).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: parentContext,
-      backgroundColor:
-      Theme.of(context).brightness == Brightness.dark
-          ? Colors.grey[900]
-          : Colors.grey[50],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (modalContext) {
-        return Wrap(
-          children: [
-            ListTile(
-              leading: Icon(
-                HugeIcons.strokeRoundedPenTool03,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-              title: Text(
-                "Signature from App",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              onTap: () async {
-                Navigator.pop(modalContext);
-                final result = await Navigator.push(
-                  parentContext,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        const SignatureScreen(),
-                    transitionDuration: const Duration(milliseconds: 300),
-                    reverseTransitionDuration:
-                        const Duration(milliseconds: 300),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          );
-                        },
-                  ),
-                );
-                if (result != null) {
-                  try {
-                    parentContext.read<AttachDocumentsBloc>().add(
-                      UploadFile(
-                        result['mimeType'],
-                        result['base64'],
-                        picking['id'],
-                        result['fileName'],
-                      ),
-                    );
-                  } catch (e) {
-                    CustomSnackbar.showError(
-                      context,
-                      'Something went wrong, please try again later.',
-                    );
-                  }
-                }
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                HugeIcons.strokeRoundedFileUpload,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-              title: Text(
-                "Upload Signature",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              onTap: () => _pickAndUploadFile(parentContext, picking, [
-                'jpg',
-                'jpeg',
-                'png',
-                'pdf',
-              ]),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Opens file picker with allowed extensions, encodes file to base64,
-  /// and dispatches UploadFile event to the BLoC.
-  Future<void> _pickAndUploadFile(
-    BuildContext parentContext,
-    Map<String, dynamic> picking,
-    List<String> allowedExtensions,
-  ) async {
-    Navigator.pop(parentContext);
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: allowedExtensions,
-        withData: true,
-      );
-      if (result != null && result.files.single.bytes != null) {
-        final fileBytes = result.files.single.bytes!;
-        final fileName = result.files.single.name;
-        final mimeType = Utils.getMimeType(fileName);
-        final base64File = base64Encode(fileBytes);
-        parentContext.read<AttachDocumentsBloc>().add(
-          UploadFile(mimeType, base64File, picking['id'], fileName),
-        );
-      } else {
-        CustomSnackbar.showError(context, 'File picking cancelled.');
-      }
-    } catch (e) {
-      CustomSnackbar.showError(
-        context,
-        'Something went wrong, please try again later',
-      );
-    }
   }
 
   Widget _buildFilterIndicator(bool isDark, int count) {
@@ -1365,17 +1151,18 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           ),
                                                         ),
                                                         onTap: () {
-                                                          if (isOnline) {
-                                                            _showAttachmentOptions(
-                                                              context,
-                                                              picking,
-                                                            );
-                                                          } else {
-                                                            CustomSnackbar.showError(
-                                                              context,
-                                                              'Cannot attach while offline. Please try again later.',
-                                                            );
-                                                          }
+                                                          // Open the picking's
+                                                          // documents (view +
+                                                          // preview + add).
+                                                          Navigator.of(context)
+                                                              .push(
+                                                            MaterialPageRoute(
+                                                              builder: (_) =>
+                                                                  PickingDocumentsPage(
+                                                                picking: picking,
+                                                              ),
+                                                            ),
+                                                          );
                                                         },
                                                       ),
                                                     ),
