@@ -440,7 +440,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                     );
 
                     return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                       child: Material(
                         color: isActive
                             ? (primaryColor.withOpacity(0.1))
@@ -460,7 +460,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 14,
+                              vertical: 18,
                             ),
                             child: Row(
                               children: [
@@ -468,7 +468,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                   child: Text(
                                     companyName,
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       fontWeight: isActive
                                           ? FontWeight.w600
                                           : FontWeight.normal,
@@ -480,10 +480,10 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                 ),
                                 const SizedBox(width: 12),
                                 SizedBox(
-                                  width: 26,
-                                  height: 26,
+                                  width: 32,
+                                  height: 32,
                                   child: MoboCheckbox(
-                                    size: 26,
+                                    size: 32,
                                     value: isAllowed,
                                     onChanged: isLoading
                                         ? null

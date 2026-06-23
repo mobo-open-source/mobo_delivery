@@ -603,8 +603,7 @@ return FadeTransition(opacity: animation, child: child);
                               dropdownItems: operationTypes,
                               selectedId: _selectedOperationTypeId,
                               itemAsString: (item) => item.name,
-                              prefixIcon:
-                                  HugeIcons.strokeRoundedArrowDataTransferHorizontal,
+                              prefixIcon: HugeIcons.strokeRoundedExchange01,
                               onDropdownChanged: (value) {
                                 setState(() {
                                   _selectedOperationTypeId = value?.id;
@@ -759,6 +758,8 @@ return FadeTransition(opacity: animation, child: child);
                               ),
                               Container(
                                 width: double.infinity,
+                                constraints:
+                                    const BoxConstraints(minHeight: 240),
                                 clipBehavior: Clip.antiAlias,
                                 decoration: BoxDecoration(
                                   color:
@@ -835,7 +836,8 @@ return FadeTransition(opacity: animation, child: child);
                 MoboButton.primary(
                   label: "Create Picking",
                   icon: HugeIcons.strokeRoundedNoteAdd,
-                  onPressed: (_selectedPartnerId != null &&
+                  onPressed: (!isLoading &&
+                          _selectedPartnerId != null &&
                           _selectedOperationTypeId != null)
                       ? _createPicking
                       : null,
@@ -902,22 +904,27 @@ return FadeTransition(opacity: animation, child: child);
     )!;
     return Tab(
       child: Container(
-        width: 120,
-        height: 40,
+        width: double.infinity,
+        height: 42,
         alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: 1),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: textColor,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            text,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: textColor,
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
       ),
     );

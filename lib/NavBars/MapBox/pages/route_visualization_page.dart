@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -18,6 +17,8 @@ import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/error_state_widget.dart';
 import '../../../shared/widgets/inputs/mobo_text_field.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../core/company/widgets/mobo_checkbox.dart';
 import '../widgets/navigation_header.dart';
 import '../widgets/remaining_info_card.dart';
 import '../widgets/route_info_card.dart';
@@ -56,6 +57,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   final MapService mapService = MapService();
 
   LatLng? _initialCameraPosition;
+
+  /// Center used when the device location is unavailable (permission denied,
+  /// location services off, or a lookup error) so the map still renders
+  /// instead of hanging on the loading overlay forever.
+  static const LatLng _fallbackCenter = LatLng(20.5937, 78.9629);
+
+  /// Ensures the "location unavailable" notice is only shown once.
+  bool _locationNoticeShown = false;
+
   final MapController _mapController = MapController();
   final TextEditingController sourceController = TextEditingController();
   final TextEditingController sourceSearchController = TextEditingController();
@@ -672,35 +682,63 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
   /// Requests location permission, gets current position, and sets it as the source.
   Future<void> _setInitialLocation() async {
-    final location = Location();
+    try {
+      final location = Location();
 
-    bool serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) return;
+      bool serviceEnabled = await location.serviceEnabled();
+      if (!serviceEnabled) {
+        serviceEnabled = await location.requestService();
+        if (!serviceEnabled) {
+          _useFallbackLocation();
+          return;
+        }
+      }
+
+      PermissionStatus permissionGranted = await location.hasPermission();
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await location.requestPermission();
+        if (permissionGranted != PermissionStatus.granted) {
+          _useFallbackLocation();
+          return;
+        }
+      }
+
+      final currentLocation = await location.getLocation();
+      final currentLatLng = LatLng(
+        currentLocation.latitude!,
+        currentLocation.longitude!,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _initialCameraPosition = currentLatLng;
+        _isLoading = false;
+        _currentLatLng = currentLatLng;
+        _sourceLatLng = currentLatLng;
+        sourceController.text = 'Your Location';
+      });
+      _addCurrentLocationMarker(currentLatLng);
+    } catch (_) {
+      _useFallbackLocation();
     }
+  }
 
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
-    }
-
-    final currentLocation = await location.getLocation();
-    final currentLatLng = LatLng(
-      currentLocation.latitude!,
-      currentLocation.longitude!,
-    );
-
-    if (!mounted) return;
+  /// Renders the map at a default center when the current location can't be
+  /// obtained, so the page never gets stuck on the loading overlay. Tells the
+  /// user (once) to set their source manually.
+  void _useFallbackLocation() {
+    if (!mounted || _initialCameraPosition != null) return;
     setState(() {
-      _initialCameraPosition = currentLatLng;
+      _initialCameraPosition = _fallbackCenter;
       _isLoading = false;
-      _currentLatLng = currentLatLng;
-      _sourceLatLng = currentLatLng;
-      sourceController.text = 'Your Location';
     });
-    _addCurrentLocationMarker(currentLatLng);
+    if (!_locationNoticeShown) {
+      _locationNoticeShown = true;
+      CustomSnackbar.showWarning(
+        context,
+        'Location unavailable. Set your source manually in "Enter Route".',
+      );
+    }
   }
 
   /// Places a green location pin at [position] representing current/source location.
@@ -831,142 +869,117 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       const SizedBox(height: 16),
 
                       _fieldHeading('Pickings', isDark, isRequired: true),
-                      Container(
-                        decoration: _fieldShadow,
-                        child:
-                            DropdownSearch<Map<String, dynamic>>.multiSelection(
-                        popupProps: PopupPropsMultiSelection.menu(
-                          showSearchBox: true,
-                          menuProps: MenuProps(
+                      Builder(
+                        builder: (context) {
+                          final selectedMaps = pickings
+                              .where(
+                                  (p) => selectedPickings.contains(p['id']))
+                              .toList();
+                          return InkWell(
                             borderRadius: BorderRadius.circular(12),
-                            backgroundColor:
-                                isDark ? Colors.grey[900] : Colors.white,
-                            elevation: 4,
-                          ),
-                          selectionWidget: (context, item, isSelected) {
-                            return Checkbox(
-                              value: isSelected,
-                              onChanged: (_) {},
-                              activeColor: AppStyle.primaryColor,
-                              checkColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            );
-                          },
-                          searchFieldProps: TextFieldProps(
-                            decoration:
-                                _fieldDecoration(isDark, 'Search Pickings'),
-                          ),
-                          onDismissed: () =>
-                              sheetSetState(() => isDropdownActive = false),
-                        ),
-                        onBeforePopupOpening: (_) async {
-                          sheetSetState(() => isDropdownActive = true);
-                          return true;
-                        },
-                        items: pickings,
-                        itemAsString: (item) => item['name'] ?? '',
-                        selectedItems: pickings
-                            .where((p) => selectedPickings.contains(p['id']))
-                            .toList(),
-                        onChanged: (List<Map<String, dynamic>> value) async {
-                          sheetSetState(() => isFetchingStops = true);
-                          try {
-                            selectedPickings =
-                                value.map((e) => e['id'] as int).toList();
-                            selectedPickingNames =
-                                value.map((e) => e['name'] as String).toList();
-                            _stops.clear();
-                            for (var c in _stopSearchControllers) {
-                              c.dispose();
-                            }
-                            _stopSearchControllers.clear();
-                            _stopSuggestions.clear();
+                            onTap: () {
+                              _showPickingSelectSheet(
+                                pickings: pickings,
+                                selectedIds: selectedPickings.toList(),
+                                onConfirm: (value) async {
+                                  sheetSetState(() => isFetchingStops = true);
+                                  try {
+                                    selectedPickings = value
+                                        .map((e) => e['id'] as int)
+                                        .toList();
+                                    selectedPickingNames = value
+                                        .map((e) => e['name'] as String)
+                                        .toList();
+                                    _stops.clear();
+                                    for (var c in _stopSearchControllers) {
+                                      c.dispose();
+                                    }
+                                    _stopSearchControllers.clear();
+                                    _stopSuggestions.clear();
 
-                            final Set<String> uniqueDestinations = {};
-                            for (var picking in value) {
-                              final dest =
-                                  picking['destination_point'] as String? ?? '';
-                              if (dest.isNotEmpty &&
-                                  uniqueDestinations.add(dest)) {
-                                _stopSearchControllers.add(
-                                    TextEditingController(text: dest));
-                                _stopSuggestions.add([]);
-                                final stopLatLng =
-                                    await mapService.getLatLngFromPlace(
-                                        dest, _apiKey,
-                                        proximity: _currentLatLng);
-                                if (stopLatLng != null) {
-                                  _stops.add(stopLatLng);
-                                }
-                              }
-                            }
-                            if (_stopSearchControllers.isEmpty ||
-                                _stopSearchControllers.last.text
-                                    .trim()
-                                    .isNotEmpty) {
-                              _stopSearchControllers
-                                  .add(TextEditingController());
-                              _stopSuggestions.add([]);
-                            }
-                          } catch (_) {
-                          } finally {
-                            setState(() {});
-                            sheetSetState(() {
-                              shouldValidate = false;
-                              isFetchingStops = false;
-                            });
-                          }
-                        },
-                        dropdownDecoratorProps: DropDownDecoratorProps(
-                          dropdownSearchDecoration:
-                              _fieldDecoration(isDark, 'Select Pickings'),
-                        ),
-                        dropdownBuilder: (context, selectedItems) {
-                          if (selectedItems.isEmpty) {
-                            return Text(
-                              'Select Pickings',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.5),
-                              ),
-                            );
-                          }
-                          return Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: selectedItems.map((item) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppStyle.primaryColor
-                                      .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: AppStyle.primaryColor
-                                        .withValues(alpha: 0.5),
-                                  ),
-                                ),
-                                child: Text(
-                                  item['name']?.toString() ?? '',
-                                  style: const TextStyle(
-                                    color: AppStyle.primaryColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                                    final Set<String> uniqueDestinations = {};
+                                    for (var picking in value) {
+                                      final dest = picking['destination_point']
+                                              as String? ??
+                                          '';
+                                      if (dest.isNotEmpty &&
+                                          uniqueDestinations.add(dest)) {
+                                        _stopSearchControllers.add(
+                                            TextEditingController(text: dest));
+                                        _stopSuggestions.add([]);
+                                        final stopLatLng = await mapService
+                                            .getLatLngFromPlace(dest, _apiKey,
+                                                proximity: _currentLatLng);
+                                        if (stopLatLng != null) {
+                                          _stops.add(stopLatLng);
+                                        }
+                                      }
+                                    }
+                                    if (_stopSearchControllers.isEmpty ||
+                                        _stopSearchControllers.last.text
+                                            .trim()
+                                            .isNotEmpty) {
+                                      _stopSearchControllers
+                                          .add(TextEditingController());
+                                      _stopSuggestions.add([]);
+                                    }
+                                  } catch (_) {
+                                  } finally {
+                                    setState(() {});
+                                    sheetSetState(() {
+                                      shouldValidate = false;
+                                      isFetchingStops = false;
+                                    });
+                                  }
+                                },
                               );
-                            }).toList(),
+                            },
+                            child: Container(
+                              decoration: _fieldShadow,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF2A2A2A)
+                                      : const Color(0xffF8FAFB),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: selectedMaps.isEmpty
+                                          ? Text(
+                                              'Select Pickings',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: onSurface
+                                                    .withValues(alpha: 0.5),
+                                              ),
+                                            )
+                                          : Wrap(
+                                              spacing: 6,
+                                              runSpacing: 6,
+                                              children: selectedMaps
+                                                  .map((item) => _pickingTag(
+                                                      item['name']
+                                                              ?.toString() ??
+                                                          ''))
+                                                  .toList(),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: onSurface.withValues(alpha: 0.6),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           );
                         },
-                        ),
                       ),
 
                       if (shouldValidate) ...[
@@ -1427,6 +1440,227 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         ],
       );
 
+  /// A pink (mobo) pill used to show a selected picking inside the Pickings
+  /// field.
+  Widget _pickingTag(String name) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppStyle.primaryColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppStyle.primaryColor.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Text(
+        name,
+        style: const TextStyle(
+          color: AppStyle.primaryColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  /// Multi-select picker for pickings — mirrors the company-selection design
+  /// (search box, mobo checkboxes, Reset/Confirm). Calls [onConfirm] with the
+  /// chosen picking maps when the user confirms.
+  void _showPickingSelectSheet({
+    required List<Map<String, dynamic>> pickings,
+    required List<int> selectedIds,
+    required Future<void> Function(List<Map<String, dynamic>>) onConfirm,
+  }) {
+    final tempSelected = selectedIds.toSet();
+    String query = '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        final isDark = Theme.of(sheetCtx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (sheetCtx, setSheet) {
+            final filtered = query.trim().isEmpty
+                ? pickings
+                : pickings.where((p) {
+                    final name = (p['name']?.toString() ?? '').toLowerCase();
+                    return name.contains(query.toLowerCase());
+                  }).toList();
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(sheetCtx).size.height * 0.8,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Select Pickings',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        onChanged: (v) => setSheet(() => query = v),
+                        decoration:
+                            _fieldDecoration(isDark, 'Search Pickings'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: filtered.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No pickings found',
+                                style: TextStyle(
+                                  color:
+                                      isDark ? Colors.white54 : Colors.black54,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 4),
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final p = filtered[index];
+                                final id = p['id'] as int;
+                                final name = p['name']?.toString() ?? '-';
+                                final checked = tempSelected.contains(id);
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                                  child: Material(
+                                    color: checked
+                                        ? AppStyle.primaryColor
+                                            .withValues(alpha: 0.08)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(10),
+                                      onTap: () => setSheet(() {
+                                        if (checked) {
+                                          tempSelected.remove(id);
+                                        } else {
+                                          tempSelected.add(id);
+                                        }
+                                      }),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 14),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                name,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: checked
+                                                      ? FontWeight.w600
+                                                      : FontWeight.normal,
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : Colors.black87,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            MoboCheckbox(
+                                              size: 26,
+                                              value: checked,
+                                              onChanged: (val) =>
+                                                  setSheet(() {
+                                                if (val) {
+                                                  tempSelected.add(id);
+                                                } else {
+                                                  tempSelected.remove(id);
+                                                }
+                                              }),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: MoboButton.secondary(
+                              label: 'Reset',
+                              height: 48,
+                              onPressed: () =>
+                                  setSheet(() => tempSelected.clear()),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: MoboButton.primary(
+                              label: 'Confirm',
+                              height: 48,
+                              onPressed: () async {
+                                final value = pickings
+                                    .where((p) =>
+                                        tempSelected.contains(p['id']))
+                                    .toList();
+                                Navigator.pop(sheetCtx);
+                                await onConfirm(value);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1711,7 +1945,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
       if (!serviceEnabled) {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+          CustomSnackbar.showWarning(
+            context,
+            'Turn on location to start live navigation.',
+          );
+        }
         return;
       }
     }
@@ -1720,7 +1960,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await _location.requestPermission();
       if (permissionGranted != PermissionStatus.granted) {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+          CustomSnackbar.showWarning(
+            context,
+            'Location permission is required for live navigation.',
+          );
+        }
         return;
       }
     }

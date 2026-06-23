@@ -1043,19 +1043,27 @@ return FadeTransition(opacity: animation, child: child);
   void _openCreateReturnSheet() {
     if (pickings.isEmpty || pickings[0].state != 'done') return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => PickingBottomSheet(
-        picking: widget.picking,
-        odooService: OdooReturnManagementService(),
-        onReturnCreated: () async {
-          await _loadSavingData();
-        },
+      builder: (ctx) => Dialog(
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+          ),
+          child: PickingBottomSheet(
+            picking: widget.picking,
+            odooService: OdooReturnManagementService(),
+            onReturnCreated: () async {
+              await _loadSavingData();
+            },
+          ),
+        ),
       ),
     );
   }
@@ -3142,6 +3150,11 @@ return FadeTransition(opacity: animation, child: child);
                                   ),
                                   Container(
                                     width: double.infinity,
+                                    // Keep a consistent section height so short
+                                    // tabs (Note / Additional Info) don't shrink
+                                    // to a tiny box.
+                                    constraints:
+                                        const BoxConstraints(minHeight: 240),
                                     clipBehavior: Clip.antiAlias,
                                     decoration: BoxDecoration(
                                       color: isDark
@@ -3249,22 +3262,27 @@ return FadeTransition(opacity: animation, child: child);
     )!;
     return Tab(
       child: Container(
-        width: 120,
-        height: 40,
+        width: double.infinity,
+        height: 42,
         alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: borderColor, width: 1),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: textColor,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            text,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: textColor,
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -4413,7 +4431,13 @@ return FadeTransition(opacity: animation, child: child);
                                       ? pickings[0].moveType
                                       : null) ??
                               'direct',
-                          style: TextStyle(
+                          // DropdownButton2.style REPLACES the default text
+                          // style (it doesn't merge), so build it from the
+                          // theme's titleMedium to keep the app font (Manrope)
+                          // instead of falling back to the platform default.
+                          style: (Theme.of(context).textTheme.titleMedium ??
+                                  const TextStyle())
+                              .copyWith(
                             color: isDark ? Colors.white : Colors.black,
                           ),
                           items: const [

@@ -582,7 +582,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[850] : Colors.grey[50],
+                      color: isDark ? const Color(0xFF232323) : Colors.white,
                       border: Border(
                         top: BorderSide(
                           color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
@@ -913,37 +913,28 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             ),
                           ),
                         ),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: Icon(
-                            HugeIcons.strokeRoundedArrowLeft01,
-                            size: 25,
-                            color: currentPage > 0
-                                ? (isDark ? Colors.white70 : Colors.black87)
-                                : (isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey.withValues(alpha: 0.7)),
+                        if (currentPage > 0)
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(
+                              HugeIcons.strokeRoundedArrowLeft01,
+                              size: 25,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                            onPressed: () => _loadPrevPage(firstLoc!),
                           ),
-                          onPressed: currentPage > 0
-                              ? () => _loadPrevPage(firstLoc!)
-                              : null,
-                        ),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: Icon(
-                            HugeIcons.strokeRoundedArrowRight01,
-                            size: 25,
-                            color: hasNext
-                                ? (isDark ? Colors.white70 : Colors.black87)
-                                : (isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey.withValues(alpha: 0.7)),
+                        if (hasNext)
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: Icon(
+                              HugeIcons.strokeRoundedArrowRight01,
+                              size: 25,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                            onPressed: () => _loadNextPage(firstLoc!),
                           ),
-                          onPressed:
-                              hasNext ? () => _loadNextPage(firstLoc!) : null,
-                        ),
                       ],
                     );
                   }),

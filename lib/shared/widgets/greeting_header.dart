@@ -52,10 +52,10 @@ class GreetingHeader extends StatelessWidget {
 
     return Container(
       margin: margin,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: AppStyle.primaryColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -67,26 +67,26 @@ class GreetingHeader extends StatelessWidget {
                   greetingText,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
+                    letterSpacing: 0.2,
                     height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    height: 1.35,
+                    height: 1.3,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -109,9 +109,9 @@ class GreetingHeader extends StatelessWidget {
                     'greeting_avatar_${imageBytes != null ? "image" : "placeholder"}',
                   ),
                   imageBytes: imageBytes,
-                  size: 52,
-                  iconSize: 28,
-                  borderRadius: BorderRadius.circular(26),
+                  size: 44,
+                  iconSize: 24,
+                  borderRadius: BorderRadius.circular(22),
                   placeholderColor: Colors.white,
                   iconColor: AppStyle.primaryColor,
                 ),
@@ -119,10 +119,10 @@ class GreetingHeader extends StatelessWidget {
               // Online status dot.
               Positioned(
                 right: 0,
-                bottom: 2,
+                bottom: 1,
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: 12,
+                  height: 12,
                   decoration: BoxDecoration(
                     color: const Color(0xFF34C759),
                     shape: BoxShape.circle,

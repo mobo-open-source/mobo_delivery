@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 /// A standard container widget used to group related settings into a card.
 class SectionCard extends StatelessWidget {
@@ -41,8 +40,6 @@ class SectionCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                _buildIcon(icon, isDark ? Colors.white : Colors.black87),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     title,
@@ -61,10 +58,5 @@ class SectionCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Widget _buildIcon(dynamic icon, Color color) {
-    if (icon is IconData) return Icon(icon, color: color, size: 20);
-    return HugeIcon(icon: icon, color: color, size: 20);
   }
 }

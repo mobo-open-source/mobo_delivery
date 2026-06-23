@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/pages/picking_details_page.dart';
@@ -123,17 +127,36 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Return Items',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Return Items',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 22,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
 
@@ -155,54 +178,39 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                     ),
                   ),
                 )
-              : ListView.builder(
+              : Flexible(
+            child: ListView.builder(
             shrinkWrap: true,
             itemCount: moveItems.length,
             itemBuilder: (context, index) {
               final move = moveItems[index];
               final controller = move['qtyController'] as TextEditingController;
+              final productName = move['product_id'] is List
+                  ? (move['product_id'][1] ?? 'Unnamed')
+                  : 'Unnamed';
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        move['product_id'] is List
-                            ? move['product_id'][1] ?? 'Unnamed'
-                            : 'Unnamed',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
+                    _productField(productName, move['image'] as String?, isDark),
+                    const SizedBox(height: 12),
+                    MoboTextField(
+                      controller: controller,
+                      label: 'Qty',
+                      showShadow: false,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    Expanded(
-                      child: TextFormField(
-                        controller: controller,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        onChanged: (_) {
-                          setState(() => _inlineError = null);
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Qty',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
+                      onChanged: (_) {
+                        setState(() => _inlineError = null);
+                      },
                     ),
                   ],
                 ),
               );
             },
+          ),
           ),
           const SizedBox(height: 20),
 
@@ -258,6 +266,105 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
         ],
       ),
     );
+  }
+
+  /// A read-only, non-clickable display of the product name styled like the
+  /// app's gray-filled [MoboTextField] (soft fill, rounded corners, no extra
+  /// shadow), with the real product image as its prefix (falling back to a
+  /// package icon). Used as the top layer of each return line
+  /// (name → quantity → button).
+  Widget _productField(String name, String? imageBase64, bool isDark) {
+    final Color fillColor =
+        isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB);
+    final Color textColor = isDark ? Colors.white : const Color(0xff000000);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RequiredLabel(
+          'Product',
+          color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              _productThumbnail(imageBase64, isDark),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Renders the product's [image_128] thumbnail when available, otherwise a
+  /// package icon placeholder.
+  Widget _productThumbnail(String? imageBase64, bool isDark) {
+    final border = Border.all(
+      color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+    );
+
+    Widget fallback() => Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppStyle.primaryColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: border,
+          ),
+          child: const Icon(
+            HugeIcons.strokeRoundedPackage,
+            color: AppStyle.primaryColor,
+            size: 22,
+          ),
+        );
+
+    if (imageBase64 == null ||
+        imageBase64.isEmpty ||
+        imageBase64 == 'false') {
+      return fallback();
+    }
+
+    try {
+      final bytes = base64Decode(imageBase64);
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: border,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(9),
+          child: Image.memory(
+            bytes,
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallback(),
+          ),
+        ),
+      );
+    } catch (_) {
+      return fallback();
+    }
   }
 
   /// Builds the wizard line payload from the user-entered quantities.

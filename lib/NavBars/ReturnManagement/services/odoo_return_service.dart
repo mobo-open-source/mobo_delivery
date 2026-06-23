@@ -261,7 +261,52 @@ class OdooReturnManagementService {
         'kwargs': {},
       });
 
-      return List<Map<String, dynamic>>.from(lines ?? const []);
+      final result = List<Map<String, dynamic>>.from(lines ?? const []);
+
+      // Fetch each product's thumbnail (image_128) so the return dialog can
+      // show the real product image. The return line model has no image
+      // field, so we read it from product.product by id and attach an
+      // `image` (base64 string) to each line.
+      final productIds = <int>{
+        for (final line in result)
+          if (line['product_id'] is List && (line['product_id'] as List).isNotEmpty)
+            (line['product_id'] as List).first as int,
+      }.toList();
+
+      if (productIds.isNotEmpty) {
+        try {
+          final products = await CompanySessionManager.callKwWithCompany({
+            'model': 'product.product',
+            'method': 'read',
+            'args': [
+              productIds,
+              ['id', 'image_128'],
+            ],
+            'kwargs': {},
+          });
+          final imageById = <int, String>{};
+          for (final p in (products as List? ?? const [])) {
+            final map = p as Map<String, dynamic>;
+            final img = map['image_128'];
+            if (img is String && img.isNotEmpty) {
+              imageById[map['id'] as int] = img;
+            }
+          }
+          for (final line in result) {
+            if (line['product_id'] is List &&
+                (line['product_id'] as List).isNotEmpty) {
+              final pid = (line['product_id'] as List).first as int;
+              if (imageById.containsKey(pid)) {
+                line['image'] = imageById[pid];
+              }
+            }
+          }
+        } catch (_) {
+          // Images are non-critical — fall back to the placeholder icon.
+        }
+      }
+
+      return result;
     } catch (e) {
       throw Exception('Failed to fetch returnable moves: $e');
     }

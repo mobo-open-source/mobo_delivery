@@ -350,6 +350,20 @@ class _ConfigurationState extends State<Configuration> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.primaryColor.withOpacity(isDark ? 0.18 : 0.10),
+            ),
+            child: Icon(
+              HugeIcons.strokeRoundedUserAdd01,
+              size: 32,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             'No Other Accounts',
             style: TextStyle(

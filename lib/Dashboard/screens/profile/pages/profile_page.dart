@@ -13,6 +13,7 @@ import '../../../services/storage_service.dart';
 import '../../../widgets/profile/profile_header_card.dart';
 import '../../../../shared/widgets/action_tile.dart';
 import '../../../../shared/widgets/dialogs/common_dialog.dart';
+import '../../../../shared/widgets/error_state_widget.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -170,7 +171,15 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
             if (state is ProfileLoading) {
               return const ProfileShimmer();
             } else if (state is ProfileError) {
-              return Center(child: Text(state.message));
+              return ErrorStateWidget(
+                title: 'Something went wrong',
+                message: state.message.trim().isNotEmpty
+                    ? state.message
+                    : 'Unable to load your profile. Please check your '
+                        'connection and try again.',
+                errorType: ErrorType.general,
+                onRetry: () => _profileBloc!.add(LoadProfile()),
+              );
             } else if (state is ProfileLoaded) {
               final profile = state.profile;
 
@@ -206,7 +215,16 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                 ),
               );
             }
-            return const SizedBox.shrink();
+            // Unknown / uninitialized state: instead of a blank screen, show a
+            // retryable error so the user is never left staring at nothing.
+            return ErrorStateWidget(
+              title: 'Something went wrong',
+              message:
+                  'Unable to load your profile. Please check your connection '
+                  'and try again.',
+              errorType: ErrorType.general,
+              onRetry: () => _profileBloc!.add(LoadProfile()),
+            );
           },
         ),
       ),

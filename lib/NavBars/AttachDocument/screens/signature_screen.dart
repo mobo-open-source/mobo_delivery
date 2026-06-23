@@ -1,46 +1,44 @@
 import 'dart:convert';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:signature/signature.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/snackbar.dart';
-import '../constants/constants.dart';
 
-/// Full-screen signature capture interface for users to draw signatures by hand.
+/// A pop-up signature capture dialog.
 ///
-/// Allows drawing, clearing, previewing, and saving the signature as a base64-encoded PNG.
-/// Returns a map with file name, mime type, and base64 data when the user presses "Done".
-/// Used in flows where a digital signature needs to be attached (e.g. delivery receipts, documents).
-class SignatureScreen extends StatefulWidget {
-  const SignatureScreen({super.key});
+/// Lets the user draw a signature by hand, clear it, and confirm. On "Done"
+/// the drawing is encoded as a base64 PNG and returned to the caller as a map
+/// with `fileName`, `mimeType` and `base64`. Returns `null` if dismissed.
+///
+/// Use [SignatureDialog.show] instead of pushing a full screen:
+/// ```dart
+/// final result = await SignatureDialog.show(context);
+/// ```
+class SignatureDialog extends StatefulWidget {
+  const SignatureDialog({super.key});
+
+  /// Opens the signature capture as a modal pop-up and returns the captured
+  /// signature data (or `null` if the user cancels / dismisses it).
+  static Future<Map<String, dynamic>?> show(BuildContext context) {
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => const SignatureDialog(),
+    );
+  }
 
   @override
-  State<SignatureScreen> createState() => _SignatureScreenState();
+  State<SignatureDialog> createState() => _SignatureDialogState();
 }
 
-/// Manages the signature drawing canvas, preview mode, clear/save actions,
-/// and proper disposal of the signature controller.
-///
-/// Features:
-///   - Real-time drawing with black pen (width 5)
-///   - Clear button while drawing
-///   - Preview of saved signature image (with proper aspect-fit scaling)
-///   - "Done" button that encodes signature to base64 and returns result
-///   - Dark/light theme support
-class _SignatureScreenState extends State<SignatureScreen> {
+class _SignatureDialogState extends State<SignatureDialog> {
   late final SignatureController _controller;
-  ui.Image? _signatureImage;
-  bool _isResigning = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = SignatureController(
-      penColor: Colors.black,
-      penStrokeWidth: 5,
-    );
+    _controller = SignatureController(penColor: Colors.black, penStrokeWidth: 5);
   }
 
   @override
@@ -49,11 +47,8 @@ class _SignatureScreenState extends State<SignatureScreen> {
     super.dispose();
   }
 
-  /// Converts the drawn signature to PNG bytes, encodes it to base64,
-  /// generates a timestamp-based filename, and returns the data to the previous screen.
-  ///
-  /// Shows a warning snackbar if the canvas is empty.
-  /// Only called when user presses the "Done" button.
+  /// Converts the drawing to a base64 PNG and pops the dialog with the result.
+  /// Warns if the canvas is empty.
   Future<void> _saveSignature() async {
     if (_controller.isEmpty) {
       CustomSnackbar.showWarning(context, 'Please sign before saving.');
@@ -61,144 +56,97 @@ class _SignatureScreenState extends State<SignatureScreen> {
     }
 
     final signatureBytes = await _controller.toPngBytes();
-    if (signatureBytes != null) {
-      final base64Signature = base64Encode(signatureBytes);
+    if (signatureBytes != null && mounted) {
       final fileName = 'signature_${DateTime.now().millisecondsSinceEpoch}.png';
       Navigator.pop(context, {
         'fileName': fileName,
         'mimeType': 'image/png',
-        'base64': base64Signature,
+        'base64': base64Encode(signatureBytes),
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? Colors.grey[900] : Colors.white;
 
-    return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-      appBar: AppBar(
-        forceMaterialTransparency: true,
-        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-        leading: IconButton(
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
-            color: isDark ? Colors.white : Colors.black,
-            size: 28,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Signature',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : Colors.black,
-            fontSize: 22,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+    return Dialog(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Stack(
+            Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  height: screenSize.height * 0.6,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.grey[800]!
-                        : Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: AppStyle.primaryColor.withOpacity(0.3),
-                      width: 2,
+                Expanded(
+                  child: Text(
+                    'Signature',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
-                  child: _signatureImage != null && !_isResigning
-                      ? CustomPaint(
-                          painter: _SignaturePainter(_signatureImage!),
-                          child: Container(),
-                        )
-                      : Signature(
-                          controller: _controller,
-                          backgroundColor: isDark
-                              ? Colors.grey[800]!
-                              : Colors.white,
-                        ),
                 ),
-                if (_signatureImage == null || _isResigning)
-                  Positioned(
-                    bottom: 10,
-                    right: 10,
-                    child: GestureDetector(
-                      onTap: () => _controller.clear(),
-                      child: Text(
-                        'Clear',
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white
-                              : AppConstants.appBarColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
+                GestureDetector(
+                  onTap: () => _controller.clear(),
+                  child: Text(
+                    'Clear',
+                    style: TextStyle(
+                      color: AppStyle.primaryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            MoboButton.primary(
-              label: 'Done',
-              onPressed: _saveSignature,
+            const SizedBox(height: 14),
+            Container(
+              height: 220,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppStyle.primaryColor.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Signature(
+                  controller: _controller,
+                  backgroundColor: isDark ? Colors.grey[800]! : Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: MoboButton.secondary(
+                    label: 'Cancel',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: MoboButton.primary(
+                    label: 'Done',
+                    onPressed: _saveSignature,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
-}
-
-/// Custom painter that draws a ui.Image (signature) with proper aspect-ratio scaling
-/// and centering inside the available container size.
-class _SignaturePainter extends CustomPainter {
-  final ui.Image image;
-
-  _SignaturePainter(this.image);
-
-  /// Scales and centers the signature image to fit the canvas while preserving aspect ratio.
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    final imageWidth = image.width.toDouble();
-    final imageHeight = image.height.toDouble();
-    final imageAspectRatio = imageWidth / imageHeight;
-    final containerAspectRatio = size.width / size.height;
-
-    double scaleFactor;
-    Offset offset;
-
-    if (containerAspectRatio > imageAspectRatio) {
-      scaleFactor = size.height / imageHeight;
-      final scaledImageWidth = imageWidth * scaleFactor;
-      final horizontalMargin = (size.width - scaledImageWidth) / 2;
-      offset = Offset(horizontalMargin, 0);
-    } else {
-      scaleFactor = size.width / imageWidth;
-      final scaledImageHeight = imageHeight * scaleFactor;
-      final verticalMargin = (size.height - scaledImageHeight) / 2;
-      offset = Offset(0, verticalMargin);
-    }
-
-    canvas.scale(scaleFactor);
-    canvas.drawImage(image, offset / scaleFactor, paint);
-  }
-
-  /// No repaint needed since the image is static after creation.
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

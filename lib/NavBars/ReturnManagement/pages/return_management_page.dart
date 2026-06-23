@@ -683,17 +683,26 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         final odooService = OdooReturnManagementService();
         final bloc = context.read<ReturnManagementBloc>();
 
-        final result = await showModalBottomSheet<int>(
+        final result = await showDialog<int>(
           context: context,
-          backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-          isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (ctx) => PickingBottomSheet(
-            picking: picking,
-            odooService: odooService,
-            bloc: bloc,
+          builder: (ctx) => Dialog(
+            backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+            surfaceTintColor: Colors.transparent,
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+              ),
+              child: PickingBottomSheet(
+                picking: picking,
+                odooService: odooService,
+                bloc: bloc,
+              ),
+            ),
           ),
         );
 

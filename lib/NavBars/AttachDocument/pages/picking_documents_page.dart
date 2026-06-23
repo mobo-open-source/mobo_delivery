@@ -130,10 +130,8 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
   }
 
   Future<void> _addSignature() async {
-    final result = await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SignatureScreen()));
-    if (result != null && result is Map) {
+    final result = await SignatureDialog.show(context);
+    if (result != null) {
       await _upload(result['mimeType'], result['base64'], result['fileName']);
     }
   }

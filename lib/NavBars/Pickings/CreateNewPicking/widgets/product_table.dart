@@ -53,18 +53,28 @@ class ProductTable extends StatelessWidget {
     );
   }
 
-  /// A single product line rendered as a card (sale-order line style).
+  /// A single product line rendered as a card (sale-order line style from the
+  /// mobo sales app: white surface, soft shadow, brand-colored product name,
+  /// bordered thumbnail).
   Widget _buildProductCard(StockMoveModel product, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-          width: 1,
+          color: isDark ? Colors.grey[850]! : Colors.grey[200]!,
+          width: 0.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            offset: const Offset(0, 6),
+            blurRadius: 16,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,19 +83,22 @@ class ProductTable extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: AppStyle.primaryColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppStyle.primaryColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                  ),
                 ),
                 child: const Icon(
                   HugeIcons.strokeRoundedPackage,
                   color: AppStyle.primaryColor,
-                  size: 22,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 2),
@@ -94,7 +107,8 @@ class ProductTable extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.grey[900],
+                      color: isDark ? Colors.white : AppStyle.primaryColor,
+                      letterSpacing: -0.1,
                       height: 1.3,
                     ),
                     maxLines: 2,

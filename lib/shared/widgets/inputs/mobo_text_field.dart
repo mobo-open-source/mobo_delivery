@@ -77,6 +77,10 @@ class MoboTextField extends StatelessWidget {
   /// mandatory. Has no effect when [label] is null.
   final bool isRequired;
 
+  /// Draws the soft drop shadow behind the field. Defaults to true. Set false
+  /// for flat contexts (e.g. inside a dialog) where the shadow looks heavy.
+  final bool showShadow;
+
   const MoboTextField({
     super.key,
     required this.controller,
@@ -96,6 +100,7 @@ class MoboTextField extends StatelessWidget {
     this.enabled = true,
     this.showBorder = false,
     this.isRequired = false,
+    this.showShadow = true,
   });
 
   @override
@@ -120,14 +125,16 @@ class MoboTextField extends StatelessWidget {
     final field = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: showShadow
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: TextFormField(
         controller: controller,
