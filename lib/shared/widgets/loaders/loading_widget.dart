@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 
-/// A highly configurable loading widget that can be used as a standalone spinner or a full-screen overlay.
 class LoadingWidget extends StatelessWidget {
   const LoadingWidget({
     super.key,
@@ -14,15 +12,10 @@ class LoadingWidget extends StatelessWidget {
   });
 
   final String? message;
-
   final Color? color;
-
   final double size;
-
   final LoadingVariant variant;
-
   final bool overlay;
-
   final bool barrierDismissible;
 
   @override
@@ -31,14 +24,12 @@ class LoadingWidget extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final resolvedColor = color ?? theme.primaryColor;
 
-    final loader = _buildLoader(resolvedColor, isDark);
-
-    if (!overlay) return loader;
+    if (!overlay) return _buildSpinner(resolvedColor, isDark);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.hasBoundedHeight) {
-          return Center(child: _buildAnimated(resolvedColor, isDark));
+          return Center(child: _buildSpinner(resolvedColor, isDark));
         }
         return Stack(
           children: [
@@ -50,33 +41,46 @@ class LoadingWidget extends StatelessWidget {
                 color: Colors.black.withValues(alpha: 0.2),
               ),
             ),
-
             Center(
-              child: Card(
-                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-                  child: Column(
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 20,
+                  ),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _buildAnimated(resolvedColor, isDark),
-                      if (message != null &&
-                          message!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        Text(
-                          message!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                isDark ? Colors.grey[300] : Colors.black87,
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          color: resolvedColor,
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      if (message != null && message!.trim().isNotEmpty) ...[
+                        const SizedBox(width: 16),
+                        Flexible(
+                          child: Text(
+                            message!,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.grey[300] : Colors.black87,
+                            ),
                           ),
                         ),
                       ],
@@ -91,12 +95,19 @@ class LoadingWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildLoader(Color resolvedColor, bool isDark) {
+  Widget _buildSpinner(Color resolvedColor, bool isDark) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildAnimated(resolvedColor, isDark),
+          SizedBox(
+            width: size,
+            height: size,
+            child: CircularProgressIndicator(
+              color: resolvedColor,
+              strokeWidth: 3,
+            ),
+          ),
           if (message != null && message!.trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
@@ -112,27 +123,6 @@ class LoadingWidget extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildAnimated(Color resolvedColor, bool isDark) {
-    switch (variant) {
-      case LoadingVariant.fourRotatingDots:
-        return LoadingAnimationWidget.fourRotatingDots(
-          color: resolvedColor,
-          size: size,
-        );
-      case LoadingVariant.staggeredDots:
-        return LoadingAnimationWidget.staggeredDotsWave(
-          color: resolvedColor,
-          size: size,
-        );
-      case LoadingVariant.threeArchedCircle:
-        return LoadingAnimationWidget.threeArchedCircle(
-          color: resolvedColor,
-          size: size,
-        );
-    }
-  }
 }
 
-/// Defines the visual variant of the loading animation.
 enum LoadingVariant { staggeredDots, fourRotatingDots, threeArchedCircle }

@@ -61,7 +61,7 @@ class _ProfileImageState extends State<ProfileImage> {
                 ? MemoryImage(base64Decode(widget.imagePath!))
                 : null,
             child: (widget.imagePath == null || !_isValidBase64(widget.imagePath!))
-                ? const Icon(Icons.account_circle, size: 80, color: const Color(0xFF263238),)
+                ? const Icon(HugeIcons.strokeRoundedUserCircle, size: 80, color: const Color(0xFF263238),)
                 : null,
           ),
           if (widget.isEdited)

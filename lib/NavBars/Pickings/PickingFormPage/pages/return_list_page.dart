@@ -213,7 +213,7 @@ return FadeTransition(opacity: animation, child: child);
                             isDark ? Color(0x66757575) : Colors.grey.shade200,
                           ),
                           headingTextStyle: TextStyle(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : AppStyle.primaryColor,
                           ),
                           columnSpacing: 28,
@@ -279,7 +279,8 @@ return FadeTransition(opacity: animation, child: child);
                                     stateMap[state]?.toUpperCase() ?? 'Unknown',
                                     style: TextStyle(
                                         color: isDark ? Colors.white70 : stateColor,
-                                        fontWeight: FontWeight.normal
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600
                                     ),
                                   ),
                                   onTap: () =>

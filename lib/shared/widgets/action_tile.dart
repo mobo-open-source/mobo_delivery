@@ -38,7 +38,8 @@ class ActionTile extends StatelessWidget {
         title,
         style: TextStyle(
           color: titleColor,
-          fontWeight: destructive ? FontWeight.w600 : FontWeight.w500,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
         ),
       ),
       subtitle: Text(
@@ -48,9 +49,9 @@ class ActionTile extends StatelessWidget {
           color: isDark ? Colors.grey[400] : Colors.grey[600],
         ),
       ),
-      trailing: trailing ?? Icon(
-        Icons.chevron_right_rounded,
-        color: isDark ? Colors.grey[600] : Colors.grey[400],
+      trailing: trailing ?? HugeIcon(
+        icon: HugeIcons.strokeRoundedArrowRight01,
+        color: isDark ? Colors.grey[600]! : Colors.grey[400]!,
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

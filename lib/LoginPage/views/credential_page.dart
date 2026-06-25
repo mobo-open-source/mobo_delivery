@@ -14,7 +14,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../Dashboard/services/storage_service.dart';
 import '../../core/company/session/company_session_manager.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../../shared/utils/globals.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../widgets/login_button.dart';
@@ -196,8 +195,8 @@ class _CredentialsPageState extends State<CredentialsPage> {
             Text(
               'Access Restricted',
               style: GoogleFonts.manrope(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
                 color: Colors.black,
               ),
             ),
@@ -268,8 +267,8 @@ class _CredentialsPageState extends State<CredentialsPage> {
             Text(
               'No Inventory Access',
               style: GoogleFonts.manrope(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
                 color: Colors.black,
               ),
             ),
@@ -343,8 +342,8 @@ class _CredentialsPageState extends State<CredentialsPage> {
             Text(
               'Module Missing',
               style: GoogleFonts.manrope(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
                 color: Colors.black,
               ),
             ),
@@ -680,7 +679,7 @@ return FadeTransition(opacity: animation, child: child);
                                 width: 30,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Icon(
-                                    Icons.delivery_dining,
+                                    HugeIcons.strokeRoundedShippingTruck02,
                                     color: Color(0xFFC03355),
                                     size: 20,
                                   );
@@ -712,7 +711,7 @@ return FadeTransition(opacity: animation, child: child);
                           style: GoogleFonts.manrope(
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
-                            fontSize: 32,
+                            fontSize: 20,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -823,14 +822,18 @@ return FadeTransition(
                               Text(
                                 'Signing In',
                                 style: GoogleFonts.manrope(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              LoadingAnimationWidget.staggeredDotsWave(
-                                color: Colors.white,
-                                size: 28,
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
                               ),
                             ],
                           ),
@@ -896,8 +899,8 @@ return FadeTransition(
               ? IconButton(
                   icon: Icon(
                     _isPasswordVisible
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                        ? HugeIcons.strokeRoundedView
+                        : HugeIcons.strokeRoundedViewOff,
                     color: _isPasswordVisible ? Colors.black26 : Colors.black45,
                     size: 20,
                   ),
@@ -920,7 +923,7 @@ return FadeTransition(
           ),
           errorStyle: GoogleFonts.manrope(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),

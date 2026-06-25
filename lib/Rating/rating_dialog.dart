@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/Rating/review_service.dart';
 
 /// A customizable rating dialog that allows users to rate the app
@@ -106,8 +107,8 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
               'How’s your experience ?',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 26,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
                 color: titleColor,
               ),
             ),
@@ -117,7 +118,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.w400,
-                fontSize: 17,
+                fontSize: 14,
                 height: 1.4,
                 color: subtitleColor,
               ),
@@ -134,7 +135,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Icon(
-                      filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                      filled ? HugeIcons.strokeRoundedRanking : HugeIcons.strokeRoundedRanking,
                       color: _starColor,
                       size: 44,
                     ),
@@ -168,7 +169,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                   'Submit',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 20,
+                    fontSize: 15,
                   ),
                 ),
               ),
@@ -184,7 +185,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                 'Skip for Now',
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
-                  fontSize: 16,
+                  fontSize: 14,
                   color: titleColor.withOpacity(0.5),
                   decoration: TextDecoration.underline,
                   decorationColor: titleColor.withOpacity(0.5),

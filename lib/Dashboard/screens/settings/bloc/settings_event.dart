@@ -49,11 +49,6 @@ class UpdateTimezoneEvent extends SettingsEvent {
   UpdateTimezoneEvent(this.timezone, this.timezoneCode, this.languageCode);
 }
 
-/// Requests to clear the app's temporary cache directory.
-///
-/// Used to free up storage space (images, temp files, etc.).
-class ClearCacheEvent extends SettingsEvent {}
-
 /// Refreshes the lists of available languages, currencies, and timezones from Odoo.
 ///
 /// Typically triggered by a refresh button/icon in the UI.

@@ -10,7 +10,7 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hugeicons/hugeicons.dart';
-import '../../../../shared/widgets/loaders/shimmer_skeleton.dart' as sk;
+import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
@@ -970,15 +970,31 @@ return FadeTransition(opacity: animation, child: child);
   /// Does **not** support offline queuing — availability check requires server connection.
   Future<void> _showAvailability() async {
     final odooPickingFormService = OdooPickingFormService();
-    await odooPickingFormService.initializeOdooClient();
-    final pickingId = int.parse(widget.picking['id'].toString());
-    final success = await odooPickingFormService.checkAvailability(pickingId);
-    if (success) {
-      await _loadSavingData();
-    } else {
-      if (mounted) {
-        CustomSnackbar.showError(context, 'Failed to check availability.');
+    setState(() => isSaving = true);
+    try {
+      await odooPickingFormService.initializeOdooClient();
+      final pickingId = int.parse(widget.picking['id'].toString());
+      final stateBefore = pickings.isNotEmpty ? pickings[0].state : '';
+      final success = await odooPickingFormService.checkAvailability(pickingId);
+      if (success) {
+        await _loadSavingData();
+        if (mounted) {
+          final stateAfter = pickings.isNotEmpty ? pickings[0].state : '';
+          if (stateAfter == 'assigned' && stateBefore != 'assigned') {
+            CustomSnackbar.showSuccess(
+                context, 'Products reserved — picking is now Ready.');
+          } else {
+            CustomSnackbar.showInfo(
+                context, 'No additional products could be reserved.');
+          }
+        }
+      } else {
+        if (mounted) {
+          CustomSnackbar.showError(context, 'Failed to check availability.');
+        }
       }
+    } finally {
+      if (mounted) setState(() => isSaving = false);
     }
   }
 
@@ -1184,7 +1200,7 @@ return FadeTransition(opacity: animation, child: child);
                           'Return Pickings',
                           style: TextStyle(
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
@@ -1192,7 +1208,7 @@ return FadeTransition(opacity: animation, child: child);
                       IconButton(
                         splashRadius: 20,
                         icon: Icon(
-                          Icons.close,
+                          HugeIcons.strokeRoundedCancel01,
                           color: isDark ? Colors.white : Colors.black54,
                         ),
                         onPressed: () => Navigator.pop(dialogCtx),
@@ -1774,91 +1790,6 @@ return FadeTransition(opacity: animation, child: child);
     }
   }
 
-  Widget _buildSkeleton(bool isDark, ThemeData theme) {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildSkeletonCard(
-            isDark,
-            children: const [
-              sk.SkeletonLine(width: 140, height: 18),
-              SizedBox(height: 16),
-              sk.SkeletonLine(width: 200),
-              SizedBox(height: 8),
-              sk.SkeletonLine(width: 160),
-              SizedBox(height: 8),
-              sk.SkeletonLine(width: 120),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSkeletonCard(
-            isDark,
-            children: const [
-              sk.SkeletonLine(width: 120, height: 18),
-              SizedBox(height: 16),
-              sk.SkeletonLine(width: double.infinity),
-              SizedBox(height: 8),
-              sk.SkeletonLine(width: double.infinity),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildSkeletonCard(
-            isDark,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  sk.SkeletonLine(width: 120, height: 18),
-                  sk.SkeletonBox(height: 20, width: 40),
-                ],
-              ),
-              const SizedBox(height: 16),
-              for (int i = 0; i < 3; i++) ...[
-                Row(
-                  children: const [
-                    sk.SkeletonBox(
-                      height: 36,
-                      width: 36,
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(child: sk.SkeletonLine()),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSkeletonCard(bool isDark, {required List<Widget> children}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: sk.Shimmer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
-        ),
-      ),
-    );
-  }
 
   /// Routes any wizard action returned by `button_validate`/`action_confirm`/
   /// `action_cancel` to the matching dialog. Mirrors the Odoo web flow:
@@ -2298,80 +2229,67 @@ return FadeTransition(opacity: animation, child: child);
   String formatDateTimeForDisplay(String? input) =>
       OdooDateTimeFormat.formatForDisplay(input);
 
-  /// Builds nice looking status badge (Draft, Ready, Done, Cancelled…)
+  /// Builds a Mobo-style status badge matching the CRM design.
   Widget _buildStatusIndicator(String status) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    Color getStatusColor(String status) {
-      switch (status.toLowerCase()) {
-        case 'draft':
-          return isDark ? Colors.white : Colors.black54;
-        case 'waiting':
-          return isDark ? Colors.white : Colors.black54;
-        case 'confirmed':
-          return isDark ? Colors.white : Colors.black54;
-        case 'assigned':
-          return isDark ? Colors.white : Colors.black54;
-        case 'done':
-          return isDark ? Colors.white : Colors.black54;
-        case 'cancel':
-          return isDark ? Colors.white : Colors.black54;
-        default:
-          return Colors.grey;
-      }
+
+    const Color statusGreen  = Color(0xFF00A63E);
+    const Color statusBlue   = Color(0xFF3B82F6);
+    const Color statusOrange = Color(0xFFF97316);
+    const Color statusRed    = Color(0xFFEF4444);
+    const Color statusTeal   = Color(0xFF14B8A6);
+    const Color statusGrey   = Color(0xFF6B7280);
+
+    Color color;
+    String label;
+
+    switch (status.toLowerCase()) {
+      case 'done':
+        color = statusTeal;
+        label = 'Done';
+        break;
+      case 'assigned':
+        color = statusGreen;
+        label = 'Ready';
+        break;
+      case 'waiting':
+        color = statusOrange;
+        label = 'Waiting';
+        break;
+      case 'confirmed':
+        color = statusOrange;
+        label = 'Waiting';
+        break;
+      case 'cancel':
+        color = statusRed;
+        label = 'Cancelled';
+        break;
+      case 'draft':
+        color = statusBlue;
+        label = 'Draft';
+        break;
+      default:
+        color = statusGrey;
+        label = status;
     }
 
-    String getStatusText(String status) {
-      switch (status.toLowerCase()) {
-        case 'draft':
-          return 'DRAFT';
-        case 'waiting':
-          return 'WAITING ANOTHER OPERATION';
-        case 'confirmed':
-          return 'WAITING';
-        case 'assigned':
-          return 'READY';
-        case 'done':
-          return 'DONE';
-        case 'cancel':
-          return 'CANCELLED';
-        default:
-          return status.toUpperCase();
-      }
-    }
-
-    final statusColor = getStatusColor(status);
-    final statusText = getStatusText(status);
-
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[800] : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: statusColor, width: 1),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _getStatusIcon(status.toLowerCase()),
-                color: statusColor,
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                statusText,
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.15)
+            : color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Colors.white : color,
+          letterSpacing: 0.1,
         ),
-      ],
+      ),
     );
   }
 
@@ -2423,7 +2341,7 @@ return FadeTransition(opacity: animation, child: child);
                 forceMaterialTransparency: true,
                 backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
                 title: Text(
-                  widget.picking['item'] ?? "Loading Details...",
+                  'Picking Details',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 22,
@@ -2439,7 +2357,7 @@ return FadeTransition(opacity: animation, child: child);
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
-              body: _buildSkeleton(isDark, Theme.of(context)),
+              body: PickingDetailShimmer(isDark: isDark),
             ),
           ] else if (pickings.isEmpty)
             EmptyState(
@@ -2451,16 +2369,60 @@ return FadeTransition(opacity: animation, child: child);
           else ...[
             Scaffold(
               backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-
+              bottomNavigationBar: _isEditing &&
+                      pickings.isNotEmpty &&
+                      !['done', 'cancel'].contains(pickings[0].state)
+                  ? Container(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[900] : Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: TextButton(
+                          onPressed: _isDeliveryDirty
+                              ? () async {
+                                  await _commitDelivery(
+                                    widget.picking['item'] ??
+                                        widget.picking['name'] ??
+                                        'Picking Details',
+                                  );
+                                }
+                              : null,
+                          style: TextButton.styleFrom(
+                            backgroundColor: AppStyle.primaryColor,
+                            disabledBackgroundColor: Colors.grey[400],
+                            disabledForegroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.all(13),
+                          ),
+                          child: const Text(
+                            'Save Delivery',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : null,
               appBar: AppBar(
                 forceMaterialTransparency: true,
                 backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
                 title: Text(
-                  _isEditing
-                      ? 'Edit ${widget.picking['item'] ?? widget.picking['name']}'
-                      : (widget.picking['item'] ??
-                            widget.picking['name'] ??
-                            'Picking Details'),
+                  _isEditing ? 'Edit Picking' : 'Picking Details',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
@@ -2484,6 +2446,49 @@ return FadeTransition(opacity: animation, child: child);
                 ),
                 actions: [
                   if (!_isEditing) ...[
+                    // Detailed Operations (Moves)
+                    IconButton(
+                      onPressed: _stockMoveLine,
+                      tooltip: 'Detailed Operations',
+                      icon: Icon(
+                        HugeIcons.strokeRoundedListView,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    // View existing returns
+                    if (pickings.isNotEmpty && pickings[0].returnCount > 0)
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            onPressed: _returnPicking,
+                            tooltip: 'View Returns',
+                            icon: Icon(
+                              HugeIcons.strokeRoundedDeliveryReturn02,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: AppStyle.primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '${pickings[0].returnCount}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     if (pickings.isNotEmpty &&
                         !['done', 'cancel'].contains(pickings[0].state)) ...[
                       IconButton(
@@ -2535,7 +2540,7 @@ return FadeTransition(opacity: animation, child: child);
                       if (!isOfflineValidate && !isOfflineCancel)
                         PopupMenuButton<String>(
                           icon: Icon(
-                            Icons.more_vert,
+                            HugeIcons.strokeRoundedMoreVertical,
                             color: isDark ? Colors.grey[400] : Colors.grey[600],
                             size: 20,
                           ),
@@ -2555,7 +2560,7 @@ return FadeTransition(opacity: animation, child: child);
                                   child: Row(
                                     children: [
                                       const Icon(
-                                        Icons.task_alt,
+                                        HugeIcons.strokeRoundedTask01,
                                         color: Colors.green,
                                         size: 20,
                                       ),
@@ -2583,7 +2588,7 @@ return FadeTransition(opacity: animation, child: child);
                                   child: Row(
                                     children: [
                                       Icon(
-                                        Icons.search,
+                                        HugeIcons.strokeRoundedSearch01,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black54,
@@ -2611,11 +2616,9 @@ return FadeTransition(opacity: animation, child: child);
                                   value: 'validate',
                                 child: Row(
                                   children: [
-                                    Icon(
-                                      Icons.check_circle_outline,
-                                      color: isDark
-                                          ? Colors.white
-                                          : Colors.black54,
+                                    const Icon(
+                                      HugeIcons.strokeRoundedCheckmarkCircle02,
+                                      color: Colors.green,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
@@ -2636,7 +2639,7 @@ return FadeTransition(opacity: animation, child: child);
                                 child: Row(
                                   children: [
                                     const Icon(
-                                      Icons.cancel_outlined,
+                                      HugeIcons.strokeRoundedCancelCircle,
                                       color: Colors.red,
                                       size: 20,
                                     ),
@@ -2677,9 +2680,15 @@ return FadeTransition(opacity: animation, child: child);
                   ],
                 ],
               ),
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+              body: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.opaque,
+                child: RefreshIndicator(
+                  onRefresh: _isEditing ? () async {} : _fetchData,
+                  child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (isOfflineValidate)
@@ -2694,7 +2703,7 @@ return FadeTransition(opacity: animation, child: child);
                           "This picking was validated while offline. It will sync automatically once the device is back online.",
                           style: TextStyle(
                             color: Colors.black,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -2712,125 +2721,102 @@ return FadeTransition(opacity: animation, child: child);
                           "This picking was cancelled while offline. It will sync automatically once the device is back online.",
                           style: TextStyle(
                             color: Colors.black,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
                         ),
                       ),
 
                     const SizedBox(height: 16),
-                    if (pickings[0].partnerId != null) ...[
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 0),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.grey[850] : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withValues(alpha: 0.18)
-                                  : Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[850] : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.18)
+                                : Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _cachedImage != null
-                                        ? ClipOval(
-                                            child: Image.memory(
-                                              _cachedImage!,
-                                              width: 40,
-                                              height: 40,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          )
-                                        : Icon(
-                                            Icons.person,
-                                            color: isDark
-                                                ? Colors.white
-                                                : AppStyle.primaryColor,
-                                            size: 40,
-                                          ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            pickings[0].partnerId?[1] ??
-                                                'Unknown',
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : Colors.black,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            partnerDetails?['address'] ??
-                                                'No address available',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: isDark
-                                                  ? Colors.white60
-                                                  : Colors.black54,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  pickings[0].name,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppStyle.primaryColor,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               _buildStatusIndicator(pickings[0].state),
                             ],
                           ),
-                        ),
-                      ),
-                      const Divider(height: 32),
-                    ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (pickings[0].returnCount > 0) ...[
-                          Expanded(
-                            child: MoboButton.secondary(
-                              label: "Return (${pickings[0].returnCount})",
-                              icon: HugeIcons.strokeRoundedDeliveryReturn02,
-                              height: 52,
-                              borderRadius: 10,
-                              onPressed: _returnPicking,
+                          if (pickings[0].partnerId != null) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              pickings[0].partnerId?[1]?.toString() ?? 'Unknown',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
+                            if ((partnerDetails?['address'] ?? '').toString().isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                partnerDetails!['address'].toString(),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white60 : Colors.black54,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ],
+                          if ((pickings[0].scheduledDate ?? '').isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Icon(
+                                  HugeIcons.strokeRoundedCalendar01,
+                                  size: 13,
+                                  color: isDark
+                                      ? Colors.white54
+                                      : Colors.black45,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  pickings[0].scheduledDate!,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : Colors.black45,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                        Expanded(
-                          child: MoboButton.primary(
-                            label: "Detailed Operations",
-                            icon: Icons.list_alt,
-                            height: 52,
-                            borderRadius: 10,
-                            onPressed: _stockMoveLine,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    SizedBox(height: 24),
                     Container(
-                      margin: const EdgeInsets.only(bottom: 24),
+                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         color: isDark ? Colors.grey[850] : Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -2852,8 +2838,8 @@ return FadeTransition(opacity: animation, child: child);
                             Text(
                               "Delivery Details",
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
@@ -3083,7 +3069,7 @@ return FadeTransition(opacity: animation, child: child);
                       ),
                     ),
                     Container(
-                      margin: const EdgeInsets.only(bottom: 24),
+                      margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
                         padding: const EdgeInsets.all(2.0),
                         child: DefaultTabController(
@@ -3095,57 +3081,45 @@ return FadeTransition(opacity: animation, child: child);
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    padding: const EdgeInsets.all(4),
-                                    child: AnimatedBuilder(
-                                      animation: tabController.animation!,
-                                      builder: (context, _) {
-                                        final double animValue =
-                                            tabController.animation!.value;
-                                        return TabBar(
-                                          controller: tabController,
-                                          indicator: BoxDecoration(
-                                            color: Colors.transparent,
-                                          ),
-                                          dividerColor: Colors.transparent,
-                                          labelPadding:
-                                              const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                          ),
-                                          overlayColor:
-                                              WidgetStateProperty.all(
-                                            Colors.transparent,
-                                          ),
-                                          tabs: List.generate(3, (index) {
-                                            String text;
-                                            switch (index) {
-                                              case 0:
-                                                text = "Operations";
-                                                break;
-                                              case 1:
-                                                text = "Additional Info";
-                                                break;
-                                              case 2:
-                                                text = "Note";
-                                                break;
-                                              default:
-                                                text = "";
-                                            }
-                                            final double selectedness =
-                                                (1.0 -
-                                                        (animValue - index)
-                                                            .abs())
-                                                    .clamp(0.0, 1.0);
-                                            return _buildStyledTab(
-                                              text,
-                                              selectedness,
-                                            );
-                                          }),
-                                        );
-                                      },
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: SizedBox(
+                                      height: 40,
+                                      child: ListView.separated(
+                                        scrollDirection: Axis.horizontal,
+                                        physics:
+                                            const ClampingScrollPhysics(),
+                                        itemCount: 3,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(width: 8),
+                                        itemBuilder: (context, index) {
+                                          const labels = [
+                                            'Operations',
+                                            'Additional Info',
+                                            'Note',
+                                          ];
+                                          return AnimatedBuilder(
+                                            animation:
+                                                tabController.animation!,
+                                            builder: (context, _) {
+                                              final activeIndex =
+                                                  tabController
+                                                      .animation!.value
+                                                      .round();
+                                              return GestureDetector(
+                                                onTap: () => tabController
+                                                    .animateTo(index),
+                                                child: _buildPillTab(
+                                                  label: labels[index],
+                                                  isSelected:
+                                                      activeIndex == index,
+                                                  isDark: isDark,
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
                                   Container(
@@ -3214,30 +3188,11 @@ return FadeTransition(opacity: animation, child: child);
                         ),
                       ),
                     ),
-                    if (_isEditing) ...[
-                      if (pickings.isNotEmpty &&
-                          !['done', 'cancel'].contains(pickings[0].state)) ...[
-                        MoboButton.primary(
-                          label: "Save Delivery",
-                          icon: HugeIcons.strokeRoundedNoteAdd,
-                          onPressed: _isDeliveryDirty
-                              ? () async {
-                                  if (_isEditing) {
-                                    await _commitDelivery(
-                                      widget.picking['item'] ??
-                                          widget.picking['name'] ??
-                                          'Picking Details',
-                                    );
-                                  }
-                                }
-                              : null,
-                        ),
-                      ],
-                    ],
                   ],
                 ),
               ),
-            ),
+                ),
+            ),),
           ],
           if (_isLoading || isSaving || isCreateSaving) const LoadingOverlay(),
         ],
@@ -3245,43 +3200,34 @@ return FadeTransition(opacity: animation, child: child);
     );
   }
 
-  Widget _buildStyledTab(String text, double selectedness) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Match the sales app's order-details tabs: unselected = white pill with a
-    // grey border, selected = solid black. Lerp gives a smooth transition.
-    final bgColor = Color.lerp(Colors.white, Colors.black, selectedness)!;
-    final textColor = Color.lerp(
-      isDark ? Colors.grey[400] : Colors.grey[700],
-      Colors.white,
-      selectedness,
-    )!;
-    final borderColor = Color.lerp(
-      isDark ? Colors.grey[600] : Colors.grey[300],
-      Colors.black,
-      selectedness,
-    )!;
-    return Tab(
-      child: Container(
-        width: double.infinity,
-        height: 42,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: borderColor, width: 1),
+  Widget _buildPillTab({
+    required String label,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Colors.black
+            : (isDark ? Colors.grey[800] : Colors.white),
+        border: Border.all(
+          color: isSelected
+              ? Colors.black
+              : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
+          width: 1,
         ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            text,
-            maxLines: 1,
-            softWrap: false,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: textColor,
-            ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.grey[400] : Colors.grey[700]),
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -3341,7 +3287,7 @@ return FadeTransition(opacity: animation, child: child);
                 child: Text(
                   'Edit Product Line',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: 18,
                     color: isDark ? Colors.white : Colors.black,
                   ),
@@ -3380,7 +3326,7 @@ return FadeTransition(opacity: animation, child: child);
                                     fontWeight: FontWeight.w500,
                                     color: isDark ? Colors.white : Colors.black,
                                   ),
-                                  prefixIcon: Icon(Icons.search),
+                                  prefixIcon: Icon(HugeIcons.strokeRoundedSearch01),
                                   border: OutlineInputBorder(),
                                 ),
                               ),
@@ -3414,7 +3360,7 @@ return FadeTransition(opacity: animation, child: child);
                                       : Colors.black87,
                                 ),
                                 prefixIcon: Icon(
-                                  Icons.inventory_2,
+                                  HugeIcons.strokeRoundedPackage,
                                   color: isDark
                                       ? Colors.grey[400]
                                       : Colors.grey[500],
@@ -3462,7 +3408,7 @@ return FadeTransition(opacity: animation, child: child);
                             hintText: 'Add Quantity',
                             keyboardType: TextInputType.number,
                             prefixIcon: Icon(
-                              Icons.format_list_numbered,
+                              HugeIcons.strokeRoundedListView,
                               color:
                                   isDark ? Colors.grey[400] : Colors.grey[500],
                             ),
@@ -3475,8 +3421,8 @@ return FadeTransition(opacity: animation, child: child);
                           _errorMessage,
                           style: TextStyle(
                             color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            fontSize: 13,
                           ),
                         ),
                     ],
@@ -3501,7 +3447,7 @@ return FadeTransition(opacity: animation, child: child);
                 Expanded(
                   child: MoboButton.secondary(
                     label: 'DELETE',
-                    icon: Icons.delete,
+                    icon: HugeIcons.strokeRoundedDelete02,
                     borderRadius: 8,
                     onPressed: () async {
                       // In edit mode the deletion is only staged; it is applied
@@ -3550,7 +3496,7 @@ return FadeTransition(opacity: animation, child: child);
                 Expanded(
                   child: MoboButton.primary(
                     label: 'SAVE',
-                    icon: Icons.save,
+                    icon: HugeIcons.strokeRoundedDocumentValidation,
                     borderRadius: 10,
                     onPressed: () async {
                       final enteredQty =
@@ -3710,7 +3656,7 @@ return FadeTransition(opacity: animation, child: child);
                   child: Text(
                     'Add a Product Line',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       fontSize: 18,
                       color: isDark ? Colors.white : Colors.black,
                     ),
@@ -3747,7 +3693,7 @@ return FadeTransition(opacity: animation, child: child);
                                   fontWeight: FontWeight.w500,
                                   color: isDark ? Colors.white : Colors.black,
                                 ),
-                                prefixIcon: Icon(Icons.search),
+                                prefixIcon: Icon(HugeIcons.strokeRoundedSearch01),
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -3774,7 +3720,7 @@ return FadeTransition(opacity: animation, child: child);
                                 color: isDark ? Colors.white60 : Colors.black87,
                               ),
                               prefixIcon: Icon(
-                                Icons.inventory_2,
+                                HugeIcons.strokeRoundedPackage,
                                 color: isDark
                                     ? Colors.grey[400]
                                     : Colors.grey[500],
@@ -3821,7 +3767,7 @@ return FadeTransition(opacity: animation, child: child);
                           hintText: 'Add Quantity',
                           keyboardType: TextInputType.number,
                           prefixIcon: Icon(
-                            Icons.format_list_numbered,
+                            HugeIcons.strokeRoundedListView,
                             color: isDark ? Colors.grey[400] : Colors.grey[500],
                           ),
                         ),
@@ -3833,8 +3779,8 @@ return FadeTransition(opacity: animation, child: child);
                         _errorMessage,
                         style: TextStyle(
                           color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          fontSize: 13,
                         ),
                       ),
                   ],
@@ -3858,7 +3804,7 @@ return FadeTransition(opacity: animation, child: child);
                   Expanded(
                     child: MoboButton.primary(
                       label: 'Add',
-                      icon: Icons.add,
+                      icon: HugeIcons.strokeRoundedAdd01,
                       borderRadius: 8,
                       onPressed: () async {
                         setState(() {
@@ -4099,8 +4045,9 @@ return FadeTransition(opacity: animation, child: child);
 
 
   Widget _productTable(isDark) {
-    final bool canEdit =
-        pickings[0].state != 'done' && pickings[0].state != 'cancel';
+    final bool canEdit = _isEditing &&
+        pickings[0].state != 'done' &&
+        pickings[0].state != 'cancel';
 
     if (moveProducts.isEmpty) {
       final bool showWarn = ['assigned', 'confirmed', 'waiting']
@@ -4115,7 +4062,7 @@ return FadeTransition(opacity: animation, child: child);
               if (showWarn)
                 Column(
                   children: [
-                    Icon(Icons.warning_amber_rounded,
+                    Icon(HugeIcons.strokeRoundedAlert02,
                         color: Colors.orange[700], size: 32),
                     const SizedBox(height: 8),
                     Text(
@@ -4139,7 +4086,7 @@ return FadeTransition(opacity: animation, child: child);
                     const SizedBox(height: 12),
                     MoboButton.secondary(
                       label: 'Retry',
-                      icon: Icons.refresh,
+                      icon: HugeIcons.strokeRoundedRefresh,
                       fullWidth: false,
                       onPressed: _fetchData,
                     ),
@@ -4329,7 +4276,7 @@ return FadeTransition(opacity: animation, child: child);
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.add,
+              HugeIcons.strokeRoundedAdd01,
               size: 18,
               color: isDark ? Colors.white : AppStyle.primaryColor,
             ),
@@ -4338,7 +4285,7 @@ return FadeTransition(opacity: animation, child: child);
               'Add a line',
               style: TextStyle(
                 color: isDark ? Colors.white : AppStyle.primaryColor,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 15,
               ),
             ),
@@ -4355,7 +4302,7 @@ return FadeTransition(opacity: animation, child: child);
         child: Text(
           text,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : Colors.grey[800],
           ),
@@ -4537,29 +4484,56 @@ return FadeTransition(opacity: animation, child: child);
             ),
           ],
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Company",
-                style: TextStyle(
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
+          if (_isEditing) ...[
+            Text(
+              "Company",
+              style: TextStyle(
+                fontWeight: FontWeight.w400,
+                color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
               ),
-              Text(
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2F4F6),
+              ),
+              child: Text(
                 (picking.companyId != null && picking.companyId!.length > 1)
                     ? picking.companyId![1]
                     : "None",
                 style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.normal,
                   fontSize: 14,
+                  color: isDark ? Colors.white54 : Colors.grey[600],
                 ),
-                textAlign: TextAlign.end,
               ),
-            ],
-          ),
+            ),
+          ] else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Company",
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  (picking.companyId != null && picking.companyId!.length > 1)
+                      ? picking.companyId![1]
+                      : "None",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.normal,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -4571,60 +4545,64 @@ return FadeTransition(opacity: animation, child: child);
         (pickings.isNotEmpty ? (pickings[0].note ?? '') : '');
     final String plainNote =
         rawNote.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-    final bool hasNote = plainNote.isNotEmpty;
 
-    Widget body;
     if (_isEditing) {
-      body = InfoRow(
-        label: "Note",
-        value: pickings.isNotEmpty ? pickings[0].note : '',
-        isEditing: _isEditing,
-        controller: _noteController,
-        readOnly: pickings.isNotEmpty &&
-            ['done', 'cancel'].contains(pickings[0].state),
-        onTap: () {},
-      );
-    } else if (hasNote) {
-      body = Text(
-        plainNote,
-        style: TextStyle(
-          fontSize: 14,
-          color: isDark ? Colors.white : Colors.black87,
-          height: 1.4,
-        ),
-      );
-    } else {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                HugeIcons.strokeRoundedNote,
-                size: 32,
-                color: isDark ? Colors.grey[600] : Colors.grey[400],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'No notes added for this delivery',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic,
-                  color: isDark ? Colors.grey[500] : Colors.grey[500],
-                ),
-              ),
-            ],
-          ),
+        padding: const EdgeInsets.all(16),
+        child: InfoRow(
+          label: "Note",
+          value: pickings.isNotEmpty ? pickings[0].note : '',
+          isEditing: true,
+          controller: _noteController,
+          readOnly: pickings.isNotEmpty &&
+              ['done', 'cancel'].contains(pickings[0].state),
+          onTap: () {},
         ),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [body],
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Note',
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 80),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: isDark
+                  ? const Color(0xFF2A2A2A)
+                  : const Color(0xFFF2F4F6),
+            ),
+            child: plainNote.isNotEmpty
+                ? Text(
+                    plainNote,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      height: 1.5,
+                    ),
+                  )
+                : Text(
+                    'Note',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: isDark ? Colors.white38 : Colors.grey[500],
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }

@@ -475,7 +475,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                       width: 30,
                       errorBuilder: (context, error, stackTrace) {
                         return const Icon(
-                          Icons.delivery_dining,
+                          HugeIcons.strokeRoundedShippingTruck02,
                           color: Color(0xFFC03355),
                           size: 20,
                         );
@@ -824,14 +824,14 @@ class _UrlInputField extends StatelessWidget {
                     ),
                     iconStyleData: const IconStyleData(
                       icon: Icon(
-                        Icons.keyboard_arrow_down,
+                        HugeIcons.strokeRoundedArrowDown01,
                         size: 16,
                         color: Colors.black54,
                       ),
                       iconSize: 18,
                       iconEnabledColor: Colors.black54,
                       openMenuIcon: Icon(
-                        Icons.keyboard_arrow_up,
+                        HugeIcons.strokeRoundedArrowUp01,
                         size: 16,
                         color: Colors.black54,
                       ),
@@ -994,7 +994,7 @@ class _DatabaseDropdown extends StatelessWidget {
         offset: const Offset(0, -4),
       ),
       iconStyleData: const IconStyleData(
-        icon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
+        icon: Icon(HugeIcons.strokeRoundedArrowDown01, color: Colors.black54),
       ),
     );
   }

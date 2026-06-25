@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -62,8 +63,6 @@ class RouteInfoCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          const SizedBox(height: 14),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -73,8 +72,8 @@ class RouteInfoCard extends StatelessWidget {
                 Text(
                   routeDuration,
                   style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                     color: primary,
                     letterSpacing: -0.5,
                   ),
@@ -83,9 +82,9 @@ class RouteInfoCard extends StatelessWidget {
                 Text(
                   routeDistance,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 13,
                     color: secondary,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
@@ -121,7 +120,7 @@ class RouteInfoCard extends StatelessWidget {
                               '${i + 1}',
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: accent,
                               ),
                             ),
@@ -136,7 +135,7 @@ class RouteInfoCard extends StatelessWidget {
                                 leg['end_address'] ?? '',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w400,
                                   color: primary,
                                 ),
                                 maxLines: 1,
@@ -153,7 +152,7 @@ class RouteInfoCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right,
+                        Icon(HugeIcons.strokeRoundedArrowRight01,
                             color: isDark ? Colors.white24 : Colors.grey[350],
                             size: 18),
                       ],
@@ -168,7 +167,6 @@ class RouteInfoCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  flex: 3,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accent,
@@ -179,7 +177,7 @@ class RouteInfoCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: onStartPressed,
-                    icon: const Icon(Icons.navigation_rounded, size: 18),
+                    icon: const Icon(HugeIcons.strokeRoundedNavigation03, size: 18),
                     label: const Text(
                       'Start',
                       style: TextStyle(
@@ -189,7 +187,6 @@ class RouteInfoCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  flex: 2,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: accent,
@@ -199,11 +196,11 @@ class RouteInfoCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: onAddStopPressed,
-                    icon: const Icon(Icons.add_location_alt_outlined, size: 16),
+                    icon: const Icon(HugeIcons.strokeRoundedLocation01, size: 16),
                     label: const Text(
                       'Add Stop',
                       style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
+                          fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),

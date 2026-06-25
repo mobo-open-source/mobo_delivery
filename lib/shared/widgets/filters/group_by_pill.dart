@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 /// A pill-shaped widget that displays the current grouping criteria.
 class GroupByPill extends StatelessWidget {
@@ -20,7 +21,7 @@ class GroupByPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.layers_outlined,
+            HugeIcons.strokeRoundedLayer,
             size: 14,
             color: isDark ? Colors.black : Colors.white,
           ),
@@ -29,7 +30,7 @@ class GroupByPill extends StatelessWidget {
             '$label',
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: isDark ? Colors.black : Colors.white,
             ),
           ),

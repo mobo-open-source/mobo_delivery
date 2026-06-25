@@ -12,7 +12,7 @@ import '../../../Dashboard/services/storage_service.dart';
 import '../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../core/company/providers/company_provider.dart';
 import '../../../shared/widgets/snackbar.dart';
-import 'package:shimmer/shimmer.dart';
+import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../bloc/return_management_bloc.dart';
 import '../bloc/return_management_event.dart';
 import '../bloc/return_management_state.dart';
@@ -160,7 +160,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         IconButton(
                           onPressed: () => Navigator.of(sheetContext).pop(),
                           icon: Icon(
-                            Icons.close,
+                            HugeIcons.strokeRoundedCancel01,
                             color: isDark ? Colors.white : Colors.black54,
                           ),
                           splashRadius: 20,
@@ -334,8 +334,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                   color: isDark
                                       ? Colors.white70
                                       : Colors.black54,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -471,7 +471,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           const SizedBox(width: 6),
           GestureDetector(
             onTap: onRemove,
-            child: Icon(Icons.close, size: 16, color: primary),
+            child: Icon(HugeIcons.strokeRoundedCancel01, size: 16, color: primary),
           ),
         ],
       ),
@@ -512,8 +512,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     label,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -549,6 +549,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         );
       },
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         itemCount: state.groupedPickings.length,
         itemBuilder: (context, index) {
@@ -609,7 +610,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                               Text(
                                 '${groupPickings.length} return${groupPickings.length != 1 ? 's' : ''}',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
                                   color: isDark
                                       ? Colors.grey[400]
                                       : Colors.grey[600],
@@ -619,7 +621,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                           ),
                         ),
                         Icon(
-                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          isExpanded ? HugeIcons.strokeRoundedArrowUp01 : HugeIcons.strokeRoundedArrowDown01,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ],
@@ -663,7 +665,9 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       partnerName = picking['partner_id'][1].toString();
     }
     final scheduledDate = (picking['scheduled_date'] == null ||
-            picking['scheduled_date'] == false)
+            picking['scheduled_date'] == false ||
+            picking['scheduled_date'].toString() == 'false' ||
+            picking['scheduled_date'].toString().trim().isEmpty)
         ? 'None'
         : picking['scheduled_date'].toString();
     final statusColor = _getStatusColor(state);
@@ -808,7 +812,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
               Row(
                 children: [
                   Icon(
-                    Icons.calendar_today_outlined,
+                    HugeIcons.strokeRoundedCalendar01,
                     size: 14,
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
                   ),
@@ -905,7 +909,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         label,
         style: TextStyle(
           fontSize: 11,
-          fontWeight: isDark ? FontWeight.bold : FontWeight.w600,
+          fontWeight: FontWeight.w600,
           color: textColor,
           letterSpacing: 0.1,
         ),
@@ -1010,11 +1014,13 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         },
                       ),
 
-                      if (!state.isLoading && !showFullPageError)
+                      if (state.isLoading)
+                        const PaginationBarShimmer()
+                      else if (!showFullPageError)
                         _buildPaginationBar(state, isDark, context),
 
                       if (state.isLoading)
-                        Expanded(child: _buildListShimmer(isDark))
+                        const Expanded(child: ReturnListShimmer(itemCount: 6))
                       else if (showFullPageError)
                         Expanded(child: _buildErrorState(isDark, context))
                       else if (displayedPickings.isEmpty)
@@ -1137,56 +1143,54 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     ],
                   ),
                 ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    HugeIcons.strokeRoundedArrowLeft01,
-                    size: 25,
-                    color: canGoPrev
-                        ? (isDark ? Colors.white70 : Colors.black87)
-                        : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.7)),
+                if (canGoNext) ...[
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      HugeIcons.strokeRoundedArrowLeft01,
+                      size: 25,
+                      color: canGoPrev
+                          ? (isDark ? Colors.white70 : Colors.black87)
+                          : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
+                    ),
+                    onPressed: canGoPrev
+                        ? () {
+                            context.read<ReturnManagementBloc>().add(
+                              FetchStockPickings(
+                                state.currentPage - 1,
+                                searchText: _searchController.text.trim().isNotEmpty
+                                    ? _searchController.text.trim()
+                                    : null,
+                                filters: _selectedFilters,
+                                groupBy: _selectedGroupBy,
+                              ),
+                            );
+                          }
+                        : null,
                   ),
-                  onPressed: canGoPrev
-                      ? () {
-                          context.read<ReturnManagementBloc>().add(
-                            FetchStockPickings(
-                              state.currentPage - 1,
-                              searchText: _searchController.text.trim().isNotEmpty
-                                  ? _searchController.text.trim()
-                                  : null,
-                              filters: _selectedFilters,
-                              groupBy: _selectedGroupBy,
-                            ),
-                          );
-                        }
-                      : null,
-                ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    HugeIcons.strokeRoundedArrowRight01,
-                    size: 25,
-                    color: canGoNext
-                        ? (isDark ? Colors.white70 : Colors.black87)
-                        : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.7)),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      HugeIcons.strokeRoundedArrowRight01,
+                      size: 25,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                    onPressed: () {
+                      context.read<ReturnManagementBloc>().add(
+                        FetchStockPickings(
+                          state.currentPage + 1,
+                          searchText: _searchController.text.trim().isNotEmpty
+                              ? _searchController.text.trim()
+                              : null,
+                          filters: _selectedFilters,
+                          groupBy: _selectedGroupBy,
+                        ),
+                      );
+                    },
                   ),
-                  onPressed: canGoNext
-                      ? () {
-                          context.read<ReturnManagementBloc>().add(
-                            FetchStockPickings(
-                              state.currentPage + 1,
-                              searchText: _searchController.text.trim().isNotEmpty
-                                  ? _searchController.text.trim()
-                                  : null,
-                              filters: _selectedFilters,
-                              groupBy: _selectedGroupBy,
-                            ),
-                          );
-                        }
-                      : null,
-                ),
+                ],
               ],
             ),
         ],
@@ -1223,118 +1227,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   }
 
 
-  Widget _buildListShimmer(bool isDark) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 6,
-      itemBuilder: (context, index) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Shimmer.fromColors(
-          baseColor: isDark ? const Color(0xFF2A2A2A) : Colors.grey[300]!,
-          highlightColor: isDark ? const Color(0xFF3A3A3A) : Colors.grey[100]!,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Container(
-                      width: 52,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      width: 100,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      width: 160,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 200,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
 
   static const Map<String, String> stateLabels = {

@@ -19,7 +19,7 @@ import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/list_search_bar.dart';
 import '../../../../shared/widgets/greeting_header.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
-import '../../../../shared/widgets/loaders/list_shimmer.dart';
+import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../CreateNewPicking/pages/create_picking_page.dart';
@@ -380,7 +380,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: Icon(
-                            Icons.close,
+                            HugeIcons.strokeRoundedCancel01,
                             color: isDark ? Colors.white : Colors.black54,
                           ),
                           splashRadius: 20,
@@ -540,10 +540,10 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                 'Group pickings by',
                                 style: TextStyle(
                                   color: isDark
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -666,14 +666,14 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             style: const TextStyle(
               color: AppStyle.primaryColor,
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: onRemove,
             child: const Icon(
-              Icons.close,
+              HugeIcons.strokeRoundedCancel01,
               size: 16,
               color: AppStyle.primaryColor,
             ),
@@ -718,8 +718,8 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     label,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -727,7 +727,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     subtitle,
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -863,7 +863,9 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             },
           ),
 
-          if (!isLoading && !catchError && filteredLocations.isNotEmpty)
+          if (isLoading)
+            const PaginationBarShimmer()
+          else if (!catchError && filteredLocations.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(
@@ -909,22 +911,23 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             style: TextStyle(
                               color: isDark ? Colors.white70 : Colors.black87,
                               fontSize: 14,
-                              fontWeight: FontWeight.normal,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ),
-                        if (currentPage > 0)
+                        if (hasNext) ...[
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             icon: Icon(
                               HugeIcons.strokeRoundedArrowLeft01,
                               size: 25,
-                              color: isDark ? Colors.white70 : Colors.black87,
+                              color: currentPage > 0
+                                  ? (isDark ? Colors.white70 : Colors.black87)
+                                  : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
                             ),
-                            onPressed: () => _loadPrevPage(firstLoc!),
+                            onPressed: currentPage > 0 ? () => _loadPrevPage(firstLoc!) : null,
                           ),
-                        if (hasNext)
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -935,6 +938,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             ),
                             onPressed: () => _loadNextPage(firstLoc!),
                           ),
+                        ],
                       ],
                     );
                   }),
@@ -945,7 +949,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             child: Stack(
               children: [
                 if (isLoading)
-                  ListShimmer.buildListShimmer(context, itemCount: 6)
+                  const PickingListShimmer(itemCount: 6)
                 else if (catchError)
                   Positioned.fill(
                     child: _buildErrorState(isDark, context),
@@ -989,7 +993,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                         _allGroupsExpanded = true;
                                       });
                                     },
-                                    icon: const Icon(Icons.expand_more, size: 18),
+                                    icon: const Icon(HugeIcons.strokeRoundedArrowDown01, size: 18),
                                     label: const Text('Expand All'),
                                     style: TextButton.styleFrom(
                                       foregroundColor: isDark
@@ -1007,7 +1011,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                         _allGroupsExpanded = false;
                                       });
                                     },
-                                    icon: const Icon(Icons.expand_less, size: 18),
+                                    icon: const Icon(HugeIcons.strokeRoundedArrowUp01, size: 18),
                                     label: const Text('Collapse All'),
                                     style: TextButton.styleFrom(
                                       foregroundColor: isDark
@@ -1024,6 +1028,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                         child: RefreshIndicator(
                           onRefresh: () async => reloadPickingList(),
                           child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             itemCount: _groupedPickings.length,
                             itemBuilder: (context, index) {
@@ -1099,8 +1104,8 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                             ),
                                             Icon(
                                               isExpanded
-                                                  ? Icons.keyboard_arrow_up
-                                                  : Icons.keyboard_arrow_down,
+                                                  ? HugeIcons.strokeRoundedArrowUp01
+                                                  : HugeIcons.strokeRoundedArrowDown01,
                                               color: isDark
                                                   ? Colors.white70
                                                   : Colors.black54,
@@ -1299,7 +1304,7 @@ return FadeTransition(opacity: animation, child: child);
             style: TextStyle(
               fontSize: 12,
               color: isDark ? Colors.grey[500] : Colors.grey[500],
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -1310,7 +1315,7 @@ return FadeTransition(opacity: animation, child: child);
             style: TextStyle(
               fontSize: 12,
               color: isDark ? Colors.grey[400] : Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w400,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1321,45 +1326,62 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Widget _buildStatusBadge(String state, bool isDark) {
-    Color bgColor;
-    Color textColor;
-    String label = capitalizeFirstLetter(stateMap[state] ?? state);
+    const Color statusGreen  = Color(0xFF00A63E);
+    const Color statusBlue   = Color(0xFF3B82F6);
+    const Color statusOrange = Color(0xFFF97316);
+    const Color statusRed    = Color(0xFFEF4444);
+    const Color statusTeal   = Color(0xFF14B8A6);
+    const Color statusGrey   = Color(0xFF6B7280);
+
+    Color color;
+    String label;
 
     switch (state) {
       case 'done':
-        bgColor = Colors.green.withOpacity(0.1);
-        textColor = Colors.green;
+        color = statusTeal;
+        label = 'Done';
         break;
       case 'assigned':
-        bgColor = Colors.blue.withOpacity(0.1);
-        textColor = Colors.blue;
+        color = statusGreen;
+        label = 'Ready';
         break;
       case 'waiting':
+        color = statusOrange;
+        label = 'Waiting';
+        break;
       case 'confirmed':
-        bgColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
+        color = statusOrange;
+        label = 'Waiting';
         break;
       case 'cancel':
-        bgColor = Colors.red.withOpacity(0.1);
-        textColor = Colors.red;
+        color = statusRed;
+        label = 'Cancelled';
+        break;
+      case 'draft':
+        color = statusBlue;
+        label = 'Draft';
         break;
       default:
-        bgColor = Colors.grey.withOpacity(0.1);
-        textColor = Colors.grey;
+        color = statusGrey;
+        label = capitalizeFirstLetter(stateMap[state] ?? state);
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(100),
+        color: color.withValues(alpha: isDark ? 0.20 : 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: isDark
+            ? Border.all(color: color.withValues(alpha: 0.35), width: 0.8)
+            : null,
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: textColor,
           fontSize: 12,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
+          color: isDark ? color.withValues(alpha: 0.95) : color,
+          letterSpacing: 0.1,
         ),
       ),
     );

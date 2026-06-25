@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -55,26 +56,26 @@ class ProfileForm extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _buildInfoField(context, Icons.person_outline, "Full Name", nameController),
+        _buildInfoField(context, HugeIcons.strokeRoundedUser, "Full Name", nameController),
         const SizedBox(height: 8),
-        _buildInfoField(context, Icons.email_outlined, "Email", emailController),
+        _buildInfoField(context, HugeIcons.strokeRoundedMail01, "Email", emailController),
         const SizedBox(height: 8),
-        _buildInfoField(context, Icons.phone_outlined, "Phone", phoneController),
+        _buildInfoField(context, HugeIcons.strokeRoundedCall, "Phone", phoneController),
         const SizedBox(height: 8),
-        _buildInfoField(context, Icons.phone_outlined, "Mobile", mobileController),
+        _buildInfoField(context, HugeIcons.strokeRoundedCall, "Mobile", mobileController),
         const SizedBox(height: 8),
         _buildInfoField(
           context,
-          Icons.language_outlined,
+          HugeIcons.strokeRoundedLanguageSquare,
           "Website",
           websiteController,
           editable: false,
         ),
         const SizedBox(height: 8),
-        _buildReadOnlyTextField(context, Icons.work_outline, "Company", companyController),
+        _buildReadOnlyTextField(context, HugeIcons.strokeRoundedWorkHistory, "Company", companyController),
         if (isSystem) ...[
           const SizedBox(height: 8),
-          _buildInfoField(context, Icons.language_outlined, "Google Maps API Key", mapTokenController),
+          _buildInfoField(context, HugeIcons.strokeRoundedLanguageSquare, "Google Maps API Key", mapTokenController),
         ],
       ],
     );
@@ -103,7 +104,8 @@ class ProfileForm extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: TextStyle(fontWeight: FontWeight.w400).fontFamily,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
               color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
             ),
           ),
@@ -122,10 +124,11 @@ class ProfileForm extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 hintText: controller.text.isEmpty ? 'Enter $label' : null,
                 hintStyle: TextStyle(
-                  fontFamily: TextStyle(fontWeight: FontWeight.w600).fontFamily,
+                  fontFamily: TextStyle(fontWeight: FontWeight.w400).fontFamily,
                   color: isDark ? Colors.grey[500] : Colors.grey[500],
                   fontStyle: FontStyle.italic,
                   fontSize: 14,
+                  fontWeight: FontWeight.w400,
                   height: 1.0,
                 ),
                 prefixIcon: Icon(icon, color: isDark ? Colors.white70 : const Color(0xff7F7F7F)),
@@ -151,7 +154,8 @@ class ProfileForm extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: TextStyle(fontWeight: FontWeight.w400).fontFamily,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
               color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
             ),
           ),
@@ -172,11 +176,11 @@ class ProfileForm extends StatelessWidget {
                   child: Text(
                     displayValue,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: displayValue == 'Not set'
                           ? (isDark ? Colors.grey[500]! : Colors.grey[500]!)
                           : (isDark ? Colors.white70 : Colors.black),
-                      fontWeight: displayValue == 'Not set' ? FontWeight.w400 : FontWeight.w500,
+                      fontWeight: displayValue == 'Not set' ? FontWeight.w400 : FontWeight.w400,
                     ),
                   ),
                 ),

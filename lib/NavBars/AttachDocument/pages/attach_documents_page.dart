@@ -8,7 +8,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/list_search_bar.dart';
 import '../../../shared/widgets/error_state_widget.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
-import 'package:shimmer/shimmer.dart';
+import '../../../shared/widgets/loaders/delivery_shimmers.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../Dashboard/infrastructure/profile_refresh_bus.dart';
@@ -209,7 +209,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                         IconButton(
                           onPressed: () => Navigator.of(sheetContext).pop(),
                           icon: Icon(
-                            Icons.close,
+                            HugeIcons.strokeRoundedCancel01,
                             color: isDark ? Colors.white : Colors.black54,
                           ),
                           splashRadius: 20,
@@ -379,8 +379,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                   color: isDark
                                       ? Colors.white70
                                       : Colors.black54,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -526,7 +526,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           GestureDetector(
             onTap: onRemove,
             child: const Icon(
-              Icons.close,
+              HugeIcons.strokeRoundedCancel01,
               size: 16,
               color: AppStyle.primaryColor,
             ),
@@ -570,8 +570,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                     label,
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -605,6 +605,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         );
       },
       child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: state.groupedPickings.length,
         itemBuilder: (context, index) {
           final groupKey = state.groupedPickings.keys.elementAt(index);
@@ -650,8 +651,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                     ),
                     trailing: Icon(
                       isExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
+                          ? HugeIcons.strokeRoundedArrowUp01
+                          : HugeIcons.strokeRoundedArrowDown01,
                       color: isDark ? Colors.white70 : Colors.black54,
                     ),
                     onTap: () {
@@ -682,8 +683,12 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
     bool isDark,
     BuildContext context,
   ) {
+    final scheduledDateRaw = picking['scheduled_date'];
     final dateInfo = Utils.getFormattedDateInfo(
-      picking['scheduled_date'] ?? '',
+      scheduledDateRaw is String && scheduledDateRaw.isNotEmpty &&
+              scheduledDateRaw != 'false'
+          ? scheduledDateRaw
+          : '',
     );
     final rawState = picking['state'] ?? 'unknown';
     final readableState = AppConstants.stateLabels[rawState] ?? rawState;
@@ -712,7 +717,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         title: Text(
           picking['name'] ?? 'Unnamed Picking',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             fontSize: 15,
             color: isDark ? Colors.white : AppStyle.primaryColor,
           ),
@@ -802,29 +807,13 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                       },
                       builder: (context, state) {
                         if (state is AttachDocumentsLoading) {
-                          return ListView.builder(
-                            itemCount: 8,
-                            itemBuilder: (context, index) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
+                          return const Column(
+                            children: [
+                              PaginationBarShimmer(),
+                              Expanded(
+                                child: AttachmentPickingListShimmer(itemCount: 8),
                               ),
-                              child: Shimmer.fromColors(
-                                baseColor: isDark
-                                    ? const Color(0xFF2A2A2A)
-                                    : Colors.grey[300]!,
-                                highlightColor: Colors.grey.shade100,
-                                child: Container(
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? const Color(0xFF2A2A2A)
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
+                            ],
                           );
                         }
 
@@ -1059,6 +1048,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                             );
                                           },
                                           child: ListView.builder(
+                                            physics: const AlwaysScrollableScrollPhysics(),
                                             padding: const EdgeInsets.only(
                                               top: 4,
                                               bottom: 16,
@@ -1066,10 +1056,17 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                             itemCount: pickings.length,
                                             itemBuilder: (context, index) {
                                               final picking = pickings[index];
+                                              final scheduledDateRaw2 =
+                                                  picking['scheduled_date'];
                                               final dateInfo =
                                                   Utils.getFormattedDateInfo(
-                                                    picking['scheduled_date'] ??
-                                                        '',
+                                                    scheduledDateRaw2 is String &&
+                                                            scheduledDateRaw2
+                                                                .isNotEmpty &&
+                                                            scheduledDateRaw2 !=
+                                                                'false'
+                                                        ? scheduledDateRaw2
+                                                        : '',
                                                   );
                                               final rawState =
                                                   picking['state'] ?? 'unknown';
@@ -1111,7 +1108,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           picking['name'] ??
                                                               'Unnamed Picking',
                                                           style: TextStyle(
-                                                            fontWeight: FontWeight.bold,
+                                                            fontWeight: FontWeight.w600,
                                                             fontSize: 15,
                                                             color: isDark
                                                                 ? Colors.white

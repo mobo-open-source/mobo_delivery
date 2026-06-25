@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../LoginPage/services/storage_service.dart';
@@ -129,9 +128,13 @@ class _LogoutDialogState extends State<LogoutDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                LoadingAnimationWidget.fourRotatingDots(
-                  color: isDark ? Colors.white : AppStyle.primaryColor,
-                  size: 50,
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    color: isDark ? Colors.white : AppStyle.primaryColor,
+                    strokeWidth: 3,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Text(

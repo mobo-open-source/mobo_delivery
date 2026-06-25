@@ -102,6 +102,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   LatLng? _currentLatLng;
   bool _showLayer = true;
   List<Map<String, dynamic>> pickings = [];
+  bool _isLoadingPickings = true;
   List<int> selectedPickings = [];
   List<String> selectedPickingNames = [];
   bool shouldValidate = false;
@@ -155,9 +156,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     try {
       await odooService.initializeOdooClient();
       final fetched = await odooService.fetchStockPickings();
-      if (mounted) setState(() => pickings = fetched);
+      if (mounted) setState(() {
+        pickings = fetched;
+        _isLoadingPickings = false;
+      });
     } catch (e) {
       if (mounted) {
+        setState(() => _isLoadingPickings = false);
         CustomSnackbar.showError(
           context,
           'Could not load pickings from Odoo. Map navigation still works.',
@@ -204,7 +209,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           ),
         ],
       ),
-      child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
+      child: const Icon(HugeIcons.strokeRoundedNavigation03, color: Colors.white, size: 20),
     );
     if (mounted) setState(() {});
   }
@@ -514,8 +519,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               '${index + 1}',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -774,7 +779,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
             ],
           ),
-          child: const Icon(Icons.person_pin_circle_outlined, color: Colors.white, size: 18),
+          child: const Icon(HugeIcons.strokeRoundedUserCircle, color: Colors.white, size: 18),
         ),
         Container(
           width: 3,
@@ -860,8 +865,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         child: Text(
                           'Enter Route',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
@@ -881,6 +886,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                               _showPickingSelectSheet(
                                 pickings: pickings,
                                 selectedIds: selectedPickings.toList(),
+                                isLoading: _isLoadingPickings,
                                 onConfirm: (value) async {
                                   sheetSetState(() => isFetchingStops = true);
                                   try {
@@ -958,20 +964,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                     .withValues(alpha: 0.5),
                                               ),
                                             )
-                                          : Wrap(
-                                              spacing: 6,
-                                              runSpacing: 6,
-                                              children: selectedMaps
-                                                  .map((item) => _pickingTag(
-                                                      item['name']
-                                                              ?.toString() ??
-                                                          ''))
-                                                  .toList(),
-                                            ),
+                                          : _buildPickingTagRow(selectedMaps),
                                     ),
                                     const SizedBox(width: 8),
                                     Icon(
-                                      Icons.keyboard_arrow_down_rounded,
+                                      HugeIcons.strokeRoundedArrowDown01,
                                       color: onSurface.withValues(alpha: 0.6),
                                     ),
                                   ],
@@ -999,7 +996,20 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       const SizedBox(height: 18),
 
                       _fieldHeading('Source Location', isDark),
-                      Focus(
+                      if (sourceController.text == 'Your Location')
+                        _buildCurrentLocationChip(
+                          isDark: isDark,
+                          onSurface: onSurface,
+                          onClear: () {
+                            sheetSetState(() {
+                              sourceController.clear();
+                              _sourceSuggestions.clear();
+                            });
+                            setState(() => _sourceLatLng = null);
+                          },
+                        )
+                      else
+                        Focus(
                         onFocusChange: (hasFocus) async {
                           if (!hasFocus) {
                             await Future.delayed(
@@ -1020,7 +1030,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 ]);
                           },
                         ),
-                      ),
+                        ),
                       if (_sourceSuggestions.isNotEmpty)
                         Container(
                           margin: const EdgeInsets.only(top: 4),
@@ -1060,13 +1070,64 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 12),
-                                  child: Row(
+                                  child: _sourceSuggestions[index] == 'Your Location'
+                                      ? Row(
+                                          children: [
+                                            SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  Container(
+                                                    width: 20,
+                                                    height: 20,
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFF4285F4).withValues(alpha: 0.18),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    width: 10,
+                                                    height: 10,
+                                                    decoration: const BoxDecoration(
+                                                      color: Color(0xFF4285F4),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    'Your location',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: onSurface,
+                                                    ),
+                                                  ),
+                                                  const Text(
+                                                    'Using GPS',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: Color(0xFF4285F4),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
                                     children: [
                                       Icon(
-                                        _sourceSuggestions[index] ==
-                                                'Your Location'
-                                            ? Icons.my_location
-                                            : Icons.location_on_outlined,
+                                        HugeIcons.strokeRoundedLocation01,
                                         size: 18,
                                         color:
                                             onSurface.withValues(alpha: 0.5),
@@ -1203,7 +1264,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           child: Row(
                                             children: [
                                               Icon(
-                                                Icons.location_on_outlined,
+                                                HugeIcons.strokeRoundedLocation01,
                                                 size: 18,
                                                 color: onSurface.withValues(
                                                     alpha: 0.5),
@@ -1463,6 +1524,149 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     );
   }
 
+  /// Renders selected pickings as inline tags — first 2 visible, rest collapsed
+  /// into a "+N" overflow badge. Keeps the trigger field compact regardless of
+  /// how many pickings are selected.
+  Widget _buildPickingTagRow(List<Map<String, dynamic>> maps) {
+    const maxVisible = 2;
+    final visible = maps.take(maxVisible).toList();
+    final overflow = maps.length - maxVisible;
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        ...visible.map((item) => _pickingTag(item['name']?.toString() ?? '')),
+        if (overflow > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppStyle.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppStyle.primaryColor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              '+$overflow',
+              style: const TextStyle(
+                color: AppStyle.primaryColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Non-editable "Your location" chip shown in the source field when GPS is
+  /// selected as the origin. Mirrors Google Maps / Waze style: blue pulsing dot,
+  /// "Your location" label, "Using GPS" subtitle, and an × to switch to manual entry.
+  Widget _buildCurrentLocationChip({
+    required bool isDark,
+    required Color onSurface,
+    required VoidCallback onClear,
+  }) {
+    const gpsBlueDot = Color(0xFF4285F4);
+    return Container(
+      decoration: _fieldShadow,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: gpsBlueDot.withValues(alpha: 0.35),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Blue GPS pulsing dot (outer ring + inner filled dot)
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: gpsBlueDot.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: gpsBlueDot,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 5,
+                        height: 5,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Your location',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white : const Color(0xFF202124),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  const Text(
+                    'Using GPS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: gpsBlueDot,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onClear,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  HugeIcons.strokeRoundedCancel01,
+                  size: 16,
+                  color: onSurface.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Multi-select picker for pickings — mirrors the company-selection design
   /// (search box, mobo checkboxes, Reset/Confirm). Calls [onConfirm] with the
   /// chosen picking maps when the user confirms.
@@ -1470,6 +1674,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     required List<Map<String, dynamic>> pickings,
     required List<int> selectedIds,
     required Future<void> Function(List<Map<String, dynamic>>) onConfirm,
+    bool isLoading = false,
   }) {
     final tempSelected = selectedIds.toSet();
     String query = '';
@@ -1523,8 +1728,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         child: Text(
                           'Select Pickings',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
@@ -1544,13 +1749,38 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       child: filtered.isEmpty
                           ? Padding(
                               padding: const EdgeInsets.all(24),
-                              child: Text(
-                                'No pickings found',
-                                style: TextStyle(
-                                  color:
-                                      isDark ? Colors.white54 : Colors.black54,
-                                ),
-                              ),
+                              child: isLoading
+                                  ? Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: AppStyle.primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Loading pickings…',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isDark
+                                                ? Colors.white54
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Text(
+                                      'No pickings found',
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.black54,
+                                      ),
+                                    ),
                             )
                           : ListView.builder(
                               shrinkWrap: true,
@@ -1566,10 +1796,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                   padding:
                                       const EdgeInsets.fromLTRB(16, 4, 16, 4),
                                   child: Material(
-                                    color: checked
-                                        ? AppStyle.primaryColor
-                                            .withValues(alpha: 0.08)
-                                        : Colors.transparent,
+                                    color: Colors.transparent,
                                     borderRadius: BorderRadius.circular(10),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(10),
@@ -1590,9 +1817,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                 name,
                                                 style: TextStyle(
                                                   fontSize: 15,
-                                                  fontWeight: checked
-                                                      ? FontWeight.w600
-                                                      : FontWeight.normal,
+                                                  fontWeight: FontWeight.normal,
                                                   color: isDark
                                                       ? Colors.white
                                                       : Colors.black87,
@@ -1709,38 +1934,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   Positioned(
                     top: 40,
                     left: 16,
-                    right: 72,
+                    right: 16,
                     child: SearchInputs(
                       sourceController: sourceSearchController,
                       stopControllers: _stopSearchControllers,
                       showStopFields: _showStopLocationFields,
-                    ),
-                  ),
-                  Positioned(
-                    top: 40,
-                    right: 16,
-                    child: GestureDetector(
-                      onTap: _resetNavigation,
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          size: 18,
-                          color: isDark ? Colors.white70 : const Color(0xFF70757A),
-                        ),
-                      ),
+                      onClose: _resetNavigation,
                     ),
                   ),
                   Positioned(
@@ -1782,6 +1981,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       remainingDistance: _remainingDistance,
                       remainingDuration: _remainingDuration,
                       remainingLegInfo: _remainingLegInfo,
+                      isLoading: _isLoading,
                       onFocusPressed: (latLng) {
                         if (latLng != null) {
                           _mapController.move(latLng, 15);
@@ -1812,7 +2012,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               ],
             ),
 
-      floatingActionButton: Column(
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: (_isNavigationStarted && _showRemainingInfo) ? 310 : 0,
+        ),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -1898,7 +2102,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               onPressed: () =>
                   setState(() => _showRemainingInfo = !_showRemainingInfo),
               child: Icon(
-                _showRemainingInfo ? Icons.visibility_off : Icons.visibility,
+                _showRemainingInfo ? HugeIcons.strokeRoundedViewOff : HugeIcons.strokeRoundedView,
               ),
             ),
             if (_isMapManuallyMoved && _currentLatLng != null) ...[
@@ -1906,40 +2110,27 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               FloatingActionButton(
                 heroTag: 'routeRecenterCurrent',
                 backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-                foregroundColor: const Color(0xFF1A73E8),
+                foregroundColor: AppStyle.primaryColor,
                 elevation: 4,
                 tooltip: 'Re-center on current location',
                 onPressed: () {
                   _mapController.move(_currentLatLng!, 17.0);
                   setState(() => _isMapManuallyMoved = false);
                 },
-                child: const Icon(Icons.my_location),
+                child: const Icon(HugeIcons.strokeRoundedLocation03),
               ),
             ],
           ],
         ],
+        ),
       ),
     );
   }
 
   /// Starts live navigation: subscribes to GPS, starts the periodic distance timer.
   Future<void> _startNavigation() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    setState(() {
-      _isNavigationStarted = true;
-      _isMapManuallyMoved = false;
-      _movingMarker = null;
-      _markers = [
-        for (int i = 0; i < _stops.length; i++)
-          Marker(
-            point: _stops[i],
-            width: 40,
-            height: 50,
-            alignment: Alignment.bottomCenter,
-            child: _buildStopMarker(i),
-          ),
-      ];
-    });
 
     bool serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
@@ -1949,7 +2140,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           setState(() => _isLoading = false);
           CustomSnackbar.showWarning(
             context,
-            'Turn on location to start live navigation.',
+            'Turn on location services to start live navigation.',
           );
         }
         return;
@@ -1970,6 +2161,75 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         return;
       }
     }
+
+    // Warn if the user's current GPS position is significantly far from the
+    // route's starting point — this typically means the route was planned for
+    // a different region and live navigation will re-route immediately.
+    if (_currentLatLng != null && _sourceLatLng != null) {
+      final distanceToStart =
+          mapService.distanceBetweenPoints(_currentLatLng!, _sourceLatLng!);
+      if (distanceToStart > 5000) {
+        if (!mounted) return;
+        final km = (distanceToStart / 1000).toStringAsFixed(1);
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) {
+            final dark = Theme.of(ctx).brightness == Brightness.dark;
+            return AlertDialog(
+              backgroundColor:
+                  dark ? const Color(0xFF1C1C2E) : Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: const Text('Far from Route Start',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
+              content: Text(
+                'Your current location is $km km away from the route\'s '
+                'starting point. Navigation may re-route immediately or '
+                'be inaccurate. Continue anyway?',
+                style: const TextStyle(fontSize: 14),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Continue',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            );
+          },
+        );
+        if (confirmed != true) {
+          if (mounted) setState(() => _isLoading = false);
+          return;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isNavigationStarted = true;
+      _isMapManuallyMoved = false;
+      _movingMarker = null;
+      _markers = [
+        for (int i = 0; i < _stops.length; i++)
+          Marker(
+            point: _stops[i],
+            width: 40,
+            height: 50,
+            alignment: Alignment.bottomCenter,
+            child: _buildStopMarker(i),
+          ),
+      ];
+    });
+
+    // Auto-show the remaining-info card so the user immediately sees
+    // route progress data after starting navigation.
+    setState(() => _showRemainingInfo = true);
 
     _locationSubscription?.cancel();
     LatLng? lastPosition;
@@ -2004,6 +2264,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               _polylines.isNotEmpty ? _polylines.first.points : [];
           if (_polylines.isEmpty) {
             await mapService.playWrongPathSound();
+            if (mounted) {
+              CustomSnackbar.showWarning(
+                context,
+                'You are off route and a new route could not be calculated. '
+                'Check your connection or adjust your destination.',
+              );
+            }
           }
         }
       }

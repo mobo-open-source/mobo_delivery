@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -49,9 +50,9 @@ class SearchInputs extends StatelessWidget {
                     controller: sourceController,
                     decoration: InputDecoration(
                       hintText: 'Enter source location',
-                      hintStyle: TextStyle(color: Colors.black54),
+                      hintStyle: TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w400, fontStyle: FontStyle.italic),
                       prefixIcon: Icon(
-                        Icons.my_location,
+                        HugeIcons.strokeRoundedLocation03,
                         color: Colors.black54,
                       ),
                       border: OutlineInputBorder(),
@@ -75,9 +76,9 @@ class SearchInputs extends StatelessWidget {
                             controller: stopControllers[index],
                             decoration: InputDecoration(
                               hintText: 'Enter stop ${index + 1} location',
-                              hintStyle: TextStyle(color: Colors.black54),
+                              hintStyle: TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w400, fontStyle: FontStyle.italic),
                               prefixIcon: const Icon(
-                                Icons.stop_circle,
+                                HugeIcons.strokeRoundedBlocked,
                                 color: Colors.black54,
                               ),
                               border: const OutlineInputBorder(),

@@ -153,7 +153,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           title: Text(
             'Configuration',
             style: GoogleFonts.manrope(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               fontSize: 22,
               color: isDark ? Colors.white : Colors.black,
             ),
@@ -285,7 +285,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
           ActionTile(
             title: 'Logout',
             subtitle: 'Sign out from this device',
-            icon: Icons.logout_outlined,
+            icon: HugeIcons.strokeRoundedLogout01,
             destructive: true,
             trailing: const SizedBox.shrink(),
             onTap: () => _showLogoutConfirm(context),

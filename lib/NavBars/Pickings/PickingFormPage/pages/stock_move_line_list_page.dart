@@ -173,7 +173,7 @@ class StockMoveLineListPage extends StatelessWidget {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
@@ -198,7 +198,7 @@ class StockMoveLineListPage extends StatelessWidget {
         child: Text(
           text,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : Colors.grey[800],
           ),
@@ -218,8 +218,8 @@ class StockMoveLineListPage extends StatelessWidget {
   }
 
   TextStyle _rowStyle(bool isDark) => TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
         color: isDark ? Colors.grey[300] : Colors.grey[700],
       );
 }

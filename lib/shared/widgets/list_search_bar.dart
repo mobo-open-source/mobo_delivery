@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 /// A reusable search bar widget matching the mobo_sales quotation list style.
 ///
@@ -108,7 +109,7 @@ class _ListSearchBarState extends State<ListSearchBar> {
                           suffixIcon: widget.controller.text.isNotEmpty
                               ? IconButton(
                                   icon: Icon(
-                                    Icons.close,
+                                    HugeIcons.strokeRoundedCancel01,
                                     size: 18,
                                     color: isDark
                                         ? Colors.grey[400]

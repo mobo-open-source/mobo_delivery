@@ -32,18 +32,7 @@ class ProductTable extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (moveProducts.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 28),
-              child: Center(
-                child: Text(
-                  'No products added yet',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white54 : Colors.grey[500],
-                  ),
-                ),
-              ),
-            )
+            _buildEmptyState(isDark)
           else
             ...moveProducts.map((product) => _buildProductCard(product, isDark)),
           const SizedBox(height: 4),
@@ -141,7 +130,7 @@ class ProductTable extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
             color: isDark ? Colors.grey[500] : Colors.grey[600],
             letterSpacing: 0.5,
@@ -164,6 +153,58 @@ class ProductTable extends StatelessWidget {
   String _fmtQty(double value) =>
       value.truncateToDouble() == value ? value.toStringAsFixed(0) : '$value';
 
+  Widget _buildEmptyState(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppStyle.primaryColor.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              HugeIcons.strokeRoundedPackage,
+              size: 32,
+              color: AppStyle.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No products added yet',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.grey[800],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tap "Add a line" below to add\nproducts to this picking.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+              color: isDark ? Colors.white38 : Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAddLineButton(bool isDark) {
     return GestureDetector(
       onTap: onAddLine,
@@ -182,7 +223,7 @@ class ProductTable extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.add,
+              HugeIcons.strokeRoundedAdd01,
               size: 18,
               color: isDark ? Colors.white : AppStyle.primaryColor,
             ),
@@ -191,7 +232,7 @@ class ProductTable extends StatelessWidget {
               'Add a line',
               style: TextStyle(
                 color: isDark ? Colors.white : AppStyle.primaryColor,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 15,
               ),
             ),

@@ -494,7 +494,7 @@ return FadeTransition(opacity: animation, child: child);
           'Create New Picking',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontSize: 22,
             color: isDark ? Colors.white : Colors.black,
           ),
         ),
@@ -507,7 +507,51 @@ return FadeTransition(opacity: animation, child: child);
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: TextButton(
+            onPressed: (!isLoading &&
+                    _selectedPartnerId != null &&
+                    _selectedOperationTypeId != null)
+                ? _createPicking
+                : null,
+            style: TextButton.styleFrom(
+              backgroundColor: AppStyle.primaryColor,
+              disabledBackgroundColor: Colors.grey[400],
+              disabledForegroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(13),
+            ),
+            child: const Text(
+              'Create Picking',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,8 +567,8 @@ return FadeTransition(opacity: animation, child: child);
                     boxShadow: [
                       BoxShadow(
                         color: isDark
-                            ? Colors.black.withOpacity(0.18)
-                            : Colors.black.withOpacity(0.06),
+                            ? Colors.black.withValues(alpha: 0.18)
+                            : Colors.black.withValues(alpha: 0.06),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -544,7 +588,7 @@ return FadeTransition(opacity: animation, child: child);
                         child: Text(
                           'Delivery Information',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.grey[900],
                             letterSpacing: -0.3,
@@ -621,7 +665,7 @@ return FadeTransition(opacity: animation, child: child);
                             Text(
                               'Schedule Date',
                               style: TextStyle(
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w500,
                                 color: isDark
                                     ? Colors.white70
                                     : const Color(0xff7F7F7F),
@@ -674,7 +718,7 @@ return FadeTransition(opacity: animation, child: child);
                             Text(
                               'Source Document',
                               style: TextStyle(
-                                fontWeight: FontWeight.w400,
+                                fontWeight: FontWeight.w500,
                                 color: isDark
                                     ? Colors.white70
                                     : const Color(0xff7F7F7F),
@@ -768,8 +812,8 @@ return FadeTransition(opacity: animation, child: child);
                                   boxShadow: [
                                     BoxShadow(
                                       color: isDark
-                                          ? Colors.black.withOpacity(0.18)
-                                          : Colors.black.withOpacity(0.06),
+                                          ? Colors.black.withValues(alpha: 0.18)
+                                          : Colors.black.withValues(alpha: 0.06),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -833,16 +877,6 @@ return FadeTransition(opacity: animation, child: child);
                   ),
                 ),
 
-                MoboButton.primary(
-                  label: "Create Picking",
-                  icon: HugeIcons.strokeRoundedNoteAdd,
-                  onPressed: (!isLoading &&
-                          _selectedPartnerId != null &&
-                          _selectedOperationTypeId != null)
-                      ? _createPicking
-                      : null,
-                ),
-
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -850,14 +884,15 @@ return FadeTransition(opacity: animation, child: child);
                       _errorMessage,
                       style: TextStyle(
                         color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
                       ),
                     ),
                   ),
               ],
             ),
           ],
+        ),
         ),
       ),
     );
@@ -920,7 +955,7 @@ return FadeTransition(opacity: animation, child: child);
             maxLines: 1,
             softWrap: false,
             style: TextStyle(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               fontSize: 13,
               color: textColor,
             ),

@@ -209,7 +209,11 @@ class pickingListToOffline {
 
           _allPickingsByLocation.putIfAbsent(warehouseName, () => []).add({
             'id': pickingId.toString(),
-            'scheduled_date': picking['scheduled_date'],
+            'scheduled_date': picking['scheduled_date'] is String &&
+                    (picking['scheduled_date'] as String).isNotEmpty &&
+                    picking['scheduled_date'] != 'false'
+                ? picking['scheduled_date']
+                : '',
             'date_deadline': (picking['date_deadline'] is String)
                 ? picking['date_deadline']
                 : '',
@@ -229,7 +233,11 @@ class pickingListToOffline {
                 : '0',
             'products_availability':
                 picking['products_availability']?.toString() ?? '',
-            'origin': picking['origin']?.toString() ?? '',
+            'origin': picking['origin'] is String &&
+                    (picking['origin'] as String).isNotEmpty &&
+                    picking['origin'] != 'false'
+                ? picking['origin']
+                : '',
             'return_count': picking['return_count']?.toString() ?? '',
             'show_check_availability':
                 picking['show_check_availability']?.toString() ?? '',

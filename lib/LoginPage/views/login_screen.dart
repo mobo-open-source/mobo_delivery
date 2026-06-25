@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../widgets/login_button.dart';
 import '../services/network_service.dart';
 
@@ -314,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 30,
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(
-                                Icons.delivery_dining,
+                                HugeIcons.strokeRoundedShippingTruck02,
                                 color: Color(0xFFC03355),
                                 size: 20,
                               );
@@ -358,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: GoogleFonts.manrope(
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
-                            fontSize: 32,
+                            fontSize: 20,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -366,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Enter your credentials to continue',
                           style: GoogleFonts.manrope(
                             color: Colors.white70,
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -398,14 +397,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               Text(
                                 'Checking',
                                 style: GoogleFonts.manrope(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              LoadingAnimationWidget.staggeredDotsWave(
-                                color: Colors.white,
-                                size: 28,
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
                               ),
                             ],
                           ),
@@ -672,7 +675,7 @@ return FadeTransition(
                               p,
                               style: GoogleFonts.manrope(
                                 fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                                 color: Colors.black,
                               ),
                             ),
@@ -697,7 +700,7 @@ return FadeTransition(
                         ),
                         iconStyleData: const IconStyleData(
                           icon: Icon(
-                            Icons.keyboard_arrow_down,
+                            HugeIcons.strokeRoundedArrowDown01,
                             size: 16,
                             color: Colors.black54,
                           ),
@@ -842,7 +845,7 @@ return FadeTransition(
               style: GoogleFonts.manrope(
                 color: Colors.black,
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -867,7 +870,7 @@ return FadeTransition(
           offset: const Offset(0, -4),
         ),
         iconStyleData: const IconStyleData(
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
+          icon: Icon(HugeIcons.strokeRoundedArrowDown01, color: Colors.black54),
         ),
       ),
     );

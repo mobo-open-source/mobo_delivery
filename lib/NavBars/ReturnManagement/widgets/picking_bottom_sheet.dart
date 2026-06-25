@@ -139,7 +139,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                   'Return Items',
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
@@ -150,7 +150,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                 child: Padding(
                   padding: const EdgeInsets.all(2),
                   child: Icon(
-                    Icons.close_rounded,
+                    HugeIcons.strokeRoundedCancel01,
                     size: 22,
                     color: isDark ? Colors.white70 : Colors.black54,
                   ),
@@ -235,7 +235,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    Icons.error_outline,
+                    HugeIcons.strokeRoundedAlert02,
                     color: isDark ? Colors.red[300] : Colors.red[700],
                     size: 18,
                   ),
@@ -246,14 +246,14 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                       style: TextStyle(
                         color: isDark ? Colors.red[200] : Colors.red[800],
                         fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          MoboButton.primary(
+          MoboButton.danger(
             label: 'Return',
             icon: HugeIcons.strokeRoundedDeliveryReturn02,
             borderRadius: 8,

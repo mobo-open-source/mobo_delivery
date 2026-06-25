@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:lottie/lottie.dart';
 import 'buttons/mobo_button.dart';
 
@@ -52,8 +53,8 @@ class ErrorStateWidget extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : Colors.black87,
               ),
               textAlign: TextAlign.center,
@@ -62,10 +63,10 @@ class ErrorStateWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: (isDark ? Colors.red[900] : Colors.red[50])?.withOpacity(0.1),
+                color: (isDark ? Colors.red[900] : Colors.red[50])?.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: (isDark ? Colors.red[700] : Colors.red[200])!.withOpacity(0.3),
+                  color: (isDark ? Colors.red[700] : Colors.red[200])!.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -88,7 +89,7 @@ class ErrorStateWidget extends StatelessWidget {
                 if (onRetry != null)
                   MoboButton.secondary(
                     label: 'Retry',
-                    icon: Icons.refresh,
+                    icon: HugeIcons.strokeRoundedRefresh,
                     fullWidth: false,
                     borderRadius: 10,
                     onPressed: onRetry,
@@ -96,7 +97,7 @@ class ErrorStateWidget extends StatelessWidget {
                 if (onContactSupport != null)
                   MoboButton.primary(
                     label: 'Contact Support',
-                    icon: Icons.support_agent,
+                    icon: HugeIcons.strokeRoundedCustomerSupport,
                     fullWidth: false,
                     borderRadius: 10,
                     onPressed: onContactSupport,
@@ -123,11 +124,11 @@ class ErrorStateWidget extends StatelessWidget {
   IconData _getFallbackIcon() {
     switch (errorType) {
       case ErrorType.network:
-        return Icons.wifi_off_rounded;
+        return HugeIcons.strokeRoundedLocationOffline01;
       case ErrorType.server:
-        return Icons.cloud_off_rounded;
+        return HugeIcons.strokeRoundedLocationOffline01;
       case ErrorType.general:
-        return Icons.error_outline_rounded;
+        return HugeIcons.strokeRoundedAlert02;
     }
   }
 }

@@ -521,7 +521,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               child: Row(children: [
                 HugeIcon(icon: HugeIcons.strokeRoundedCamera02, size: 24, color: isDark ? Colors.white : Colors.black87),
                 const SizedBox(width: 16),
-                const Text('Take Photo', style: TextStyle(fontSize: 16)),
+                const Text('Take Photo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               ]),
             ),
           ),
@@ -533,7 +533,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               child: Row(children: [
                 HugeIcon(icon: HugeIcons.strokeRoundedImageCrop, size: 24, color: isDark ? Colors.white : Colors.black87),
                 const SizedBox(width: 16),
-                const Text('Choose from Gallery', style: TextStyle(fontSize: 16)),
+                const Text('Choose from Gallery', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               ]),
             ),
           ),
@@ -628,7 +628,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text('Edit Address',
-                style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
             content: SingleChildScrollView(
               child: SizedBox(
                 width: 400,
@@ -777,7 +777,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Text('Select Related Company',
-              style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -786,7 +786,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 TextField(
                   controller: searchCtrl,
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: Icon(HugeIcons.strokeRoundedSearch01),
                     hintText: 'Search companies...',
                     isDense: true,
                   ),
@@ -813,7 +813,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                                 return ListTile(
                                   dense: true,
                                   title: Text(c['name'] ?? ''),
-                                  trailing: selected ? Icon(Icons.check, color: theme.primaryColor, size: 18) : null,
+                                  trailing: selected ? Icon(HugeIcons.strokeRoundedTick03, color: theme.primaryColor, size: 18) : null,
                                   onTap: () => Navigator.of(ctx).pop(c),
                                 );
                               },
@@ -875,9 +875,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           title: Text(
             'Profile Details',
             style: TextStyle(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : Colors.black,
-              fontSize: _rs(context, 18),
+              fontSize: _rs(context, 22),
             ),
           ),
           leading: IconButton(
@@ -935,7 +935,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.error_outline, size: 40, color: Colors.grey),
+                        const Icon(HugeIcons.strokeRoundedAlert02, size: 40, color: Colors.grey),
                         const SizedBox(height: 12),
                         const Text('Failed to load profile'),
                         const SizedBox(height: 12),
@@ -956,7 +956,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                               _buildProfileImageSection(context, isDark),
                               const SizedBox(height: 32),
                               const Text('Personal Information',
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 20),
                               _buildCustomTextField(context, 'Full Name', _userData!['name']?.toString(),
                                   HugeIcons.strokeRoundedUserAccount, controller: _nameController),
@@ -1002,7 +1002,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                                 context,
                                 'Google Maps API Key',
                                 _loadedMapToken.isNotEmpty ? (_isEditMode ? _loadedMapToken : '••••••••••••••••') : '',
-                                Icons.map_outlined,
+                                HugeIcons.strokeRoundedMaps,
                                 controller: _mapTokenController,
                               ),
                               const SizedBox(height: 20),
@@ -1047,7 +1047,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         Text(
           labelText,
           style: TextStyle(
-            fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w400).fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w500).fontFamily,
             color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
           ),
         ),
@@ -1163,7 +1165,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                             focusedErrorBorder: InputBorder.none,
                             hintText: controller.text.isEmpty ? 'Enter $labelText' : null,
                             hintStyle: TextStyle(
-                              fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w600).fontFamily,
+                              fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w400).fontFamily,
+                              fontWeight: FontWeight.w400,
                               color: isDark ? Colors.grey[500] : Colors.grey[500],
                               fontStyle: FontStyle.italic,
                               fontSize: 14,
@@ -1198,7 +1201,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       case 'mobile': return HugeIcons.strokeRoundedSmartPhone01;
       case 'website': return HugeIcons.strokeRoundedWebDesign02;
       case 'job title': return HugeIcons.strokeRoundedWorkHistory;
-      case 'google maps api key': return Icons.map_outlined;
+      case 'google maps api key': return HugeIcons.strokeRoundedMaps;
       default: return HugeIcons.strokeRoundedUserAccount;
     }
   }

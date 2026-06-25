@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../widgets/login_button.dart';
 import 'package:odoo_delivery_app/LoginPage/views/webview_screen.dart';
 
@@ -288,7 +287,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
         Text(
           'Reset Password',
           style: GoogleFonts.manrope(
-            fontSize: 28,
+            fontSize: 20,
             fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
@@ -362,6 +361,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
               hintStyle: GoogleFonts.manrope(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.italic,
                 color: Colors.black.withOpacity(.4),
               ),
               prefixIcon: Icon(HugeIcons.strokeRoundedMail01, size: 20),
@@ -371,7 +371,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                     : Colors.black54,
               ),
               suffixIcon: _emailHasError
-                  ? Icon(Icons.error_outline, color: Colors.red, size: 20)
+                  ? Icon(HugeIcons.strokeRoundedAlert02, color: Colors.red, size: 20)
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -436,14 +436,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 Text(
                   'Sending',
                   style: GoogleFonts.manrope(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(width: 12),
-                LoadingAnimationWidget.staggeredDotsWave(
-                  color: Colors.white,
-                  size: 28,
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
                 ),
               ],
             ),

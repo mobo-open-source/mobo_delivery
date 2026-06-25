@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../shared/utils/globals.dart';
@@ -15,6 +16,7 @@ class RemainingInfoCard extends StatelessWidget {
   /// Each entry: 'name', 'distance', 'duration', 'latlng' (LatLng?), 'type'.
   final List<Map<String, dynamic>> remainingLegInfo;
 
+  final bool isLoading;
   final Function(LatLng?) onFocusPressed;
   final VoidCallback onAddRoutePressed;
 
@@ -23,6 +25,7 @@ class RemainingInfoCard extends StatelessWidget {
     required this.remainingDistance,
     required this.remainingDuration,
     required this.remainingLegInfo,
+    this.isLoading = false,
     required this.onFocusPressed,
     required this.onAddRoutePressed,
   });
@@ -68,28 +71,50 @@ class RemainingInfoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        remainingDuration,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: primary,
-                          letterSpacing: -0.5,
+                  child: isLoading
+                      ? Row(
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: accent,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Calculating…',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: secondary,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              remainingDuration.isEmpty ? '--' : remainingDuration,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: primary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              remainingDistance.isEmpty ? '--' : remainingDistance,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: secondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      Text(
-                        remainingDistance,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: secondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
                 Text(
                   'Remaining',
@@ -121,15 +146,15 @@ class RemainingInfoCard extends StatelessWidget {
                 switch (type) {
                   case 'start':
                     dotColor = const Color(0xFF4285F4);
-                    dotIcon = Icons.my_location;
+                    dotIcon = HugeIcons.strokeRoundedLocation03;
                     break;
                   case 'visited_stop':
                     dotColor = Colors.green[600]!;
-                    dotIcon = Icons.check_circle_outline;
+                    dotIcon = HugeIcons.strokeRoundedCheckmarkCircle02;
                     break;
                   case 'destination':
                     dotColor = accent;
-                    dotIcon = Icons.flag_outlined;
+                    dotIcon = HugeIcons.strokeRoundedFlag02;
                     break;
                   default:
                     dotColor = accent;
@@ -178,7 +203,7 @@ class RemainingInfoCard extends StatelessWidget {
                                     Text(
                                       leg['name'] as String? ?? '',
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                         color: primary,
                                       ),
@@ -196,7 +221,7 @@ class RemainingInfoCard extends StatelessWidget {
                                 ),
                               ),
                               IconButton(
-                                icon: Icon(Icons.center_focus_strong_outlined,
+                                icon: Icon(HugeIcons.strokeRoundedCenterFocus,
                                     color: secondary, size: 18),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
@@ -229,10 +254,10 @@ class RemainingInfoCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: onAddRoutePressed,
-                icon: const Icon(Icons.add_location_alt_outlined, size: 16),
+                icon: const Icon(HugeIcons.strokeRoundedLocation01, size: 16),
                 label: const Text(
                   'Add Stop',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
             ),

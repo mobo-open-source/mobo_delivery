@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_delivery_app/shared/widgets/odoo_avatar.dart';
 
 class ProfileHeaderCard extends StatelessWidget {
@@ -94,7 +95,7 @@ class ProfileHeaderCard extends StatelessWidget {
                           ],
                         ),
                         child: Icon(
-                          Icons.camera_alt_rounded,
+                          HugeIcons.strokeRoundedCamera01,
                           color: theme.primaryColor,
                           size: 14,
                         ),
@@ -114,8 +115,8 @@ class ProfileHeaderCard extends StatelessWidget {
                   name,
                   style: GoogleFonts.manrope(
                     color: Colors.white,
-                    fontSize: rs(18),
-                    fontWeight: FontWeight.w700,
+                    fontSize: rs(15),
+                    fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                   ),
                   maxLines: 1,
@@ -145,7 +146,7 @@ class ProfileHeaderCard extends StatelessWidget {
                       jobFunction!,
                       style: GoogleFonts.manrope(
                         color: Colors.white,
-                        fontSize: rs(11),
+                        fontSize: rs(12),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -158,7 +159,7 @@ class ProfileHeaderCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 8),
               child: Icon(
-                Icons.arrow_forward_ios_rounded,
+                HugeIcons.strokeRoundedArrowRight01,
                 color: Colors.white.withOpacity(0.7),
                 size: 16,
               ),

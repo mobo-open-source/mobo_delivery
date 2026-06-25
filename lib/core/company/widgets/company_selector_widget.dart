@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../shared/widgets/buttons/mobo_button.dart';
@@ -111,7 +112,7 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.refresh_rounded,
+              HugeIcons.strokeRoundedRefresh,
               size: 14,
               color: isDark ? Colors.white70 : Colors.black54,
             ),
@@ -157,7 +158,7 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.apartment_rounded, size: 16, color: textColor),
+            Icon(HugeIcons.strokeRoundedBuilding05, size: 16, color: textColor),
             const SizedBox(width: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 160),
@@ -186,7 +187,7 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
               ),
               const SizedBox(width: 4),
             ],
-            Icon(Icons.keyboard_arrow_down_rounded, color: textColor, size: 18),
+            Icon(HugeIcons.strokeRoundedArrowDown01, color: textColor, size: 18),
           ],
         ),
       ),
@@ -404,7 +405,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.error_outline,
+                        HugeIcons.strokeRoundedAlert02,
                         color: Colors.red,
                         size: 16,
                       ),

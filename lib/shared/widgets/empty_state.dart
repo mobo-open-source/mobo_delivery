@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:lottie/lottie.dart';
 import 'buttons/mobo_button.dart';
 
@@ -48,7 +49,7 @@ class EmptyState extends StatelessWidget {
                 repeat: true,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stack) => Icon(
-                  Icons.inbox_outlined,
+                  HugeIcons.strokeRoundedArchive03,
                   size: 80,
                   color: isDark ? Colors.grey[700] : Colors.grey[400],
                 ),
@@ -58,8 +59,8 @@ class EmptyState extends StatelessWidget {
                 title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
                   color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
@@ -69,7 +70,7 @@ class EmptyState extends StatelessWidget {
                   subtitle!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),

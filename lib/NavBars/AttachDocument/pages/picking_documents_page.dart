@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
-import '../../../shared/widgets/loaders/loading_widget.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
@@ -154,7 +155,8 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
               title: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
@@ -221,13 +223,12 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
 
   Widget _buildBody(bool isDark) {
     if (_loading) {
-      return const Center(
-        child: LoadingWidget(size: 40, variant: LoadingVariant.staggeredDots),
-      );
+      return PickingDocumentPageShimmer(isDark: isDark);
     }
     return RefreshIndicator(
       onRefresh: _loadAttachments,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
           _summaryCard(isDark),
@@ -237,21 +238,21 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
             child: Text(
               'Documents (${_attachments.length})',
               style: TextStyle(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: isDark ? Colors.white : Colors.black87,
               ),
             ),
           ),
           if (_attachments.isEmpty)
-            _emptyDocsHint(isDark)
-          else
+            _noDocsCard(isDark)
+          else ...[
             for (final a in _attachments) ...[
               _attachmentCard(a, isDark),
               const SizedBox(height: 10),
             ],
-          const SizedBox(height: 4),
-          _addDocumentCard(),
+            _addDocumentCard(),
+          ],
         ],
       ),
     );
@@ -264,8 +265,10 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     final (statusLabel, statusColor) = _statusInfo(state);
     final scheduled = _formatDate(widget.picking['scheduled_date']);
     final origin = widget.picking['origin'];
-    final hasOrigin =
-        origin != null && origin.toString().isNotEmpty && origin != 'false';
+    final hasOrigin = origin != null &&
+        origin != false &&
+        origin.toString().isNotEmpty &&
+        origin.toString() != 'false';
 
     Widget infoRow(IconData icon, String text) => Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -314,8 +317,8 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                 child: Text(
                   _pickingName,
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
@@ -368,16 +371,30 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     }
   }
 
-  Widget _emptyDocsHint(bool isDark) {
+  Widget _noDocsCard(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-      alignment: Alignment.center,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Icon(
             HugeIcons.strokeRoundedFile01,
-            size: 48,
-            color: isDark ? Colors.grey[700] : Colors.grey[400],
+            size: 40,
+            color: isDark ? Colors.grey[600] : Colors.grey[400],
           ),
           const SizedBox(height: 12),
           Text(
@@ -385,16 +402,42 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : Colors.black87,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Add a signature or upload a file below.',
+            'Attach a signature, image, or PDF to this picking.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
               color: isDark ? Colors.grey[400] : Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _showAddOptions,
+            icon: Icon(
+              HugeIcons.strokeRoundedAdd01,
+              size: 16,
+              color: AppStyle.primaryColor,
+            ),
+            label: Text(
+              'Add Document',
+              style: TextStyle(
+                color: AppStyle.primaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: AppStyle.primaryColor.withValues(alpha: 0.5),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
           ),
         ],
@@ -424,7 +467,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                 'Add Document',
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   fontSize: 15,
                 ),
               ),
@@ -489,7 +532,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : Colors.black87,
                       ),
@@ -509,7 +552,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                 ),
               ),
               Icon(
-                Icons.chevron_right,
+                HugeIcons.strokeRoundedArrowRight01,
                 color: isDark ? Colors.grey[500] : Colors.grey[400],
               ),
             ],

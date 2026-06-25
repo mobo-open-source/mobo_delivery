@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 /// A standard UI component for navigating through paginated data sets.
 class PaginationControls extends StatelessWidget {
@@ -39,7 +40,7 @@ class PaginationControls extends StatelessWidget {
             paginationText,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
               color: isDark
                   ? Colors.white.withOpacity(0.9)
                   : const Color(0xFF4B5563),
@@ -47,35 +48,37 @@ class PaginationControls extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(width: 12),
+        if (canGoToNextPage) ...[
+          const SizedBox(width: 12),
 
-        InkWell(
-          onTap: canGoToPreviousPage ? onPreviousPage : null,
-          customBorder: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Icon(
-              Icons.chevron_left,
-              size: 20,
-              color: canGoToPreviousPage ? iconActive : iconInactive,
+          InkWell(
+            onTap: canGoToPreviousPage ? onPreviousPage : null,
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                HugeIcons.strokeRoundedArrowLeft01,
+                size: 20,
+                color: canGoToPreviousPage ? iconActive : iconInactive,
+              ),
             ),
           ),
-        ),
 
-        const SizedBox(width: 6),
+          const SizedBox(width: 6),
 
-        InkWell(
-          onTap: canGoToNextPage ? onNextPage : null,
-          customBorder: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: canGoToNextPage ? iconActive : iconInactive,
+          InkWell(
+            onTap: onNextPage,
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                HugeIcons.strokeRoundedArrowRight01,
+                size: 20,
+                color: iconActive,
+              ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }

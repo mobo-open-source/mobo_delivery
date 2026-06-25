@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../../services/odoo_dashboard_service.dart';
 import '../../../services/settings_storage_service.dart';
 import '../../../services/storage_service.dart';
@@ -35,7 +32,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     on<UpdateLanguageEvent>(_onUpdateLanguage);
     on<UpdateCurrencyEvent>(_onUpdateCurrency);
     on<UpdateTimezoneEvent>(_onUpdateTimezone);
-    on<ClearCacheEvent>(_onClearCache);
     on<RefreshLanguageAndRegionEvent>(_onRefreshLanguageAndRegion);
 
     _initializeOdooClient();
@@ -150,18 +146,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     }
   }
 
-  /// Clears temporary cache directory
-  Future<void> _onClearCache(
-      ClearCacheEvent event, Emitter<SettingsState> emit) async {
-    try {
-      final cacheDir = await getTemporaryDirectory();
-      await _deleteDir(cacheDir);
-      emit(state.copyWith());
-    } catch (e) {
-      emit(state.copyWith(error: 'Failed to clear cache: $e'));
-    }
-  }
-
   /// Refreshes language, currency, and timezone lists from Odoo
   Future<void> _onRefreshLanguageAndRegion(
       RefreshLanguageAndRegionEvent event, Emitter<SettingsState> emit) async {
@@ -188,18 +172,4 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   }
 
 
-  /// Recursively deletes files and folders inside a directory.
-  /// Used for clearing temporary cache storage.
-  /// Silently ignores deletion errors.
-  Future<void> _deleteDir(FileSystemEntity file) async {
-    if (file is Directory) {
-      final List<FileSystemEntity> children = file.listSync();
-      for (final child in children) {
-        await _deleteDir(child);
-      }
-    }
-    try {
-      await file.delete();
-    } catch (_) {}
-  }
 }

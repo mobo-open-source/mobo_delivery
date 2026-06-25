@@ -238,7 +238,7 @@ class _ConfigurationState extends State<Configuration> {
           ActionTile(
             title: 'Settings',
             subtitle: 'App preferences and sync options',
-            icon: Icons.settings_outlined,
+            icon: HugeIcons.strokeRoundedSettings02,
             onTap: () {
               Navigator.push(
                 context,
@@ -554,7 +554,7 @@ class _ConfigurationState extends State<Configuration> {
       ),
       child: Row(
         children: [
-          Icon(Icons.wifi_off_rounded, size: 16, color: Colors.orange[700]),
+          Icon(HugeIcons.strokeRoundedLocationOffline01, size: 16, color: Colors.orange[700]),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

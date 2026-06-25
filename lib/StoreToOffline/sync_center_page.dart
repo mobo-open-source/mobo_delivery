@@ -294,7 +294,7 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
                 Text(
                   r.title,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
@@ -305,7 +305,8 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
                 Text(
                   r.subtitle,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                   maxLines: 1,
@@ -343,7 +344,7 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
           Text(
             'All changes are synced',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : Colors.black87,
             ),
@@ -352,7 +353,8 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
           Text(
             'Nothing is waiting to be sent to the server.',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
               color: isDark ? Colors.grey[400] : Colors.grey[600],
             ),
           ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'loading_widget.dart';
 
-/// A centered loading indicator with an optional status message.
 class LoadingIndicator extends StatelessWidget {
   final String? message;
   final Color? color;
@@ -21,7 +20,6 @@ class LoadingIndicator extends StatelessWidget {
           LoadingWidget(
             color: color ?? theme.primaryColor,
             size: size,
-            variant: LoadingVariant.staggeredDots,
           ),
           if (message != null) ...[
             const SizedBox(height: 16),
@@ -40,7 +38,6 @@ class LoadingIndicator extends StatelessWidget {
   }
 }
 
-/// A compact version of the loading indicator for use within buttons or small containers.
 class SmallLoadingIndicator extends StatelessWidget {
   final Color? color;
 
@@ -48,10 +45,11 @@ class SmallLoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LoadingWidget(
-      color: color ?? Theme.of(context).primaryColor,
-      size: 20,
-      variant: LoadingVariant.staggeredDots,
+    final resolvedColor = color ?? Theme.of(context).primaryColor;
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: CircularProgressIndicator(color: resolvedColor, strokeWidth: 2.5),
     );
   }
 }

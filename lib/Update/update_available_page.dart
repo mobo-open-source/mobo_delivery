@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../shared/utils/globals.dart';
 import '../shared/widgets/buttons/mobo_button.dart';
@@ -70,7 +71,7 @@ class UpdateAvailablePage extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.download_rounded,
+                    HugeIcons.strokeRoundedDownload01,
                     color: primaryColor,
                     size: 60,
                   ),
@@ -81,8 +82,8 @@ class UpdateAvailablePage extends StatelessWidget {
                   'Update Available',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 32,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
                     color: titleColor,
                   ),
                 ),
@@ -93,8 +94,8 @@ class UpdateAvailablePage extends StatelessWidget {
                   'update for the best experience.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 18,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 15,
                     height: 1.4,
                     color: subtitleColor,
                   ),
@@ -114,8 +115,8 @@ class UpdateAvailablePage extends StatelessWidget {
                     'This update is required to continue.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 13,
                       color: subtitleColor,
                     ),
                   )
@@ -126,7 +127,7 @@ class UpdateAvailablePage extends StatelessWidget {
                       'Maybe Later',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        fontSize: 15,
                         color: subtitleColor,
                       ),
                     ),
@@ -138,8 +139,8 @@ class UpdateAvailablePage extends StatelessWidget {
                   'Latest version: v$latestVersion',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12,
                     color: subtitleColor.withOpacity(0.7),
                   ),
                 ),

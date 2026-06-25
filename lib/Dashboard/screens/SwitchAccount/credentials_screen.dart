@@ -649,7 +649,7 @@ return FadeTransition(opacity: animation, child: child);
                                   width: 30,
                                   errorBuilder: (context, error, stackTrace) {
                                     return const Icon(
-                                      Icons.delivery_dining,
+                                      HugeIcons.strokeRoundedShippingTruck02,
                                       color: Color(0xFFC03355),
                                       size: 20,
                                     );
@@ -798,7 +798,7 @@ return FadeTransition(opacity: animation, child: child);
         suffixIcon: isPasswordField
             ? IconButton(
                 icon: Icon(
-                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  _isPasswordVisible ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
                   color: _isPasswordVisible ? Colors.black26 : Colors.black54,
                 ),
                 onPressed: () =>

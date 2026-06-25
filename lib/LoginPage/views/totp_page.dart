@@ -12,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/globals.dart';
-import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../../shared/widgets/buttons/mobo_button.dart';
 import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
@@ -259,8 +258,8 @@ class _TotpPageState extends State<TotpPage> {
             Text(
               'Access Restricted',
               style: GoogleFonts.manrope(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
                 color: Colors.black,
               ),
             ),
@@ -315,8 +314,8 @@ class _TotpPageState extends State<TotpPage> {
             Text(
               'Module Missing',
               style: GoogleFonts.manrope(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
                 color: Colors.black,
               ),
             ),
@@ -793,7 +792,7 @@ class _TotpPageState extends State<TotpPage> {
           style: GoogleFonts.manrope(
             fontWeight: FontWeight.w600,
             color: Colors.white,
-            fontSize: 25,
+            fontSize: 20,
           ),
           textAlign: TextAlign.center,
         ),
@@ -931,14 +930,18 @@ class _TotpPageState extends State<TotpPage> {
                 Text(
                   'Authenticating',
                   style: GoogleFonts.manrope(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(width: 12),
-                LoadingAnimationWidget.staggeredDotsWave(
-                  color: Colors.white,
-                  size: 28,
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
                 ),
               ],
             ),

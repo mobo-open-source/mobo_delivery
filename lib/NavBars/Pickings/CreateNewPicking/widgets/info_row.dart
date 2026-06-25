@@ -1,5 +1,6 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../../shared/utils/globals.dart';
 
@@ -51,7 +52,16 @@ class InfoRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String displayValue = value?.toString() ?? "None";
+    String displayValue;
+    if (value == null ||
+        value == false ||
+        (value is String && (value == 'false' || value.trim().isEmpty))) {
+      displayValue = "None";
+    } else if (value is List && value.length > 1) {
+      displayValue = value[1].toString();
+    } else {
+      displayValue = value.toString();
+    }
 
     if (controller != null) {
       if (controller!.text.isEmpty) {
@@ -77,21 +87,50 @@ class InfoRow<T> extends StatelessWidget {
                     ),
                     child: DropdownSearch<T>(
                       popupProps: PopupProps.menu(
-                        showSearchBox: true,
                         menuProps: MenuProps(
                           backgroundColor:
-                              isDark ? Colors.grey[900] : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          elevation: 4,
+                              isDark ? Colors.grey[900] : Colors.grey[50],
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
+                        showSearchBox: true,
                         searchFieldProps: TextFieldProps(
                           decoration: InputDecoration(
-                            labelText: "Search",
-                            labelStyle: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white60 : Colors.black87,
+                            hintText: 'Search...',
+                            hintStyle: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              color: isDark ? Colors.white54 : Colors.grey[500],
+                              fontStyle: FontStyle.italic,
                             ),
-                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(
+                              HugeIcons.strokeRoundedSearch01,
+                              size: 20,
+                              color: isDark ? Colors.white54 : Colors.grey[500],
+                            ),
+                            filled: true,
+                            fillColor:
+                                isDark ? Colors.grey[850] : Colors.grey[100],
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppStyle.primaryColor,
+                                width: 1.5,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -168,16 +207,12 @@ class InfoRow<T> extends StatelessWidget {
                           vertical: 8,
                         ),
                         hintText: label,
-                        hintStyle: label == 'Note'
-                            ? TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 20,
-                                color: isDark ? Colors.white60 : Colors.black54,
-                              )
-                            : TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.white60 : Colors.black87,
-                              ),
+                        hintStyle: TextStyle(
+                          fontWeight: FontWeight.w400,
+                          fontSize: 14,
+                          color: isDark ? Colors.white38 : Colors.grey[500],
+                          fontStyle: FontStyle.italic,
+                        ),
                         prefixIcon: prefixIcon != null
                             ? Icon(
                           prefixIcon,

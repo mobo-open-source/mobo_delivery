@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/colors/app_colors.dart';
 import '../../core/navigation/global_keys.dart';
@@ -164,36 +165,36 @@ class CustomSnackbar {
     switch (type) {
       case SnackbarType.info:
         return _SnackbarColors(
-          icon: Icons.info_outline,
+          icon: HugeIcons.strokeRoundedInformationCircle,
           iconColor: Colors.blue[300]!,
-          iconBackgroundColor: Colors.blue.withOpacity(0.2),
+          iconBackgroundColor: Colors.blue.withValues(alpha: 0.2),
           backgroundColor: isDark
               ? AppColors.infoBackgroundDark
               : AppColors.infoBackgroundLight,
         );
       case SnackbarType.success:
         return _SnackbarColors(
-          icon: Icons.check_circle_outline,
+          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
           iconColor: Colors.green[300]!,
-          iconBackgroundColor: Colors.green.withOpacity(0.2),
+          iconBackgroundColor: Colors.green.withValues(alpha: 0.2),
           backgroundColor: isDark
               ? AppColors.successBackgroundDark
               : AppColors.successBackgroundLight,
         );
       case SnackbarType.warning:
         return _SnackbarColors(
-          icon: Icons.warning_outlined,
+          icon: HugeIcons.strokeRoundedAlert02,
           iconColor: Colors.orange[300]!,
-          iconBackgroundColor: Colors.orange.withOpacity(0.2),
+          iconBackgroundColor: Colors.orange.withValues(alpha: 0.2),
           backgroundColor: isDark
               ? AppColors.warningBackgroundDark
               : AppColors.warningBackgroundLight,
         );
       case SnackbarType.error:
         return _SnackbarColors(
-          icon: Icons.error_outline,
+          icon: HugeIcons.strokeRoundedAlert02,
           iconColor: Colors.red[300]!,
-          iconBackgroundColor: Colors.red.withOpacity(0.2),
+          iconBackgroundColor: Colors.red.withValues(alpha: 0.2),
           backgroundColor: isDark
               ? AppColors.errorBackgroundDark
               : AppColors.errorBackgroundLight,

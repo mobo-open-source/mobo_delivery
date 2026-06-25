@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../shared/utils/globals.dart';
 
@@ -56,7 +57,7 @@ class RemainingInfoCard extends StatelessWidget {
               'Remaining Route',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
             ),
@@ -64,9 +65,9 @@ class RemainingInfoCard extends StatelessWidget {
             Text(
               'Total: $remainingDistance, $remainingDuration',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: Colors.white70,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w400,
               ),
             ),
             const SizedBox(height: 12),
@@ -81,23 +82,23 @@ class RemainingInfoCard extends StatelessWidget {
                     Color iconColor;
                     switch (leg['type']) {
                       case 'start':
-                        icon = Icons.my_location;
+                        icon = HugeIcons.strokeRoundedLocation03;
                         iconColor = Colors.white;
                         break;
                       case 'visited_stop':
-                        icon = Icons.check_circle;
+                        icon = HugeIcons.strokeRoundedCheckmarkCircle02;
                         iconColor = Colors.green;
                         break;
                       case 'stop':
-                        icon = Icons.stop_circle;
+                        icon = HugeIcons.strokeRoundedBlocked;
                         iconColor = Colors.white;
                         break;
                       case 'destination':
-                        icon = Icons.location_on;
+                        icon = HugeIcons.strokeRoundedLocation01;
                         iconColor = Colors.white;
                         break;
                       default:
-                        icon = Icons.location_on;
+                        icon = HugeIcons.strokeRoundedLocation01;
                         iconColor = Colors.grey;
                     }
                     return Padding(
@@ -140,7 +141,7 @@ class RemainingInfoCard extends StatelessWidget {
                           ),
                           IconButton(
                             icon: Icon(
-                              Icons.center_focus_strong,
+                              HugeIcons.strokeRoundedCenterFocus,
                               color: Colors.white70,
                               size: 20,
                             ),
@@ -169,12 +170,12 @@ class RemainingInfoCard extends StatelessWidget {
                   ),
                 ),
                 onPressed: onAddRoutePressed,
-                icon: Icon(Icons.add),
+                icon: Icon(HugeIcons.strokeRoundedAdd01),
                 label: Text(
                   "Add Stop",
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                     color: isDark ? Colors.black : AppStyle.primaryColor,
                   ),
                 ),

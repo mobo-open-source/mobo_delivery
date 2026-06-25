@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import '../../../../shared/widgets/loaders/loading_indicator.dart';
+import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../../StoreToOffline/pending_sync_service.dart';
 import '../../../../StoreToOffline/sync_center_page.dart';
 
@@ -100,15 +101,7 @@ class _DashboardState extends State<Dashboard> {
             final bloc = context.read<DashboardBloc>();
 
           if (state.isLoading) {
-            return Scaffold(
-              body: Center(
-                child: LoadingIndicator(
-                  message: 'Loading Delivery App...',
-                  color: isDark ? Colors.white : AppStyle.primaryColor,
-                  size: 50,
-                ),
-              ),
-            );
+            return const DashboardShimmer();
           }
 
           final currentPage = state.pages[state.currentIndex];
@@ -165,7 +158,7 @@ class _DashboardState extends State<Dashboard> {
                                     label: Text('$count'),
                                     backgroundColor: AppStyle.primaryColor,
                                     child: Icon(
-                                      Icons.cloud_upload_outlined,
+                                      HugeIcons.strokeRoundedCloudUpload,
                                       color: isDark
                                           ? Colors.white70
                                           : Colors.black54,
@@ -300,7 +293,7 @@ class _OfflineBanner extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              Icons.wifi_off_rounded,
+              HugeIcons.strokeRoundedLocationOffline01,
               size: 16,
               color: isDark ? Colors.orange[300] : Colors.orange[800],
             ),
@@ -321,7 +314,7 @@ class _OfflineBanner extends StatelessWidget {
                 'Retry',
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: isDark ? Colors.orange[300] : Colors.orange[800],
                   decoration: TextDecoration.underline,
                   decorationColor:

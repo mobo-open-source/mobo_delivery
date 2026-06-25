@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -165,7 +163,8 @@ class _SettingsPageState extends State<SettingsPage> {
           title: Text(
             'Settings',
             style: TextStyle(
-              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : Colors.black,
             ),
           ),
@@ -199,8 +198,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                _buildDataAndStorageSection(context),
-                const SizedBox(height: 16),
                 _buildHelpAndSupportSection(context),
                 const SizedBox(height: 16),
                 _buildAboutSection(context, isDark),
@@ -273,7 +270,7 @@ class _SettingsPageState extends State<SettingsPage> {
         onPressed: () {
           context.read<SettingsBloc>().add(RefreshLanguageAndRegionEvent());
         },
-        icon: const Icon(Icons.refresh, size: 18),
+        icon: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Colors.grey, size: 18),
       ),
       children: [
         OdooDropdownTile(
@@ -340,49 +337,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 );
               }
             }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDataAndStorageSection(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SectionCard(
-      title: 'Data & Storage',
-      icon: HugeIcons.strokeRoundedDatabase,
-      children: [
-        ActionTile(
-          title: 'Clear Cache',
-          subtitle: '',
-          icon: Icons.delete_sweep_outlined,
-          trailing: FutureBuilder<int>(
-            future: _getCacheSize(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return Text(
-                  'Calculating...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                );
-              }
-              final sizeInMB =
-                  (snapshot.data! / (1024 * 1024)).toStringAsFixed(2);
-              return Text(
-                sizeInMB == '0.00' ? 'No cache' : '$sizeInMB MB',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              );
-            },
-          ),
-          onTap: () {
-            context.read<SettingsBloc>().add(ClearCacheEvent());
-            CustomSnackbar.showSuccess(context, 'Cache cleared successfully');
           },
         ),
       ],
@@ -481,7 +435,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   'Follow Us',
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     color: textPrimary,
                   ),
                 ),
@@ -629,21 +583,4 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<int> _getCacheSize() async {
-    Directory cacheDir = await getTemporaryDirectory();
-    return _getTotalSizeOfFilesInDir(cacheDir);
-  }
-
-  Future<int> _getTotalSizeOfFilesInDir(final FileSystemEntity file) async {
-    if (file is File) return await file.length();
-    if (file is Directory) {
-      final List<FileSystemEntity> children = file.listSync();
-      int total = 0;
-      for (final child in children) {
-        total += await _getTotalSizeOfFilesInDir(child);
-      }
-      return total;
-    }
-    return 0;
-  }
 }

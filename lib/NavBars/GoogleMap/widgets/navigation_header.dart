@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -54,8 +55,8 @@ class NavigationHeader extends StatelessWidget {
             Text(
               getTitle(),
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
             ),
@@ -63,7 +64,7 @@ class NavigationHeader extends StatelessWidget {
               backgroundColor: isDark ? Color(0xff3c3c3c) : Colors.white,
               child: IconButton(
                 icon: Icon(
-                  Icons.close,
+                  HugeIcons.strokeRoundedCancel01,
                   color: isDark ? Colors.white : AppStyle.primaryColor,
                   size: 20,
                 ),

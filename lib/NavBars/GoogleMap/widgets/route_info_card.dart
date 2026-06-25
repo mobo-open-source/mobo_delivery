@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -117,8 +118,8 @@ class RouteInfoCard extends StatelessWidget {
                           Text(
                             getTitle(),
                             style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
@@ -129,13 +130,13 @@ class RouteInfoCard extends StatelessWidget {
                             unselectedLabelColor: Colors.white70,
                             tabs: [
                               Tab(
-                                icon: Icon(Icons.directions_car),
+                                icon: Icon(HugeIcons.strokeRoundedShippingTruck02),
                                 text: 'Car',
                               ),
-                              Tab(icon: Icon(Icons.pedal_bike), text: 'Bike'),
-                              Tab(icon: Icon(Icons.train), text: 'Train'),
+                              Tab(icon: Icon(HugeIcons.strokeRoundedRoute02), text: 'Bike'),
+                              Tab(icon: Icon(HugeIcons.strokeRoundedRoute03), text: 'Train'),
                               Tab(
-                                icon: Icon(Icons.directions_walk),
+                                icon: Icon(HugeIcons.strokeRoundedRoute02),
                                 text: 'Walk',
                               ),
                             ],
@@ -144,16 +145,16 @@ class RouteInfoCard extends StatelessWidget {
                           Text(
                             'Total Duration: $routeDuration',
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                               color: Colors.white,
                             ),
                           ),
                           Text(
                             'Total Distance: $routeDistance',
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                               color: Colors.white,
                             ),
                           ),
@@ -163,7 +164,7 @@ class RouteInfoCard extends StatelessWidget {
                               'Route Segments:',
                               style: TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
@@ -227,7 +228,7 @@ class RouteInfoCard extends StatelessWidget {
                           ),
                           onPressed: onStartPressed,
                           icon: Icon(
-                            Icons.play_arrow,
+                            HugeIcons.strokeRoundedPlay,
                             size: 20,
                             color: isDark
                                 ? Colors.black
@@ -236,11 +237,11 @@ class RouteInfoCard extends StatelessWidget {
                           label: Text(
                             "Start",
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               color: isDark
                                   ? Colors.black
                                   : AppStyle.primaryColor,
-                              fontSize: 17,
+                              fontSize: 15,
                             ),
                           ),
                         ),
@@ -260,15 +261,15 @@ class RouteInfoCard extends StatelessWidget {
                             ),
                           ),
                           onPressed: onAddStopPressed,
-                          icon: const Icon(Icons.add_location_alt, size: 20),
+                          icon: const Icon(HugeIcons.strokeRoundedLocation01, size: 20),
                           label: Text(
                             "Add Stop",
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               color: isDark
                                   ? Colors.black
                                   : AppStyle.primaryColor,
-                              fontSize: 17,
+                              fontSize: 15,
                             ),
                           ),
                         ),

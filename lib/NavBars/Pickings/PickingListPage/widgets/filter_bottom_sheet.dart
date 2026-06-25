@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../../shared/utils/globals.dart';
 
@@ -85,8 +86,8 @@ class FilterBottomSheet extends StatelessWidget {
                       Text(
                         'Filter Options',
                         style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                           color: AppStyle.primaryColor,
                         ),
                       ),
@@ -117,11 +118,12 @@ class FilterBottomSheet extends StatelessWidget {
                           ? 'Select Date'
                           : '${modalScheduledDate}'.split(' ')[0],
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     trailing: Icon(
-                      Icons.calendar_today,
+                      HugeIcons.strokeRoundedCalendar01,
                       color: AppStyle.primaryColor,
                     ),
                     onTap: () async {
@@ -172,6 +174,7 @@ class FilterBottomSheet extends StatelessWidget {
                     const Text(
                       'Select Type',
                       style: TextStyle(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -205,7 +208,7 @@ class FilterBottomSheet extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check),
+                      icon: const Icon(HugeIcons.strokeRoundedTick03),
                       label: const Text('Apply Filter'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppStyle.primaryColor,

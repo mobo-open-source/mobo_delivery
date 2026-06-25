@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -22,7 +23,7 @@ class NavigationHeader extends StatelessWidget {
     final secondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF70757A);
     final accent = AppStyle.primaryColor;
 
-    const modeIcon = Icons.directions_car_filled;
+    const modeIcon = HugeIcons.strokeRoundedShippingTruck02;
     const modeLabel = 'Driving';
 
     return Container(
@@ -53,7 +54,7 @@ class NavigationHeader extends StatelessWidget {
           Text(
             modeLabel,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
               color: primary,
             ),
@@ -68,7 +69,7 @@ class NavigationHeader extends StatelessWidget {
                 color: isDark ? Colors.white12 : Colors.grey[100],
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.close, size: 16, color: secondary),
+              child: Icon(HugeIcons.strokeRoundedCancel01, size: 16, color: secondary),
             ),
           ),
         ],
