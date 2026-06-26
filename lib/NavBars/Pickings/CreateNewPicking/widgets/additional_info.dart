@@ -1,6 +1,8 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:hugeicons/hugeicons.dart';
+import '../../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../models/user.dart';
 import 'info_row.dart';
 
@@ -40,82 +42,96 @@ class AdditionalInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor =
+        isDark ? Colors.white70 : const Color(0xff7F7F7F);
+    final itemColor = isDark ? Colors.white : Colors.black87;
+    final manrope = GoogleFonts.manrope().fontFamily;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Shipping Policy ",
-            style: TextStyle(
-              fontWeight: FontWeight.w400,
-              color: isDark
-                  ? Colors.white70
-                  : const Color(0xff7F7F7F),
-            ),
+          RequiredLabel(
+            'Shipping Policy',
+            fontWeight: FontWeight.w500,
+            color: labelColor,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: isDark
                   ? const Color(0xFF2A2A2A)
                   : const Color(0xFFF2F4F6),
-              border: Border.all(
-                color: Colors.transparent,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.transparent, width: 1),
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DropdownButton2<String>(
               value: selectedShippingPolicy,
               isExpanded: true,
               style: TextStyle(
-                color: isDark ? Colors.white : Colors.black,
+                fontFamily: manrope,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: itemColor,
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'direct',
-                  child: Text("As soon as possible"),
+                  child: Text(
+                    'As soon as possible',
+                    style: TextStyle(
+                      fontFamily: manrope,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: itemColor,
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: 'one',
-                  child: Text("When all products are ready"),
+                  child: Text(
+                    'When all products are ready',
+                    style: TextStyle(
+                      fontFamily: manrope,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: itemColor,
+                    ),
+                  ),
                 ),
               ],
               onChanged: (value) {
-                if (value != null) {
-                  onShippingPolicyChanged(value);
-                }
+                if (value != null) onShippingPolicyChanged(value);
               },
               dropdownStyleData: DropdownStyleData(
                 maxHeight: 200,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                 ),
                 offset: const Offset(0, -3),
+              ),
+              buttonStyleData: const ButtonStyleData(
+                padding: EdgeInsets.zero,
               ),
               underline: const SizedBox(),
             ),
           ),
           const SizedBox(height: 20),
 
-
-          Text(
+          RequiredLabel(
             'Responsible',
-            style: TextStyle(
-              fontWeight: FontWeight.w400,
-              color: isDark
-                  ? Colors.white70
-                  : const Color(0xff7F7F7F),
-            ),
+            fontWeight: FontWeight.w500,
+            color: labelColor,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           InfoRow(
-            label: "Responsible",
+            label: 'Responsible',
             value: null,
             isEditing: true,
-            prefixIcon: FontAwesomeIcons.user,
+            prefixIcon: HugeIcons.strokeRoundedUser,
             dropdownItems: userList,
             selectedId: selectedUserId,
             onDropdownChanged: onUserChanged,

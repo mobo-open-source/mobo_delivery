@@ -1,5 +1,6 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../../shared/utils/globals.dart';
@@ -97,9 +98,15 @@ class InfoRow<T> extends StatelessWidget {
                         ),
                         showSearchBox: true,
                         searchFieldProps: TextFieldProps(
+                          style: GoogleFonts.manrope(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
                           decoration: InputDecoration(
                             hintText: 'Search...',
-                            hintStyle: TextStyle(
+                            hintStyle: GoogleFonts.manrope(
+                              fontSize: 14,
                               fontWeight: FontWeight.w400,
                               color: isDark ? Colors.white54 : Colors.grey[500],
                               fontStyle: FontStyle.italic,
@@ -151,13 +158,15 @@ class InfoRow<T> extends StatelessWidget {
                             vertical: 8,
                           ),
                           hintText: "Select $label",
-                          hintStyle: TextStyle(
+                          hintStyle: GoogleFonts.manrope(
+                            fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: isDark ? Colors.white60 : Colors.black87,
+                            color: isDark ? Colors.white60 : Colors.grey[500],
                           ),
                           prefixIcon: prefixIcon != null
                               ? Icon(
                             prefixIcon,
+                            size: 20,
                             color: isDark
                                 ? Colors.white70
                                 : const Color(0xff7F7F7F),
@@ -201,15 +210,20 @@ class InfoRow<T> extends StatelessWidget {
                       readOnly: onTapEditing != null,
                       onTap: onTapEditing,
                       maxLines: label == 'Note' ? 5 : 1,
+                      style: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
                         ),
                         hintText: label,
-                        hintStyle: TextStyle(
-                          fontWeight: FontWeight.w400,
+                        hintStyle: GoogleFonts.manrope(
                           fontSize: 14,
+                          fontWeight: FontWeight.w400,
                           color: isDark ? Colors.white38 : Colors.grey[500],
                           fontStyle: FontStyle.italic,
                         ),
@@ -243,13 +257,32 @@ class InfoRow<T> extends StatelessWidget {
                       ),
                     ),
                   ))
-          : Text(
-              "$label: $displayValue",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color ?? Colors.black87,
-                fontSize: 17,
-              ),
+          : Row(
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? Colors.white60
+                        : const Color(0xff7F7F7F),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    displayValue,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: color ?? (isDark ? Colors.white : Colors.black87),
+                    ),
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
     );
   }

@@ -43,6 +43,7 @@ class DataLossWarningDialog extends StatelessWidget {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+      surfaceTintColor: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

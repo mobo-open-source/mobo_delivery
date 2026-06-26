@@ -378,7 +378,7 @@ return FadeTransition(opacity: animation, child: child);
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -426,7 +426,7 @@ return FadeTransition(opacity: animation, child: child);
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -482,7 +482,7 @@ return FadeTransition(opacity: animation, child: child);
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titlePadding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),

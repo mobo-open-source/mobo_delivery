@@ -496,8 +496,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           children: [
             Icon(
               isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
+                  ? HugeIcons.strokeRoundedCheckmarkCircle01
+                  : HugeIcons.strokeRoundedCircle,
               color: isSelected
                   ? (isDark ? Colors.white : Theme.of(context).primaryColor)
                   : Colors.grey,

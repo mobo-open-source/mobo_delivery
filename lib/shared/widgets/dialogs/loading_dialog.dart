@@ -12,6 +12,7 @@ class LoadingDialog {
         canPop: false,
         child: Dialog(
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

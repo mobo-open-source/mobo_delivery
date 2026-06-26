@@ -45,6 +45,7 @@ class _LogoutDialogState extends State<LogoutDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AlertDialog(
       backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+      surfaceTintColor: Colors.transparent,
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -119,7 +120,8 @@ class _LogoutDialogState extends State<LogoutDialog> {
       builder: (_) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),

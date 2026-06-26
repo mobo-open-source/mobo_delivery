@@ -328,7 +328,11 @@ class OdooPickingFormService {
                       : null,
                 ]
                 .where(
-                  (part) => part != null && part.toString().trim().isNotEmpty,
+                  (part) =>
+                      part != null &&
+                      part != false &&
+                      part.toString().trim().isNotEmpty &&
+                      part.toString().toLowerCase() != 'false',
                 )
                 .toList();
 

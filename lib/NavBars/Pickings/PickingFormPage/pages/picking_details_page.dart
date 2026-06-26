@@ -7,7 +7,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
@@ -2920,7 +2919,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                         value: pickings[0].partnerId,
                                         isEditing: _isEditing,
                                         prefixIcon:
-                                            FontAwesomeIcons.locationDot,
+                                            HugeIcons.strokeRoundedLocation01,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black87,
@@ -2966,7 +2965,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                                 value?['default_location_dest_id_int'];
                                           });
                                         },
-                                        prefixIcon: FontAwesomeIcons.tasks,
+                                        prefixIcon: HugeIcons.strokeRoundedTask01,
                                       ),
                                       InfoRow(
                                         label: "Scheduled Date",
@@ -2980,7 +2979,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                               DateTime.now().toString(),
                                         ),
                                         prefixIcon:
-                                            FontAwesomeIcons.calendarAlt,
+                                            HugeIcons.strokeRoundedCalendar01,
                                         onTapEditing: () async {
                                           final initial =
                                               DateTime.tryParse(
@@ -3032,7 +3031,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           ),
                                           isEditing: _isEditing,
                                           prefixIcon:
-                                              FontAwesomeIcons.calendarAlt,
+                                              HugeIcons.strokeRoundedCalendar01,
                                           controller: deadlineController,
                                           color: getScheduledDateColor(
                                             pickings[0].dateDeadline ??
@@ -3090,7 +3089,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           isEditing: _isEditing,
                                           controller: dateDoneController,
                                           prefixIcon:
-                                              FontAwesomeIcons.calendarAlt,
+                                              HugeIcons.strokeRoundedCalendar01,
                                           color: getScheduledDateColor(
                                             pickings[0].dateDone ??
                                                 DateTime.now().toString(),
@@ -3162,7 +3161,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                         label: "Source Document",
                                         value: pickings[0].origin,
                                         isEditing: _isEditing,
-                                        prefixIcon: FontAwesomeIcons.fileLines,
+                                        prefixIcon: HugeIcons.strokeRoundedFile01,
                                         controller: sourceDocController,
                                       ),
                                     ],

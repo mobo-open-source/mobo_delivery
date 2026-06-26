@@ -149,7 +149,8 @@ class MoboTextField extends StatelessWidget {
         autofillHints: autofillHints,
         validator: validator,
         style: TextStyle(
-          fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w600).fontFamily,
+          fontFamily: GoogleFonts.manrope().fontFamily,
+          fontWeight: FontWeight.w400,
           color: textColor,
         ),
         decoration: InputDecoration(

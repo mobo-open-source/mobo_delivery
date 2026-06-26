@@ -37,6 +37,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
 
     return AlertDialog(
       backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
         'Add a Product Line',

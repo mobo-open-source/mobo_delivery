@@ -702,8 +702,8 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
           children: [
             Icon(
               isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
+                  ? HugeIcons.strokeRoundedCheckmarkCircle01
+                  : HugeIcons.strokeRoundedCircle,
               color: isSelected
                   ? (isDark ? Colors.white : AppStyle.primaryColor)
                   : Colors.grey,

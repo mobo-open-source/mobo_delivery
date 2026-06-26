@@ -781,6 +781,7 @@ class CompanySessionManager {
           canPop: false,
           child: Dialog(
             backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),

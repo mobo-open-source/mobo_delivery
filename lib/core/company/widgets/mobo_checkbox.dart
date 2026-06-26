@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
 
@@ -83,8 +82,8 @@ class _MoboCheckboxState extends State<MoboCheckbox> {
           /// Show check icon only when selected
           child: widget.value
               ? Icon(
-                  HugeIcons.strokeRoundedTick03,
-                  size: 14,
+                  Icons.check_rounded,
+                  size: widget.size * 0.75,
                   color: isDark ? Colors.black : Colors.white,
                 )
               : null,

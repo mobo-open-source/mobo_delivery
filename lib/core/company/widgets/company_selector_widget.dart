@@ -441,10 +441,12 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                     );
 
                     return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: Material(
                         color: isActive
-                            ? (primaryColor.withOpacity(0.1))
+                            ? (isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : primaryColor.withValues(alpha: 0.1))
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         child: InkWell(
@@ -461,7 +463,7 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 18,
+                              vertical: 10,
                             ),
                             child: Row(
                               children: [
@@ -469,22 +471,21 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                   child: Text(
                                     companyName,
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 13,
                                       fontWeight: isActive
                                           ? FontWeight.w600
                                           : FontWeight.normal,
                                       color: isDark
-                                          ? Colors.white
+                                          ? Colors.white70
                                           : Colors.black87,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 SizedBox(
-                                  width: 32,
-                                  height: 32,
+                                  width: 28,
+                                  height: 28,
                                   child: MoboCheckbox(
-                                    size: 32,
                                     value: isAllowed,
                                     onChanged: isLoading
                                         ? null
@@ -505,7 +506,6 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                           },
                                   ),
                                 ),
-                                const SizedBox(width: 8),
                               ],
                             ),
                           ),

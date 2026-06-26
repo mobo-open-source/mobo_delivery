@@ -52,6 +52,7 @@ class CommonDialog extends StatelessWidget {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      surfaceTintColor: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

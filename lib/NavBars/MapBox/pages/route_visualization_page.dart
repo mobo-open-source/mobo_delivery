@@ -987,7 +987,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                           updated);
                                                 },
                                                 child: const Icon(
-                                                  Icons.close,
+                                                  HugeIcons.strokeRoundedCancel01,
                                                   size: 14,
                                                   color:
                                                       AppStyle.primaryColor,
@@ -1133,7 +1133,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           ? Colors.grey[800]
                                           : const Color(0xFFF3F4F6),
                                       prefixIcon: Icon(
-                                        Icons.search,
+                                        HugeIcons.strokeRoundedSearch01,
                                         size: 20,
                                         color: isDark
                                             ? Colors.white54
@@ -1283,7 +1283,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                   ),
                                   Checkbox(
                                     value: isSelected,
-                                    onChanged: null,
+                                    onChanged: (_) {},
                                     checkColor: Colors.white,
                                     fillColor:
                                         WidgetStateProperty.resolveWith<
@@ -1293,8 +1293,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           ? AppStyle.primaryColor
                                           : Colors.transparent,
                                     ),
-                                    side: const BorderSide(
-                                      color: AppStyle.primaryColor,
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? AppStyle.primaryColor
+                                          : Colors.grey.shade400,
                                       width: 1.5,
                                     ),
                                     shape: RoundedRectangleBorder(

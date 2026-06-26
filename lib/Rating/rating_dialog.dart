@@ -98,6 +98,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       backgroundColor: backgroundColor,
+      surfaceTintColor: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
         child: Column(

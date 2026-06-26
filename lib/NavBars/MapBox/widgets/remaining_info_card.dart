@@ -158,7 +158,7 @@ class RemainingInfoCard extends StatelessWidget {
                     break;
                   default:
                     dotColor = accent;
-                    dotIcon = Icons.radio_button_unchecked;
+                    dotIcon = HugeIcons.strokeRoundedCircle;
                 }
 
                 return IntrinsicHeight(
