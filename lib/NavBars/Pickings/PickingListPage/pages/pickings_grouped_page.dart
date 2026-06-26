@@ -400,7 +400,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                         color: isDark
                             ? Color(0xFF2A2A2A)
                             : AppStyle.primaryColor,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       indicatorPadding: const EdgeInsets.all(4),
                       indicatorSize: TabBarIndicatorSize.tab,

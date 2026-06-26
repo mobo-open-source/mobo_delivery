@@ -249,7 +249,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
           else ...[
             for (final a in _attachments) ...[
               _attachmentCard(a, isDark),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
             ],
             _addDocumentCard(),
           ],
@@ -435,7 +435,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                 color: AppStyle.primaryColor.withValues(alpha: 0.5),
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
@@ -514,7 +514,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                 height: 44,
                 decoration: BoxDecoration(
                   color: AppStyle.primaryColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _iconFor(mimetype, name),

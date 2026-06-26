@@ -16,9 +16,9 @@ import '../services/odoo_map_service.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/error_state_widget.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import '../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
-import '../../../core/company/widgets/mobo_checkbox.dart';
 import '../widgets/navigation_header.dart';
 import '../widgets/remaining_info_card.dart';
 import '../widgets/route_info_card.dart';
@@ -814,6 +814,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       builder: (BuildContext context) {
         bool isFetchingStops = false;
         bool didAddStopField = false;
+        final pickingsDropdownKey =
+            GlobalKey<DropdownSearchState<Map<String, dynamic>>>();
+        final pickingsSearchCtrl = TextEditingController();
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter sheetSetState) {
@@ -839,8 +842,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   curve: Curves.easeInOut,
                   constraints: BoxConstraints(
                     minHeight: isDropdownActive
-                        ? MediaQuery.of(context).size.height * 0.5
-                        : MediaQuery.of(context).size.height * 0.25,
+                        ? MediaQuery.of(context).size.height * 0.75
+                        : MediaQuery.of(context).size.height * 0.70,
+                    maxHeight: MediaQuery.of(context).size.height * 0.90,
                   ),
                   child: Stack(
                     children: [
@@ -874,109 +878,435 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       const SizedBox(height: 16),
 
                       _fieldHeading('Pickings', isDark, isRequired: true),
-                      Builder(
-                        builder: (context) {
-                          final selectedMaps = pickings
-                              .where(
-                                  (p) => selectedPickings.contains(p['id']))
-                              .toList();
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              _showPickingSelectSheet(
-                                pickings: pickings,
-                                selectedIds: selectedPickings.toList(),
-                                isLoading: _isLoadingPickings,
-                                onConfirm: (value) async {
-                                  sheetSetState(() => isFetchingStops = true);
-                                  try {
-                                    selectedPickings = value
-                                        .map((e) => e['id'] as int)
-                                        .toList();
-                                    selectedPickingNames = value
-                                        .map((e) => e['name'] as String)
-                                        .toList();
-                                    _stops.clear();
-                                    for (var c in _stopSearchControllers) {
-                                      c.dispose();
-                                    }
-                                    _stopSearchControllers.clear();
-                                    _stopSuggestions.clear();
-
-                                    final Set<String> uniqueDestinations = {};
-                                    for (var picking in value) {
-                                      final dest = picking['destination_point']
-                                              as String? ??
-                                          '';
-                                      if (dest.isNotEmpty &&
-                                          uniqueDestinations.add(dest)) {
-                                        _stopSearchControllers.add(
-                                            TextEditingController(text: dest));
-                                        _stopSuggestions.add([]);
-                                        final stopLatLng = await mapService
-                                            .getLatLngFromPlace(dest, _apiKey,
-                                                proximity: _currentLatLng);
-                                        if (stopLatLng != null) {
-                                          _stops.add(stopLatLng);
-                                        }
-                                      }
-                                    }
-                                    if (_stopSearchControllers.isEmpty ||
-                                        _stopSearchControllers.last.text
-                                            .trim()
-                                            .isNotEmpty) {
-                                      _stopSearchControllers
-                                          .add(TextEditingController());
-                                      _stopSuggestions.add([]);
-                                    }
-                                  } catch (_) {
-                                  } finally {
-                                    setState(() {});
-                                    sheetSetState(() {
-                                      shouldValidate = false;
-                                      isFetchingStops = false;
-                                    });
-                                  }
-                                },
-                              );
-                            },
-                            child: Container(
-                              decoration: _fieldShadow,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF2A2A2A)
-                                      : const Color(0xffF8FAFB),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: selectedMaps.isEmpty
-                                          ? Text(
-                                              'Select Pickings',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: onSurface
-                                                    .withValues(alpha: 0.5),
+                      DropdownSearch<Map<String, dynamic>>.multiSelection(
+                        key: pickingsDropdownKey,
+                        items: pickings,
+                        itemAsString: (p) =>
+                            p['name']?.toString() ?? '',
+                        compareFn: (a, b) => a['id'] == b['id'],
+                        selectedItems: pickings
+                            .where((p) =>
+                                selectedPickings.contains(p['id']))
+                            .toList(),
+                        onBeforePopupOpening: (_) async {
+                          pickingsSearchCtrl.clear();
+                          return true;
+                        },
+                        onChanged: (items) {
+                          sheetSetState(() {
+                            selectedPickings = items
+                                .map((e) => e['id'] as int)
+                                .toList();
+                            selectedPickingNames = items
+                                .map((e) => e['name'] as String)
+                                .toList();
+                          });
+                        },
+                        // Field: chips (max 2) + overflow badge, or placeholder
+                        dropdownBuilder: (context, selectedItems) {
+                          const int maxVisible = 2;
+                          final visibleItems =
+                              selectedItems.take(maxVisible).toList();
+                          final extraCount =
+                              selectedItems.length - maxVisible;
+                          return Container(
+                            constraints:
+                                const BoxConstraints(minHeight: 24),
+                            alignment: Alignment.centerLeft,
+                            child: selectedItems.isEmpty
+                                ? Text(
+                                    'Select Pickings',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white38
+                                          : Colors.grey[500],
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 14,
+                                    ),
+                                  )
+                                : Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      ...visibleItems.map((item) {
+                                        return Container(
+                                          padding: const EdgeInsets.only(
+                                              left: 10,
+                                              right: 6,
+                                              top: 4,
+                                              bottom: 4),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                AppStyle.primaryColor
+                                                    .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                item['name']?.toString() ??
+                                                    '',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color:
+                                                      AppStyle.primaryColor,
+                                                ),
                                               ),
-                                            )
-                                          : _buildPickingTagRow(selectedMaps),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Icon(
-                                      HugeIcons.strokeRoundedArrowDown01,
-                                      color: onSurface.withValues(alpha: 0.6),
-                                    ),
-                                  ],
+                                              const SizedBox(width: 4),
+                                              GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTap: () {
+                                                  final updated =
+                                                      List<Map<String,
+                                                              dynamic>>.from(
+                                                          selectedItems)
+                                                        ..removeWhere(
+                                                            (s) =>
+                                                                s['id'] ==
+                                                                item['id']);
+                                                  sheetSetState(() {
+                                                    selectedPickings = updated
+                                                        .map((e) =>
+                                                            e['id'] as int)
+                                                        .toList();
+                                                    selectedPickingNames =
+                                                        updated
+                                                            .map((e) =>
+                                                                e['name']
+                                                                    as String)
+                                                            .toList();
+                                                  });
+                                                  pickingsDropdownKey
+                                                      .currentState
+                                                      ?.changeSelectedItems(
+                                                          updated);
+                                                },
+                                                child: const Icon(
+                                                  Icons.close,
+                                                  size: 14,
+                                                  color:
+                                                      AppStyle.primaryColor,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                      if (extraCount > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white12
+                                                : Colors.grey[200],
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            '+$extraCount more',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDark
+                                                  ? Colors.white54
+                                                  : Colors.grey[700],
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                          );
+                        },
+                        dropdownDecoratorProps: DropDownDecoratorProps(
+                          dropdownSearchDecoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 14),
+                            filled: true,
+                            fillColor: isDark
+                                ? const Color(0xFF2A2A2A)
+                                : const Color(0xffF8FAFB),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppStyle.primaryColor,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                        popupProps:
+                            PopupPropsMultiSelection.menu(
+                          showSearchBox: false,
+                          searchFieldProps: TextFieldProps(
+                              controller: pickingsSearchCtrl),
+                          showSelectedItems: true,
+                          menuProps: MenuProps(
+                            backgroundColor: isDark
+                                ? Colors.grey[850]
+                                : Colors.white,
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          constraints:
+                              const BoxConstraints(maxHeight: 380),
+                          validationWidgetBuilder: (context, __) =>
+                              const SizedBox.shrink(),
+                          selectionWidget:
+                              (context, item, isSelected) =>
+                                  const SizedBox.shrink(),
+                          onItemAdded: (selectedItems, _) {
+                            sheetSetState(() {
+                              selectedPickings = selectedItems
+                                  .map((e) => e['id'] as int)
+                                  .toList();
+                              selectedPickingNames = selectedItems
+                                  .map((e) => e['name'] as String)
+                                  .toList();
+                            });
+                          },
+                          onItemRemoved: (selectedItems, _) {
+                            sheetSetState(() {
+                              selectedPickings = selectedItems
+                                  .map((e) => e['id'] as int)
+                                  .toList();
+                              selectedPickingNames = selectedItems
+                                  .map((e) => e['name'] as String)
+                                  .toList();
+                            });
+                          },
+                          title: Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: isDark
+                                      ? Colors.white12
+                                      : const Color(0xFFE0E0E0),
+                                  width: 0.8,
                                 ),
                               ),
                             ),
-                          );
-                        },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.stretch,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16, 12, 16, 8),
+                                  child: Text(
+                                    'Select Pickings',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  child: TextField(
+                                    controller: pickingsSearchCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search...',
+                                      filled: true,
+                                      fillColor: isDark
+                                          ? Colors.grey[800]
+                                          : const Color(0xFFF3F4F6),
+                                      prefixIcon: Icon(
+                                        Icons.search,
+                                        size: 20,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.grey[600],
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10),
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16, 6, 16, 10),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Clear button
+                                      GestureDetector(
+                                        onTap: () {
+                                          pickingsDropdownKey.currentState
+                                              ?.changeSelectedItems([]);
+                                          sheetSetState(() {
+                                            selectedPickings.clear();
+                                            selectedPickingNames.clear();
+                                          });
+                                        },
+                                        child: Text(
+                                          'Clear',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            color: isDark
+                                                ? Colors.white38
+                                                : Colors.grey[500],
+                                          ),
+                                        ),
+                                      ),
+                                      // Done button
+                                      GestureDetector(
+                                        onTap: () async {
+                                          pickingsSearchCtrl.clear();
+                                          pickingsDropdownKey.currentState
+                                              ?.closeDropDownSearch();
+                                          sheetSetState(() =>
+                                              isFetchingStops = true);
+                                          try {
+                                            final value = pickings
+                                                .where((p) =>
+                                                    selectedPickings
+                                                        .contains(p['id']))
+                                                .toList();
+                                            _stops.clear();
+                                            for (var c
+                                                in _stopSearchControllers) {
+                                              c.dispose();
+                                            }
+                                            _stopSearchControllers.clear();
+                                            _stopSuggestions.clear();
+                                            final Set<String>
+                                                uniqueDestinations = {};
+                                            for (var picking in value) {
+                                              final dest = picking[
+                                                          'destination_point']
+                                                      as String? ??
+                                                  '';
+                                              if (dest.isNotEmpty &&
+                                                  uniqueDestinations
+                                                      .add(dest)) {
+                                                _stopSearchControllers.add(
+                                                    TextEditingController(
+                                                        text: dest));
+                                                _stopSuggestions.add([]);
+                                                final stopLatLng =
+                                                    await mapService
+                                                        .getLatLngFromPlace(
+                                                            dest, _apiKey,
+                                                            proximity:
+                                                                _currentLatLng);
+                                                if (stopLatLng != null) {
+                                                  _stops.add(stopLatLng);
+                                                }
+                                              }
+                                            }
+                                            if (_stopSearchControllers
+                                                    .isEmpty ||
+                                                _stopSearchControllers
+                                                    .last.text
+                                                    .trim()
+                                                    .isNotEmpty) {
+                                              _stopSearchControllers.add(
+                                                  TextEditingController());
+                                              _stopSuggestions.add([]);
+                                            }
+                                          } catch (_) {
+                                          } finally {
+                                            setState(() {});
+                                            sheetSetState(() {
+                                              shouldValidate = false;
+                                              isFetchingStops = false;
+                                            });
+                                          }
+                                        },
+                                        child: Text(
+                                          'Done',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppStyle.primaryColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          itemBuilder: (context, item, isSelected) {
+                            return Container(
+                              color: Colors.transparent,
+                              padding: const EdgeInsets.only(
+                                  left: 16,
+                                  right: 4,
+                                  top: 4,
+                                  bottom: 4),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item['name']?.toString() ?? '-',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.normal,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                  Checkbox(
+                                    value: isSelected,
+                                    onChanged: null,
+                                    checkColor: Colors.white,
+                                    fillColor:
+                                        WidgetStateProperty.resolveWith<
+                                            Color>(
+                                      (states) => states.contains(
+                                              WidgetState.selected)
+                                          ? AppStyle.primaryColor
+                                          : Colors.transparent,
+                                    ),
+                                    side: const BorderSide(
+                                      color: AppStyle.primaryColor,
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
 
                       if (shouldValidate) ...[
@@ -1172,6 +1502,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 child: MoboTextField(
                                   controller: _stopSearchControllers[index],
                                   hintText: 'Add your stop',
+                                  showShadow: false,
                                   onChanged: (value) async {
                                     final suggestions = await mapService
                                         .fetchSuggestions(value, _apiKey,
@@ -1501,66 +1832,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         ],
       );
 
-  /// A pink (mobo) pill used to show a selected picking inside the Pickings
-  /// field.
-  Widget _pickingTag(String name) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppStyle.primaryColor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppStyle.primaryColor.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Text(
-        name,
-        style: const TextStyle(
-          color: AppStyle.primaryColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  /// Renders selected pickings as inline tags — first 2 visible, rest collapsed
-  /// into a "+N" overflow badge. Keeps the trigger field compact regardless of
-  /// how many pickings are selected.
-  Widget _buildPickingTagRow(List<Map<String, dynamic>> maps) {
-    const maxVisible = 2;
-    final visible = maps.take(maxVisible).toList();
-    final overflow = maps.length - maxVisible;
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        ...visible.map((item) => _pickingTag(item['name']?.toString() ?? '')),
-        if (overflow > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppStyle.primaryColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppStyle.primaryColor.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              '+$overflow',
-              style: const TextStyle(
-                color: AppStyle.primaryColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
   /// Non-editable "Your location" chip shown in the source field when GPS is
   /// selected as the origin. Mirrors Google Maps / Waze style: blue pulsing dot,
   /// "Your location" label, "Using GPS" subtitle, and an × to switch to manual entry.
@@ -1664,225 +1935,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           ],
         ),
       ),
-    );
-  }
-
-  /// Multi-select picker for pickings — mirrors the company-selection design
-  /// (search box, mobo checkboxes, Reset/Confirm). Calls [onConfirm] with the
-  /// chosen picking maps when the user confirms.
-  void _showPickingSelectSheet({
-    required List<Map<String, dynamic>> pickings,
-    required List<int> selectedIds,
-    required Future<void> Function(List<Map<String, dynamic>>) onConfirm,
-    bool isLoading = false,
-  }) {
-    final tempSelected = selectedIds.toSet();
-    String query = '';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) {
-        final isDark = Theme.of(sheetCtx).brightness == Brightness.dark;
-        return StatefulBuilder(
-          builder: (sheetCtx, setSheet) {
-            final filtered = query.trim().isEmpty
-                ? pickings
-                : pickings.where((p) {
-                    final name = (p['name']?.toString() ?? '').toLowerCase();
-                    return name.contains(query.toLowerCase());
-                  }).toList();
-
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(sheetCtx).size.height * 0.8,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[900] : Colors.white,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white24 : Colors.black12,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Select Pickings',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TextField(
-                        onChanged: (v) => setSheet(() => query = v),
-                        decoration:
-                            _fieldDecoration(isDark, 'Search Pickings'),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Flexible(
-                      child: filtered.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: isLoading
-                                  ? Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: AppStyle.primaryColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          'Loading pickings…',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: isDark
-                                                ? Colors.white54
-                                                : Colors.black54,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : Text(
-                                      'No pickings found',
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? Colors.white54
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4),
-                              itemCount: filtered.length,
-                              itemBuilder: (context, index) {
-                                final p = filtered[index];
-                                final id = p['id'] as int;
-                                final name = p['name']?.toString() ?? '-';
-                                final checked = tempSelected.contains(id);
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(10),
-                                      onTap: () => setSheet(() {
-                                        if (checked) {
-                                          tempSelected.remove(id);
-                                        } else {
-                                          tempSelected.add(id);
-                                        }
-                                      }),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 14, vertical: 14),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                name,
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.normal,
-                                                  color: isDark
-                                                      ? Colors.white
-                                                      : Colors.black87,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            MoboCheckbox(
-                                              size: 26,
-                                              value: checked,
-                                              onChanged: (val) =>
-                                                  setSheet(() {
-                                                if (val) {
-                                                  tempSelected.add(id);
-                                                } else {
-                                                  tempSelected.remove(id);
-                                                }
-                                              }),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: MoboButton.secondary(
-                              label: 'Reset',
-                              height: 48,
-                              onPressed: () =>
-                                  setSheet(() => tempSelected.clear()),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: MoboButton.primary(
-                              label: 'Confirm',
-                              height: 48,
-                              onPressed: () async {
-                                final value = pickings
-                                    .where((p) =>
-                                        tempSelected.contains(p['id']))
-                                    .toList();
-                                Navigator.pop(sheetCtx);
-                                await onConfirm(value);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -2000,12 +2052,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                 ],
 
                 if (_isLoading)
-                  Container(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    child: const Center(
-                      child: LoadingWidget(
-                        size: 40,
-                        variant: LoadingVariant.staggeredDots,
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: LinearProgressIndicator(
+                      minHeight: 3,
+                      backgroundColor: Colors.transparent,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppStyle.primaryColor,
                       ),
                     ),
                   ),
@@ -2178,6 +2233,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             return AlertDialog(
               backgroundColor:
                   dark ? const Color(0xFF1C1C2E) : Colors.white,
+              surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
               title: const Text('Far from Route Start',

@@ -549,7 +549,7 @@ class _ConfigurationState extends State<Configuration> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.orange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
       ),
       child: Row(
@@ -614,6 +614,7 @@ return FadeTransition(opacity: animation, child: child);
           canPop: false,
           child: Dialog(
             backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),

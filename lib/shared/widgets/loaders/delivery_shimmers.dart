@@ -375,7 +375,7 @@ class PickingDocumentPageShimmer extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: _base(isDark),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
               const SizedBox(width: 12),

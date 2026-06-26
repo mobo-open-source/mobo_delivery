@@ -14,6 +14,7 @@ import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
+import '../../../../shared/utils/date_picker_utils.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
@@ -241,7 +242,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     if (_networkCheckInProgress) return;
     _networkCheckInProgress = true;
     try {
-      final available = await OdooPickingFormService().checkNetworkConnectivity();
+      final available = await OdooPickingFormService()
+          .checkNetworkConnectivity();
       if (mounted) {
         setState(() => isOnlineAvailability = available);
       }
@@ -293,14 +295,18 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       try {
         await _loadOfflineData();
       } catch (e, st) {
-        debugPrint('[PickingDetail] Fetch offline-load FAILED id=$rawId: $e\n$st');
+        debugPrint(
+          '[PickingDetail] Fetch offline-load FAILED id=$rawId: $e\n$st',
+        );
       }
 
       if (isOnline) {
         try {
           await _loadOnlineData();
         } catch (e, st) {
-          debugPrint('[PickingDetail] Fetch online-load FAILED id=$rawId: $e\n$st');
+          debugPrint(
+            '[PickingDetail] Fetch online-load FAILED id=$rawId: $e\n$st',
+          );
         }
       }
     } catch (e, st) {
@@ -341,7 +347,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     final results = await Future.wait<dynamic>([
       odooPickingFormService.loadPickings(pickingId),
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
-        debugPrint('[PickingDetail] Reload moves FAILED id=$pickingId: $e\n$st');
+        debugPrint(
+          '[PickingDetail] Reload moves FAILED id=$pickingId: $e\n$st',
+        );
         return moveProducts;
       }),
     ]);
@@ -365,7 +373,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           ? freshPickings[0].partnerId![0]
           : null;
       if (partnerId != null) {
-        partnerDetails = await odooPickingFormService.loadPartnerDetails(partnerId);
+        partnerDetails = await odooPickingFormService.loadPartnerDetails(
+          partnerId,
+        );
         final imageString = partnerDetails?['image_1920'];
         if (imageString != null && imageString.isNotEmpty && mounted) {
           setState(() => _cachedImage = base64Decode(imageString));
@@ -381,7 +391,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (!_isEditing) _syncControllersFromPicking();
     }
   }
-
 
   /// Loads fresh data from Odoo + caches partner image & details to Hive.
   ///
@@ -403,7 +412,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     pickings = await odooPickingFormService.loadPickings(pickingId);
 
-    final partnerIdForDetails = (pickings.isNotEmpty &&
+    final partnerIdForDetails =
+        (pickings.isNotEmpty &&
             pickings[0].partnerId != null &&
             pickings[0].partnerId!.isNotEmpty)
         ? pickings[0].partnerId![0]
@@ -411,7 +421,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     final results = await Future.wait<dynamic>([
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
-        debugPrint('[PickingDetail] loadProductMoves FAILED id=$pickingId: $e\n$st');
+        debugPrint(
+          '[PickingDetail] loadProductMoves FAILED id=$pickingId: $e\n$st',
+        );
         if (mounted) {
           final msg = _extractOdooError(
             e,
@@ -458,9 +470,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   /// session already populated these lists via `_loadOfflineData`, so
   /// edit mode is usable immediately; this call just refreshes them
   /// against the server.
-  Future<void> _loadEditModeDropdowns(
-    OdooPickingFormService service,
-  ) async {
+  Future<void> _loadEditModeDropdowns(OdooPickingFormService service) async {
     try {
       final results = await Future.wait<dynamic>([
         service.loadProducts().catchError((e) {
@@ -481,10 +491,14 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         }),
       ]);
       if (!mounted) return;
-      final freshProducts = (results[0] as List?)?.cast<Product>() ?? <Product>[];
-      final freshPartners = (results[1] as List?)?.cast<Partner>() ?? <Partner>[];
+      final freshProducts =
+          (results[0] as List?)?.cast<Product>() ?? <Product>[];
+      final freshPartners =
+          (results[1] as List?)?.cast<Partner>() ?? <Partner>[];
       final freshUsers = (results[2] as List?)?.cast<User>() ?? <User>[];
-      final freshOpTypes = (results[3] as List?)?.cast<Map<String, dynamic>>() ?? <Map<String, dynamic>>[];
+      final freshOpTypes =
+          (results[3] as List?)?.cast<Map<String, dynamic>>() ??
+          <Map<String, dynamic>>[];
       debugPrint(
         '[EditDropdowns] products=${freshProducts.length} '
         'partners=${freshPartners.length} '
@@ -541,10 +555,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       final movesData = await _hiveService.getStockMoves(pickingId: pickingId);
       final partnerId = pickings.isEmpty
           ? null
-          : (pickings[0].partnerId == null ||
-                pickings[0].partnerId!.isEmpty)
-              ? null
-              : pickings[0].partnerId![0];
+          : (pickings[0].partnerId == null || pickings[0].partnerId!.isEmpty)
+          ? null
+          : pickings[0].partnerId![0];
       if (partnerId != null) {
         final offlinePartnerDetails = await _hiveService.getPartnerDetails(
           partnerId,
@@ -594,7 +607,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       return Colors.grey;
     }
   }
-
 
   /// Extracts a human-readable message from an Odoo RPC exception.
   ///
@@ -664,9 +676,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       }
     }
 
-    final dataMatch = RegExp(
-      r'data\.message["\s:]+([^"}\n]+)',
-    ).firstMatch(raw);
+    final dataMatch = RegExp(r'data\.message["\s:]+([^"}\n]+)').firstMatch(raw);
     if (dataMatch != null) {
       final candidate = dataMatch.group(1)!.trim();
       if (candidate.isNotEmpty) return candidate;
@@ -694,7 +704,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       );
       return;
     }
-
 
     final odooPickingFormService = OdooPickingFormService();
     await odooPickingFormService.initializeOdooClient();
@@ -878,7 +887,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           transitionDuration: const Duration(milliseconds: 300),
           reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+            return FadeTransition(opacity: animation, child: child);
           },
         ),
       );
@@ -904,7 +913,7 @@ return FadeTransition(opacity: animation, child: child);
             reverseTransitionDuration: const Duration(milliseconds: 300),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+                  return FadeTransition(opacity: animation, child: child);
                 },
           ),
         );
@@ -951,7 +960,7 @@ return FadeTransition(opacity: animation, child: child);
             reverseTransitionDuration: const Duration(milliseconds: 300),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+                  return FadeTransition(opacity: animation, child: child);
                 },
           ),
         );
@@ -982,10 +991,14 @@ return FadeTransition(opacity: animation, child: child);
           final stateAfter = pickings.isNotEmpty ? pickings[0].state : '';
           if (stateAfter == 'assigned' && stateBefore != 'assigned') {
             CustomSnackbar.showSuccess(
-                context, 'Products reserved — picking is now Ready.');
+              context,
+              'Products reserved — picking is now Ready.',
+            );
           } else {
             CustomSnackbar.showInfo(
-                context, 'No additional products could be reserved.');
+              context,
+              'No additional products could be reserved.',
+            );
           }
         }
       } else {
@@ -1065,9 +1078,7 @@ return FadeTransition(opacity: animation, child: child);
         backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         surfaceTintColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(ctx).size.height * 0.7,
@@ -1111,8 +1122,7 @@ return FadeTransition(opacity: animation, child: child);
             .toList();
 
         if (cachedReturns.isNotEmpty) {
-          final loadedReturnData =
-              cachedReturns.map((e) => e.data).toList();
+          final loadedReturnData = cachedReturns.map((e) => e.data).toList();
           if (mounted) {
             setState(() {
               returnDataList = loadedReturnData;
@@ -1125,8 +1135,7 @@ return FadeTransition(opacity: animation, child: child);
         );
         for (var data in returnData) {
           final rawPartner = data['partner_id'];
-          final partner =
-              rawPartner is List ? rawPartner : const <dynamic>[];
+          final partner = rawPartner is List ? rawPartner : const <dynamic>[];
           String stringOr(dynamic v, String fallback) =>
               (v is String && v.isNotEmpty) ? v : fallback;
           final returnPicking = ReturnPicking(
@@ -1178,11 +1187,14 @@ return FadeTransition(opacity: animation, child: child);
       builder: (dialogCtx) {
         return Dialog(
           backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 40,
+          ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height * 0.7,
@@ -1220,8 +1232,7 @@ return FadeTransition(opacity: animation, child: child);
                     child: returns.isEmpty
                         ? const EmptyState(
                             title: 'No Return Pickings Found',
-                            subtitle:
-                                'There are no return pickings available.',
+                            subtitle: 'There are no return pickings available.',
                             padding: EdgeInsets.symmetric(vertical: 24),
                           )
                         : ListView.builder(
@@ -1271,10 +1282,7 @@ return FadeTransition(opacity: animation, child: child);
               context,
               PageRouteBuilder(
                 pageBuilder: (context, animation, _) => PickingDetailsPage(
-                  picking: {
-                    ...data,
-                    'item': data['name'] ?? 'Return Picking',
-                  },
+                  picking: {...data, 'item': data['name'] ?? 'Return Picking'},
                   odooService: service,
                   isPickingForm: false,
                   isReturnCreate: false,
@@ -1310,8 +1318,11 @@ return FadeTransition(opacity: animation, child: child);
                   ],
                 ),
                 const SizedBox(height: 8),
-                _buildReturnKv('Partner:', cleanOdooValue(data['partner_id']),
-                    isDark),
+                _buildReturnKv(
+                  'Partner:',
+                  cleanOdooValue(data['partner_id']),
+                  isDark,
+                ),
                 const SizedBox(height: 4),
                 _buildReturnKv(
                   'Scheduled:',
@@ -1374,8 +1385,7 @@ return FadeTransition(opacity: animation, child: child);
     deadlineController.text = formatDateTimeForDisplay(p.dateDeadline);
     dateDoneController.text = formatDateTimeForDisplay(p.dateDone);
     sourceDocController.text = p.origin ?? '';
-    _noteController.text =
-        (p.note ?? '').replaceAll(RegExp(r'<[^>]*>'), '');
+    _noteController.text = (p.note ?? '').replaceAll(RegExp(r'<[^>]*>'), '');
 
     // The form now mirrors the freshly-persisted picking (e.g. after a product
     // line was added/edited, which reloads the record). Reset the dirty
@@ -1388,10 +1398,12 @@ return FadeTransition(opacity: animation, child: child);
   Map<String, dynamic>? _buildHeaderUpdates() {
     if (pickings.isEmpty) return null;
     final p = pickings[0];
-    final int? existingPartnerId =
-        (p.partnerId?.isNotEmpty ?? false) ? p.partnerId![0] as int? : null;
-    final int? existingUserId =
-        (p.userId?.isNotEmpty ?? false) ? p.userId![0] as int? : null;
+    final int? existingPartnerId = (p.partnerId?.isNotEmpty ?? false)
+        ? p.partnerId![0] as int?
+        : null;
+    final int? existingUserId = (p.userId?.isNotEmpty ?? false)
+        ? p.userId![0] as int?
+        : null;
 
     final updates = <String, dynamic>{
       'partner_id': selectedPartnerId ?? existingPartnerId,
@@ -1403,14 +1415,12 @@ return FadeTransition(opacity: animation, child: child);
       'date_done': dateDoneController.text.trim().isEmpty
           ? false
           : formatToOdooDatetime(dateDoneController.text),
-      'move_type':
-          _selectedShippingPolicy ?? p.moveType ?? 'direct',
+      'move_type': _selectedShippingPolicy ?? p.moveType ?? 'direct',
       'user_id': _selectedUserId ?? existingUserId,
       'note': _noteController.text,
-      'picking_type_id': _selectedPickingTypeId ??
-          ((p.pickingTypeId?.isNotEmpty ?? false)
-              ? p.pickingTypeId![0]
-              : null),
+      'picking_type_id':
+          _selectedPickingTypeId ??
+          ((p.pickingTypeId?.isNotEmpty ?? false) ? p.pickingTypeId![0] : null),
     };
 
     if (_selectedPickingTypeId != null) {
@@ -1488,16 +1498,12 @@ return FadeTransition(opacity: animation, child: child);
 
     try {
       final isOnline = isOnlineAvailability;
-      debugPrint(
-        '[PickingDetail] Save id=$pickingId online=$isOnline',
-      );
+      debugPrint('[PickingDetail] Save id=$pickingId online=$isOnline');
       if (isOnline) {
         final success = await odooPickingFormService
             .saveChanges(pickingId, updatedListOfUpdates)
             .timeout(const Duration(seconds: 15));
-        debugPrint(
-          '[PickingDetail] Save RPC id=$pickingId result=$success',
-        );
+        debugPrint('[PickingDetail] Save RPC id=$pickingId result=$success');
         if (success) {
           try {
             await _loadSavingData().timeout(const Duration(seconds: 15));
@@ -1598,8 +1604,9 @@ return FadeTransition(opacity: animation, child: child);
     }
     if (srcId == null || destId == null) {
       srcId = int.tryParse(widget.picking['location_id_int']?.toString() ?? '');
-      destId =
-          int.tryParse(widget.picking['location_dest_id_int']?.toString() ?? '');
+      destId = int.tryParse(
+        widget.picking['location_dest_id_int']?.toString() ?? '',
+      );
     }
     if (srcId == null || destId == null) {
       final locations = await service.getPickingLocations(pickingId);
@@ -1732,8 +1739,9 @@ return FadeTransition(opacity: animation, child: child);
             'updates': headerUpdates,
           });
         }
-        final locationIdInt =
-            int.tryParse(widget.picking['location_id_int']?.toString() ?? '');
+        final locationIdInt = int.tryParse(
+          widget.picking['location_id_int']?.toString() ?? '',
+        );
         final locationDestIdInt = int.tryParse(
           widget.picking['location_dest_id_int']?.toString() ?? '',
         );
@@ -1753,16 +1761,12 @@ return FadeTransition(opacity: animation, child: child);
           );
         }
         for (final entry in _stagedEditedMoves.entries) {
-          await _hiveService.savePendingProductUpdates(
-            pickingId,
-            {
-              'move': entry.value.toJson(),
-              'timestamp': DateTime.now(),
-              'location_id_int': locationIdInt,
-              'location_dest_id_int': locationDestIdInt,
-            },
-            title,
-          );
+          await _hiveService.savePendingProductUpdates(pickingId, {
+            'move': entry.value.toJson(),
+            'timestamp': DateTime.now(),
+            'location_id_int': locationIdInt,
+            'location_dest_id_int': locationDestIdInt,
+          }, title);
         }
         if (mounted) {
           final hadDeletes = _stagedDeletedMoveIds.isNotEmpty;
@@ -1790,7 +1794,6 @@ return FadeTransition(opacity: animation, child: child);
     }
   }
 
-
   /// Routes any wizard action returned by `button_validate`/`action_confirm`/
   /// `action_cancel` to the matching dialog. Mirrors the Odoo web flow:
   ///   • Backorder confirmation → "Create Backorder?" dialog
@@ -1810,8 +1813,7 @@ return FadeTransition(opacity: animation, child: child);
     required String fallbackSuccessMessage,
   }) async {
     final resModel = action['res_model']?.toString() ?? '';
-    final wizardId =
-        action['res_id'] is int ? action['res_id'] as int : null;
+    final wizardId = action['res_id'] is int ? action['res_id'] as int : null;
     final context0 = action['context'] is Map
         ? Map<String, dynamic>.from(action['context'] as Map)
         : <String, dynamic>{};
@@ -1909,8 +1911,8 @@ return FadeTransition(opacity: animation, child: child);
             final raw = e.toString();
             final looksLikeMissingMethod =
                 raw.contains('AttributeError') ||
-                    raw.contains('does not exist') ||
-                    raw.contains('has no attribute');
+                raw.contains('does not exist') ||
+                raw.contains('has no attribute');
             if (!looksLikeMissingMethod) {
               lastError = e;
               break;
@@ -1944,6 +1946,10 @@ return FadeTransition(opacity: animation, child: child);
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Send SMS?'),
         content: const Text(
@@ -1954,9 +1960,10 @@ return FadeTransition(opacity: animation, child: child);
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              await callWizardWithFallback(
-                const ['dont_send_sms', 'action_cancel'],
-              );
+              await callWizardWithFallback(const [
+                'dont_send_sms',
+                'action_cancel',
+              ]);
             },
             child: const Text("Don't Send"),
           ),
@@ -1965,9 +1972,10 @@ return FadeTransition(opacity: animation, child: child);
             fullWidth: false,
             onPressed: () async {
               Navigator.of(ctx).pop();
-              await callWizardWithFallback(
-                const ['send_sms', 'action_send_sms'],
-              );
+              await callWizardWithFallback(const [
+                'send_sms',
+                'action_send_sms',
+              ]);
             },
           ),
         ],
@@ -2005,6 +2013,10 @@ return FadeTransition(opacity: animation, child: child);
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title),
         content: Text(message),
@@ -2036,10 +2048,7 @@ return FadeTransition(opacity: animation, child: child);
                 if (mounted) {
                   CustomSnackbar.showError(
                     context,
-                    _extractOdooError(
-                      e,
-                      'Failed to complete $wizardModel.',
-                    ),
+                    _extractOdooError(e, 'Failed to complete $wizardModel.'),
                   );
                 }
               } finally {
@@ -2075,11 +2084,17 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Future<void> _showImmediateTransferDialog(int pickingId, success) async {
-    final int? wizardId = success['res_id'] is int ? success['res_id'] as int : null;
+    final int? wizardId = success['res_id'] is int
+        ? success['res_id'] as int
+        : null;
 
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Immediate Transfer?'),
         content: const Text(
@@ -2106,18 +2121,24 @@ return FadeTransition(opacity: animation, child: child);
                 await CompanySessionManager.callKwWithCompany({
                   'model': 'stock.immediate.transfer',
                   'method': 'process',
-                  'args': [[wizardId]],
-                  'kwargs': {
-                    'context': _wizardContext(pickingId, success),
-                  },
+                  'args': [
+                    [wizardId],
+                  ],
+                  'kwargs': {'context': _wizardContext(pickingId, success)},
                 });
                 await _loadSavingData();
                 if (mounted) {
-                  CustomSnackbar.showSuccess(context, 'Transfer validated successfully.');
+                  CustomSnackbar.showSuccess(
+                    context,
+                    'Transfer validated successfully.',
+                  );
                 }
               } catch (e) {
                 if (mounted) {
-                  final msg = _extractOdooError(e, 'Failed to process immediate transfer.');
+                  final msg = _extractOdooError(
+                    e,
+                    'Failed to process immediate transfer.',
+                  );
                   CustomSnackbar.showError(context, msg);
                 }
               } finally {
@@ -2131,11 +2152,17 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Future<void> _showBackorderDialog(int pickingId, success) async {
-    final int? wizardId = success['res_id'] is int ? success['res_id'] as int : null;
+    final int? wizardId = success['res_id'] is int
+        ? success['res_id'] as int
+        : null;
 
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[850]
+            : Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Create Backorder?'),
         content: const Text(
@@ -2158,10 +2185,10 @@ return FadeTransition(opacity: animation, child: child);
                 await CompanySessionManager.callKwWithCompany({
                   'model': 'stock.backorder.confirmation',
                   'method': 'process_cancel_backorder',
-                  'args': [[wizardId]],
-                  'kwargs': {
-                    'context': _wizardContext(pickingId, success),
-                  },
+                  'args': [
+                    [wizardId],
+                  ],
+                  'kwargs': {'context': _wizardContext(pickingId, success)},
                 });
                 await _loadSavingData();
                 if (mounted) setState(() => isSaving = false);
@@ -2174,7 +2201,10 @@ return FadeTransition(opacity: animation, child: child);
               } catch (e) {
                 if (mounted) setState(() => isSaving = false);
                 if (mounted) {
-                  final msg = _extractOdooError(e, 'Failed to validate without backorder.');
+                  final msg = _extractOdooError(
+                    e,
+                    'Failed to validate without backorder.',
+                  );
                   CustomSnackbar.showError(context, msg);
                 }
               }
@@ -2196,10 +2226,10 @@ return FadeTransition(opacity: animation, child: child);
                 await CompanySessionManager.callKwWithCompany({
                   'model': 'stock.backorder.confirmation',
                   'method': 'process',
-                  'args': [[wizardId]],
-                  'kwargs': {
-                    'context': _wizardContext(pickingId, success),
-                  },
+                  'args': [
+                    [wizardId],
+                  ],
+                  'kwargs': {'context': _wizardContext(pickingId, success)},
                 });
                 await _loadSavingData();
                 if (mounted) setState(() => isSaving = false);
@@ -2212,7 +2242,10 @@ return FadeTransition(opacity: animation, child: child);
               } catch (e) {
                 if (mounted) setState(() => isSaving = false);
                 if (mounted) {
-                  final msg = _extractOdooError(e, 'Failed to create backorder.');
+                  final msg = _extractOdooError(
+                    e,
+                    'Failed to create backorder.',
+                  );
                   CustomSnackbar.showError(context, msg);
                 }
               }
@@ -2233,12 +2266,12 @@ return FadeTransition(opacity: animation, child: child);
   Widget _buildStatusIndicator(String status) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    const Color statusGreen  = Color(0xFF00A63E);
-    const Color statusBlue   = Color(0xFF3B82F6);
+    const Color statusGreen = Color(0xFF00A63E);
+    const Color statusBlue = Color(0xFF3B82F6);
     const Color statusOrange = Color(0xFFF97316);
-    const Color statusRed    = Color(0xFFEF4444);
-    const Color statusTeal   = Color(0xFF14B8A6);
-    const Color statusGrey   = Color(0xFF6B7280);
+    const Color statusRed = Color(0xFFEF4444);
+    const Color statusTeal = Color(0xFF14B8A6);
+    const Color statusGrey = Color(0xFF6B7280);
 
     Color color;
     String label;
@@ -2312,7 +2345,6 @@ return FadeTransition(opacity: animation, child: child);
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2369,7 +2401,8 @@ return FadeTransition(opacity: animation, child: child);
           else ...[
             Scaffold(
               backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-              bottomNavigationBar: _isEditing &&
+              bottomNavigationBar:
+                  _isEditing &&
                       pickings.isNotEmpty &&
                       !['done', 'cancel'].contains(pickings[0].state)
                   ? Container(
@@ -2402,7 +2435,7 @@ return FadeTransition(opacity: animation, child: child);
                             disabledBackgroundColor: Colors.grey[400],
                             disabledForegroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             padding: const EdgeInsets.all(13),
                           ),
@@ -2506,7 +2539,10 @@ return FadeTransition(opacity: animation, child: child);
                             _stagedDeletedMoveIds.clear();
                             _tempMoveIdSeq = -1;
                           });
-                          if (partnerList.isEmpty || operationTypesList.isEmpty || userList.isEmpty || products.isEmpty) {
+                          if (partnerList.isEmpty ||
+                              operationTypesList.isEmpty ||
+                              userList.isEmpty ||
+                              products.isEmpty) {
                             unawaited(() async {
                               final svc = OdooPickingFormService();
                               await svc.initializeOdooClient();
@@ -2524,12 +2560,33 @@ return FadeTransition(opacity: animation, child: child);
                     if (pickings.isNotEmpty &&
                         pickings[0].state == 'done' &&
                         isOnlineAvailability)
-                      IconButton(
-                        onPressed: _openCreateReturnSheet,
-                        tooltip: 'Create Return',
-                        icon: Icon(
-                          HugeIcons.strokeRoundedDeliveryReturn02,
-                          color: isDark ? Colors.white70 : Colors.black54,
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: _openCreateReturnSheet,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white38
+                                    : Colors.black38,
+                                width: 1,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Return',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.black54,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     if ([
@@ -2614,26 +2671,27 @@ return FadeTransition(opacity: animation, child: child);
                               if (!['draft'].contains(pickings[0].state))
                                 PopupMenuItem(
                                   value: 'validate',
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      HugeIcons.strokeRoundedCheckmarkCircle02,
-                                      color: Colors.green,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      "Validate",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black54,
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        HugeIcons
+                                            .strokeRoundedCheckmarkCircle02,
+                                        color: Colors.green,
+                                        size: 20,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        "Validate",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                               PopupMenuItem(
                                 value: 'cancel',
                                 child: Row(
@@ -2686,515 +2744,673 @@ return FadeTransition(opacity: animation, child: child);
                 child: RefreshIndicator(
                   onRefresh: _isEditing ? () async {} : _fetchData,
                   child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isOfflineValidate)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "This picking was validated while offline. It will sync automatically once the device is back online.",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w500,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isOfflineValidate)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "This picking was validated while offline. It will sync automatically once the device is back online.",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
 
-                    if (isOfflineCancel)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "This picking was cancelled while offline. It will sync automatically once the device is back online.",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w500,
+                        if (isOfflineCancel)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "This picking was cancelled while offline. It will sync automatically once the device is back online.",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
 
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[850] : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.18)
-                                : Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[850] : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark
+                                    ? Colors.black.withValues(alpha: 0.18)
+                                    : Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  pickings[0].name,
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      pickings[0].name,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppStyle.primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildStatusIndicator(pickings[0].state),
+                                ],
+                              ),
+                              if (pickings[0].partnerId != null) ...[
+                                const SizedBox(height: 10),
+                                Text(
+                                  pickings[0].partnerId?[1]?.toString() ??
+                                      'Unknown',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
-                                    color: AppStyle.primaryColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              _buildStatusIndicator(pickings[0].state),
-                            ],
-                          ),
-                          if (pickings[0].partnerId != null) ...[
-                            const SizedBox(height: 10),
-                            Text(
-                              pickings[0].partnerId?[1]?.toString() ?? 'Unknown',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            if ((partnerDetails?['address'] ?? '').toString().isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                partnerDetails!['address'].toString(),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark ? Colors.white60 : Colors.black54,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ],
-                          if ((pickings[0].scheduledDate ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Icon(
-                                  HugeIcons.strokeRoundedCalendar01,
-                                  size: 13,
-                                  color: isDark
-                                      ? Colors.white54
-                                      : Colors.black45,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  pickings[0].scheduledDate!,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDark
-                                        ? Colors.white54
-                                        : Colors.black45,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[850] : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.18)
-                                : Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              "Delivery Details",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : Colors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                children: [
-                                  InfoRow(
-                                    label: "Delivery Address",
-                                    value: pickings[0].partnerId,
-                                    isEditing: _isEditing,
-                                    prefixIcon: FontAwesomeIcons.locationDot,
                                     color: isDark
                                         ? Colors.white
                                         : Colors.black87,
-                                    dropdownItems: partnerList
-                                        .map((p) => p.toJson())
-                                        .toList(),
-                                    selectedId:
-                                        selectedPartnerId ??
-                                        (pickings[0].partnerId?.isNotEmpty ??
-                                                false
-                                            ? pickings[0].partnerId![0]
-                                            : null),
-                                    onDropdownChanged: (value) {
-                                      setState(() {
-                                        selectedPartnerId = value?['id'];
-                                      });
-                                    },
                                   ),
-
-                                  InfoRow(
-                                    label: "Operation Type",
-                                    value: pickings[0].pickingTypeId,
-                                    isEditing: _isEditing,
-                                    controller: operationTypeController,
-                                    dropdownItems: operationTypesList,
-                                    selectedId: _selectedPickingTypeId ??
-                                        ((pickings[0].pickingTypeId?.isNotEmpty ??
-                                                false)
-                                            ? pickings[0].pickingTypeId![0]
-                                            : null),
-                                    onDropdownChanged: (value) {
-                                      setState(() {
-                                        _selectedPickingTypeId = value?['id'];
-                                        _selectedLocationId = value?[
-                                            'default_location_src_id_int'];
-                                        _selectedLocationDestId = value?[
-                                            'default_location_dest_id_int'];
-                                      });
-                                    },
-                                    prefixIcon: FontAwesomeIcons.tasks,
+                                ),
+                                if ((partnerDetails?['address'] ?? '')
+                                    .toString()
+                                    .isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    partnerDetails!['address'].toString(),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark
+                                          ? Colors.white60
+                                          : Colors.black54,
+                                      height: 1.4,
+                                    ),
                                   ),
-                                  InfoRow(
-                                    label: "Scheduled Date",
-                                    value: formatDateTimeForDisplay(
-                                      pickings[0].scheduledDate,
+                                ],
+                              ],
+                              if ((pickings[0].scheduledDate ?? '')
+                                  .isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedCalendar01,
+                                      size: 13,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.black45,
                                     ),
-                                    isEditing: _isEditing,
-                                    controller: scheduledDateController,
-                                    color: getScheduledDateColor(
-                                      pickings[0].scheduledDate ??
-                                          DateTime.now().toString(),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      pickings[0].scheduledDate!,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.black45,
+                                      ),
                                     ),
-                                    prefixIcon: FontAwesomeIcons.calendarAlt,
-                                    onTapEditing: () async {
-                                      final initial = DateTime.tryParse(
-                                        pickings[0].scheduledDate ?? '',
-                                      ) ?? DateTime.now();
-                                      DateTime? pickedDate = await showDatePicker(
-                                        context: context,
-                                        initialDate: initial,
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                      );
-                                      if (pickedDate != null && context.mounted) {
-                                        TimeOfDay? pickedTime = await showTimePicker(
-                                          context: context,
-                                          initialTime: TimeOfDay.fromDateTime(initial),
-                                        );
-                                        if (pickedTime != null) {
-                                          final combined = DateTime(
-                                            pickedDate.year,
-                                            pickedDate.month,
-                                            pickedDate.day,
-                                            pickedTime.hour,
-                                            pickedTime.minute,
-                                          );
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[850] : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark
+                                    ? Colors.black.withValues(alpha: 0.18)
+                                    : Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  "Delivery Details",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    children: [
+                                      InfoRow(
+                                        label: "Delivery Address",
+                                        value: pickings[0].partnerId,
+                                        isEditing: _isEditing,
+                                        prefixIcon:
+                                            FontAwesomeIcons.locationDot,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
+                                        dropdownItems: partnerList
+                                            .map((p) => p.toJson())
+                                            .toList(),
+                                        selectedId:
+                                            selectedPartnerId ??
+                                            (pickings[0]
+                                                        .partnerId
+                                                        ?.isNotEmpty ??
+                                                    false
+                                                ? pickings[0].partnerId![0]
+                                                : null),
+                                        onDropdownChanged: (value) {
                                           setState(() {
-                                            scheduledDateController.text =
-                                                formatDateTimeForDisplay(
-                                              combined.toIso8601String(),
-                                            );
+                                            selectedPartnerId = value?['id'];
                                           });
-                                        }
-                                      }
-                                    },
-                                  ),
-                                  if (pickings[0].dateDeadline != null &&
-                                      pickings[0].dateDeadline!.isNotEmpty)
-                                    InfoRow(
-                                      label: "Deadline",
-                                      value: formatDateTimeForDisplay(
-                                        pickings[0].dateDeadline,
+                                        },
                                       ),
-                                      isEditing: _isEditing,
-                                      prefixIcon: FontAwesomeIcons.calendarAlt,
-                                      controller: deadlineController,
-                                      color: getScheduledDateColor(
-                                        pickings[0].dateDeadline ??
-                                            DateTime.now().toString(),
+
+                                      InfoRow(
+                                        label: "Operation Type",
+                                        value: pickings[0].pickingTypeId,
+                                        isEditing: _isEditing,
+                                        controller: operationTypeController,
+                                        dropdownItems: operationTypesList,
+                                        selectedId:
+                                            _selectedPickingTypeId ??
+                                            ((pickings[0]
+                                                        .pickingTypeId
+                                                        ?.isNotEmpty ??
+                                                    false)
+                                                ? pickings[0].pickingTypeId![0]
+                                                : null),
+                                        onDropdownChanged: (value) {
+                                          setState(() {
+                                            _selectedPickingTypeId =
+                                                value?['id'];
+                                            _selectedLocationId =
+                                                value?['default_location_src_id_int'];
+                                            _selectedLocationDestId =
+                                                value?['default_location_dest_id_int'];
+                                          });
+                                        },
+                                        prefixIcon: FontAwesomeIcons.tasks,
                                       ),
-                                      onTapEditing: () async {
-                                        final initial = DateTime.tryParse(
-                                          pickings[0].dateDeadline ?? '',
-                                        ) ?? DateTime.now();
-                                        DateTime? pickedDate = await showDatePicker(
-                                          context: context,
-                                          initialDate: initial,
-                                          firstDate: DateTime(2000),
-                                          lastDate: DateTime(2100),
-                                        );
-                                        if (pickedDate != null && context.mounted) {
-                                          TimeOfDay? pickedTime = await showTimePicker(
-                                            context: context,
-                                            initialTime: TimeOfDay.fromDateTime(initial),
-                                          );
-                                          if (pickedTime != null) {
-                                            final combined = DateTime(
-                                              pickedDate.year,
-                                              pickedDate.month,
-                                              pickedDate.day,
-                                              pickedTime.hour,
-                                              pickedTime.minute,
-                                            );
-                                            setState(() {
-                                              deadlineController.text =
-                                                  formatDateTimeForDisplay(
-                                                combined.toIso8601String(),
-                                              );
-                                            });
-                                          }
-                                        }
-                                      },
-                                    ),
-                                  if (pickings[0].state == 'done')
-                                    InfoRow(
-                                      label: "Effective Date",
-                                      value: formatDateTimeForDisplay(
-                                        pickings[0].dateDone,
-                                      ),
-                                      isEditing: _isEditing,
-                                      controller: dateDoneController,
-                                      prefixIcon: FontAwesomeIcons.calendarAlt,
-                                      color: getScheduledDateColor(
-                                        pickings[0].dateDone ??
-                                            DateTime.now().toString(),
-                                      ),
-                                      onTapEditing: _isEditing
-                                          ? () async {
-                                              final initial = DateTime.tryParse(
-                                                pickings[0].dateDone ?? '',
-                                              ) ?? DateTime.now();
-                                              DateTime? pickedDate = await showDatePicker(
+                                      InfoRow(
+                                        label: "Scheduled Date",
+                                        value: formatDateTimeForDisplay(
+                                          pickings[0].scheduledDate,
+                                        ),
+                                        isEditing: _isEditing,
+                                        controller: scheduledDateController,
+                                        color: getScheduledDateColor(
+                                          pickings[0].scheduledDate ??
+                                              DateTime.now().toString(),
+                                        ),
+                                        prefixIcon:
+                                            FontAwesomeIcons.calendarAlt,
+                                        onTapEditing: () async {
+                                          final initial =
+                                              DateTime.tryParse(
+                                                pickings[0].scheduledDate ?? '',
+                                              ) ??
+                                              DateTime.now();
+                                          DateTime? pickedDate =
+                                              await DatePickerUtils.showStandardDatePicker(
                                                 context: context,
                                                 initialDate: initial,
                                                 firstDate: DateTime(2000),
                                                 lastDate: DateTime(2100),
                                               );
-                                              if (pickedDate != null && context.mounted) {
-                                                TimeOfDay? pickedTime = await showTimePicker(
+                                          if (pickedDate != null &&
+                                              context.mounted) {
+                                            TimeOfDay? pickedTime =
+                                                await DatePickerUtils.showStandardTimePicker(
                                                   context: context,
-                                                  initialTime: TimeOfDay.fromDateTime(initial),
+                                                  initialTime:
+                                                      TimeOfDay.fromDateTime(
+                                                        initial,
+                                                      ),
                                                 );
-                                                if (pickedTime != null) {
-                                                  final combined = DateTime(
-                                                    pickedDate.year,
-                                                    pickedDate.month,
-                                                    pickedDate.day,
-                                                    pickedTime.hour,
-                                                    pickedTime.minute,
-                                                  );
-                                                  setState(() {
-                                                    dateDoneController.text =
-                                                        formatDateTimeForDisplay(
-                                                      combined.toIso8601String(),
-                                                    );
-                                                  });
-                                                }
-                                              }
-                                            }
-                                          : null,
-                                    ),
-                                  if (pickings[0].pickingTypeCode ==
-                                          'outgoing' &&
-                                      [
-                                        'waiting',
-                                        'confirmed',
-                                        'assigned',
-                                      ].contains(pickings[0].state))
-                                    InfoRow(
-                                      label: "Product Availability",
-                                      value: pickings[0].productsAvailability,
-                                      isEditing: false,
-                                      controller: availabilityController,
-                                      prefixIcon: FontAwesomeIcons.box,
-                                      color:
-                                          pickings[0].productsAvailability
-                                                  ?.toLowerCase() ==
-                                              "available"
-                                          ? Colors.green
-                                          : Colors.red,
-                                    ),
-                                  InfoRow(
-                                    label: "Source Document",
-                                    value: pickings[0].origin,
-                                    isEditing: _isEditing,
-                                    prefixIcon: FontAwesomeIcons.fileLines,
-                                    controller: sourceDocController,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(2.0),
-                        child: DefaultTabController(
-                          length: 3,
-                          child: Builder(
-                            builder: (context) {
-                              final TabController tabController =
-                                  DefaultTabController.of(context);
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: SizedBox(
-                                      height: 40,
-                                      child: ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        physics:
-                                            const ClampingScrollPhysics(),
-                                        itemCount: 3,
-                                        separatorBuilder: (_, __) =>
-                                            const SizedBox(width: 8),
-                                        itemBuilder: (context, index) {
-                                          const labels = [
-                                            'Operations',
-                                            'Additional Info',
-                                            'Note',
-                                          ];
-                                          return AnimatedBuilder(
-                                            animation:
-                                                tabController.animation!,
-                                            builder: (context, _) {
-                                              final activeIndex =
-                                                  tabController
-                                                      .animation!.value
-                                                      .round();
-                                              return GestureDetector(
-                                                onTap: () => tabController
-                                                    .animateTo(index),
-                                                child: _buildPillTab(
-                                                  label: labels[index],
-                                                  isSelected:
-                                                      activeIndex == index,
-                                                  isDark: isDark,
-                                                ),
+                                            if (pickedTime != null) {
+                                              final combined = DateTime(
+                                                pickedDate.year,
+                                                pickedDate.month,
+                                                pickedDate.day,
+                                                pickedTime.hour,
+                                                pickedTime.minute,
                                               );
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    width: double.infinity,
-                                    // Keep a consistent section height so short
-                                    // tabs (Note / Additional Info) don't shrink
-                                    // to a tiny box.
-                                    constraints:
-                                        const BoxConstraints(minHeight: 240),
-                                    clipBehavior: Clip.antiAlias,
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.grey[850]
-                                          : Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: isDark
-                                              ? Colors.black
-                                                  .withValues(alpha: 0.18)
-                                              : Colors.black
-                                                  .withValues(alpha: 0.06),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    // Swipe the body left/right to move to the
-                                    // adjacent tab section (like the sales app).
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.translucent,
-                                      onHorizontalDragEnd: (details) {
-                                        final v =
-                                            details.primaryVelocity ?? 0;
-                                        if (v < -250 &&
-                                            tabController.index < 2) {
-                                          tabController.animateTo(
-                                            tabController.index + 1,
-                                          );
-                                        } else if (v > 250 &&
-                                            tabController.index > 0) {
-                                          tabController.animateTo(
-                                            tabController.index - 1,
-                                          );
-                                        }
-                                      },
-                                      child: AnimatedBuilder(
-                                        animation: tabController.animation!,
-                                        builder: (context, _) {
-                                          switch (tabController.index) {
-                                            case 1:
-                                              return _additionalInfo();
-                                            case 2:
-                                              return _notesTab();
-                                            default:
-                                              return _productTable(isDark);
+                                              setState(() {
+                                                scheduledDateController.text =
+                                                    formatDateTimeForDisplay(
+                                                      combined
+                                                          .toIso8601String(),
+                                                    );
+                                              });
+                                            }
                                           }
                                         },
                                       ),
-                                    ),
+                                      if (pickings[0].dateDeadline != null &&
+                                          pickings[0].dateDeadline!.isNotEmpty)
+                                        InfoRow(
+                                          label: "Deadline",
+                                          value: formatDateTimeForDisplay(
+                                            pickings[0].dateDeadline,
+                                          ),
+                                          isEditing: _isEditing,
+                                          prefixIcon:
+                                              FontAwesomeIcons.calendarAlt,
+                                          controller: deadlineController,
+                                          color: getScheduledDateColor(
+                                            pickings[0].dateDeadline ??
+                                                DateTime.now().toString(),
+                                          ),
+                                          onTapEditing: () async {
+                                            final initial =
+                                                DateTime.tryParse(
+                                                  pickings[0].dateDeadline ??
+                                                      '',
+                                                ) ??
+                                                DateTime.now();
+                                            DateTime? pickedDate =
+                                                await DatePickerUtils.showStandardDatePicker(
+                                                  context: context,
+                                                  initialDate: initial,
+                                                  firstDate: DateTime(2000),
+                                                  lastDate: DateTime(2100),
+                                                );
+                                            if (pickedDate != null &&
+                                                context.mounted) {
+                                              TimeOfDay? pickedTime =
+                                                  await DatePickerUtils.showStandardTimePicker(
+                                                    context: context,
+                                                    initialTime:
+                                                        TimeOfDay.fromDateTime(
+                                                          initial,
+                                                        ),
+                                                  );
+                                              if (pickedTime != null) {
+                                                final combined = DateTime(
+                                                  pickedDate.year,
+                                                  pickedDate.month,
+                                                  pickedDate.day,
+                                                  pickedTime.hour,
+                                                  pickedTime.minute,
+                                                );
+                                                setState(() {
+                                                  deadlineController.text =
+                                                      formatDateTimeForDisplay(
+                                                        combined
+                                                            .toIso8601String(),
+                                                      );
+                                                });
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      if (pickings[0].state == 'done')
+                                        InfoRow(
+                                          label: "Effective Date",
+                                          value: formatDateTimeForDisplay(
+                                            pickings[0].dateDone,
+                                          ),
+                                          isEditing: _isEditing,
+                                          controller: dateDoneController,
+                                          prefixIcon:
+                                              FontAwesomeIcons.calendarAlt,
+                                          color: getScheduledDateColor(
+                                            pickings[0].dateDone ??
+                                                DateTime.now().toString(),
+                                          ),
+                                          onTapEditing: _isEditing
+                                              ? () async {
+                                                  final initial =
+                                                      DateTime.tryParse(
+                                                        pickings[0].dateDone ??
+                                                            '',
+                                                      ) ??
+                                                      DateTime.now();
+                                                  DateTime? pickedDate =
+                                                      await DatePickerUtils.showStandardDatePicker(
+                                                        context: context,
+                                                        initialDate: initial,
+                                                        firstDate: DateTime(
+                                                          2000,
+                                                        ),
+                                                        lastDate: DateTime(
+                                                          2100,
+                                                        ),
+                                                      );
+                                                  if (pickedDate != null &&
+                                                      context.mounted) {
+                                                    TimeOfDay? pickedTime =
+                                                        await DatePickerUtils.showStandardTimePicker(
+                                                          context: context,
+                                                          initialTime:
+                                                              TimeOfDay.fromDateTime(
+                                                                initial,
+                                                              ),
+                                                        );
+                                                    if (pickedTime != null) {
+                                                      final combined = DateTime(
+                                                        pickedDate.year,
+                                                        pickedDate.month,
+                                                        pickedDate.day,
+                                                        pickedTime.hour,
+                                                        pickedTime.minute,
+                                                      );
+                                                      setState(() {
+                                                        dateDoneController
+                                                                .text =
+                                                            formatDateTimeForDisplay(
+                                                              combined
+                                                                  .toIso8601String(),
+                                                            );
+                                                      });
+                                                    }
+                                                  }
+                                                }
+                                              : null,
+                                        ),
+                                      if (pickings[0].pickingTypeCode ==
+                                              'outgoing' &&
+                                          [
+                                            'waiting',
+                                            'confirmed',
+                                            'assigned',
+                                          ].contains(pickings[0].state))
+                                        _buildAvailabilityField(
+                                          isDark: isDark,
+                                          isEditing: _isEditing,
+                                          availability:
+                                              pickings[0].productsAvailability,
+                                        ),
+                                      InfoRow(
+                                        label: "Source Document",
+                                        value: pickings[0].origin,
+                                        isEditing: _isEditing,
+                                        prefixIcon: FontAwesomeIcons.fileLines,
+                                        controller: sourceDocController,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              );
-                            },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: DefaultTabController(
+                              length: 3,
+                              child: Builder(
+                                builder: (context) {
+                                  final TabController tabController =
+                                      DefaultTabController.of(context);
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: SizedBox(
+                                          height: 40,
+                                          child: ListView.separated(
+                                            scrollDirection: Axis.horizontal,
+                                            physics:
+                                                const ClampingScrollPhysics(),
+                                            itemCount: 3,
+                                            separatorBuilder: (_, __) =>
+                                                const SizedBox(width: 8),
+                                            itemBuilder: (context, index) {
+                                              const labels = [
+                                                'Operations',
+                                                'Additional Info',
+                                                'Note',
+                                              ];
+                                              return AnimatedBuilder(
+                                                animation:
+                                                    tabController.animation!,
+                                                builder: (context, _) {
+                                                  final activeIndex =
+                                                      tabController
+                                                          .animation!
+                                                          .value
+                                                          .round();
+                                                  return GestureDetector(
+                                                    onTap: () => tabController
+                                                        .animateTo(index),
+                                                    child: _buildPillTab(
+                                                      label: labels[index],
+                                                      isSelected:
+                                                          activeIndex == index,
+                                                      isDark: isDark,
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        width: double.infinity,
+                                        // Keep a consistent section height so short
+                                        // tabs (Note / Additional Info) don't shrink
+                                        // to a tiny box.
+                                        constraints: const BoxConstraints(
+                                          minHeight: 240,
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.grey[850]
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: isDark
+                                                  ? Colors.black.withValues(
+                                                      alpha: 0.18,
+                                                    )
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.06,
+                                                    ),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        // Swipe the body left/right to move to the
+                                        // adjacent tab section (like the sales app).
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.translucent,
+                                          onHorizontalDragEnd: (details) {
+                                            final v =
+                                                details.primaryVelocity ?? 0;
+                                            if (v < -250 &&
+                                                tabController.index < 2) {
+                                              tabController.animateTo(
+                                                tabController.index + 1,
+                                              );
+                                            } else if (v > 250 &&
+                                                tabController.index > 0) {
+                                              tabController.animateTo(
+                                                tabController.index - 1,
+                                              );
+                                            }
+                                          },
+                                          child: AnimatedBuilder(
+                                            animation: tabController.animation!,
+                                            builder: (context, _) {
+                                              switch (tabController.index) {
+                                                case 1:
+                                                  return _additionalInfo();
+                                                case 2:
+                                                  return _notesTab();
+                                                default:
+                                                  return _productTable(isDark);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-                ),
-            ),),
+            ),
           ],
           if (_isLoading || isSaving || isCreateSaving) const LoadingOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityField({
+    required bool isDark,
+    required bool isEditing,
+    required String? availability,
+  }) {
+    final isAvailable = availability?.toLowerCase() == 'available';
+    final display =
+        (availability == null ||
+            availability.isEmpty ||
+            availability.toLowerCase() == 'false')
+        ? 'Not Available'
+        : availability;
+
+    // View mode: label on left, coloured value on right (same as other display-mode rows)
+    if (!isEditing) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Product Availability',
+              style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                display,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontWeight: FontWeight.normal,
+                  color: isAvailable ? Colors.green : Colors.orange[700],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Edit mode: label above, read-only container, default text colour
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Product Availability',
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
+            ),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => CustomSnackbar.showInfo(
+              context,
+              'Product Availability cannot be edited here.',
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: isDark
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFFF2F4F6),
+                border: Border.all(color: Colors.transparent, width: 1),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              child: Row(
+                children: [
+                  Icon(
+                    HugeIcons.strokeRoundedPackage,
+                    size: 18,
+                    color: isDark ? Colors.white54 : const Color(0xff7F7F7F),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      display,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    HugeIcons.strokeRoundedLock,
+                    size: 14,
+                    color: isDark ? Colors.white24 : Colors.grey[400],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -3264,7 +3480,6 @@ return FadeTransition(opacity: animation, child: child);
     return true;
   }
 
-
   Widget _editProductLine(
     BuildContext context,
     StockMove product,
@@ -3326,7 +3541,9 @@ return FadeTransition(opacity: animation, child: child);
                                     fontWeight: FontWeight.w500,
                                     color: isDark ? Colors.white : Colors.black,
                                   ),
-                                  prefixIcon: Icon(HugeIcons.strokeRoundedSearch01),
+                                  prefixIcon: Icon(
+                                    HugeIcons.strokeRoundedSearch01,
+                                  ),
                                   border: OutlineInputBorder(),
                                 ),
                               ),
@@ -3409,8 +3626,9 @@ return FadeTransition(opacity: animation, child: child);
                             keyboardType: TextInputType.number,
                             prefixIcon: Icon(
                               HugeIcons.strokeRoundedListView,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[500],
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[500],
                             ),
                           ),
                         ],
@@ -3456,8 +3674,9 @@ return FadeTransition(opacity: animation, child: child);
                       if (_isEditing) {
                         setState(() {
                           if (product.id < 0) {
-                            _stagedNewMoves
-                                .removeWhere((m) => m.id == product.id);
+                            _stagedNewMoves.removeWhere(
+                              (m) => m.id == product.id,
+                            );
                           } else {
                             _stagedDeletedMoveIds.add(product.id);
                             _stagedEditedMoves.remove(product.id);
@@ -3540,8 +3759,9 @@ return FadeTransition(opacity: animation, child: child);
                         setState(() {
                           moveProducts[index] = moveUpdate;
                           if (product.id < 0) {
-                            final i = _stagedNewMoves
-                                .indexWhere((m) => m.id == product.id);
+                            final i = _stagedNewMoves.indexWhere(
+                              (m) => m.id == product.id,
+                            );
                             if (i != -1) _stagedNewMoves[i] = moveUpdate;
                           } else {
                             _stagedEditedMoves[product.id] = moveUpdate;
@@ -3646,6 +3866,7 @@ return FadeTransition(opacity: animation, child: child);
         children: [
           AlertDialog(
             backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+            surfaceTintColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -3693,7 +3914,9 @@ return FadeTransition(opacity: animation, child: child);
                                   fontWeight: FontWeight.w500,
                                   color: isDark ? Colors.white : Colors.black,
                                 ),
-                                prefixIcon: Icon(HugeIcons.strokeRoundedSearch01),
+                                prefixIcon: Icon(
+                                  HugeIcons.strokeRoundedSearch01,
+                                ),
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -3873,17 +4096,25 @@ return FadeTransition(opacity: animation, child: child);
                             try {
                               int? srcId;
                               int? destId;
-                              
+
                               if (pickings.isNotEmpty) {
                                 srcId = pickings[0].locationIdInt;
                                 destId = pickings[0].locationDestIdInt;
                               }
-                              
+
                               if (srcId == null || destId == null) {
-                                srcId = int.tryParse(widget.picking['location_id_int']?.toString() ?? '');
-                                destId = int.tryParse(widget.picking['location_dest_id_int']?.toString() ?? '');
+                                srcId = int.tryParse(
+                                  widget.picking['location_id_int']
+                                          ?.toString() ??
+                                      '',
+                                );
+                                destId = int.tryParse(
+                                  widget.picking['location_dest_id_int']
+                                          ?.toString() ??
+                                      '',
+                                );
                               }
-                              
+
                               if (srcId == null || destId == null) {
                                 final locations = await odooPickingFormService
                                     .getPickingLocations(pickingId);
@@ -3904,8 +4135,7 @@ return FadeTransition(opacity: animation, child: child);
                                   try {
                                     final saved = await odooPickingFormService
                                         .saveChanges(pickingId, headerUpdates)
-                                        .timeout(
-                                            const Duration(seconds: 15));
+                                        .timeout(const Duration(seconds: 15));
                                     if (!saved) {
                                       throw Exception(
                                         'Could not save your changes before '
@@ -3933,7 +4163,11 @@ return FadeTransition(opacity: animation, child: child);
                               );
 
                               if (pickings.isNotEmpty &&
-                                  !['draft', 'cancel', 'done'].contains(pickings[0].state)) {
+                                  ![
+                                    'draft',
+                                    'cancel',
+                                    'done',
+                                  ].contains(pickings[0].state)) {
                                 try {
                                   await odooPickingFormService
                                       .checkAvailability(pickingId);
@@ -3995,17 +4229,16 @@ return FadeTransition(opacity: animation, child: child);
                               final headerUpdates = _buildHeaderUpdates();
                               if (headerUpdates != null &&
                                   headerUpdates.isNotEmpty) {
-                                await hiveService.savePendingUpdates(
-                                  pickingId,
-                                  {
-                                    'title': widget.picking['item'] ??
-                                        widget.picking['name'] ??
-                                        'Picking Details',
-                                    'partner_name': null,
-                                    'user_name': null,
-                                    'updates': headerUpdates,
-                                  },
-                                );
+                                await hiveService
+                                    .savePendingUpdates(pickingId, {
+                                      'title':
+                                          widget.picking['item'] ??
+                                          widget.picking['name'] ??
+                                          'Picking Details',
+                                      'partner_name': null,
+                                      'user_name': null,
+                                      'updates': headerUpdates,
+                                    });
                               }
                             }
                           }
@@ -4043,15 +4276,15 @@ return FadeTransition(opacity: animation, child: child);
     );
   }
 
-
   Widget _productTable(isDark) {
-    final bool canEdit = _isEditing &&
+    final bool canEdit =
+        _isEditing &&
         pickings[0].state != 'done' &&
         pickings[0].state != 'cancel';
 
     if (moveProducts.isEmpty) {
-      final bool showWarn = ['assigned', 'confirmed', 'waiting']
-              .contains(pickings[0].state) &&
+      final bool showWarn =
+          ['assigned', 'confirmed', 'waiting'].contains(pickings[0].state) &&
           isOnlineAvailability;
       return Padding(
         padding: const EdgeInsets.all(16),
@@ -4062,8 +4295,11 @@ return FadeTransition(opacity: animation, child: child);
               if (showWarn)
                 Column(
                   children: [
-                    Icon(HugeIcons.strokeRoundedAlert02,
-                        color: Colors.orange[700], size: 32),
+                    Icon(
+                      HugeIcons.strokeRoundedAlert02,
+                      color: Colors.orange[700],
+                      size: 32,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'Products could not be loaded from the server.',
@@ -4116,107 +4352,109 @@ return FadeTransition(opacity: animation, child: child);
     final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Container(
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: borderColor, width: 1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Table(
+                border: TableBorder(
+                  horizontalInside: BorderSide(color: borderColor, width: 1),
+                ),
+                columnWidths: const {
+                  0: FixedColumnWidth(200),
+                  1: FixedColumnWidth(120),
+                  2: FixedColumnWidth(130),
+                },
+                children: [
+                  TableRow(
                     decoration: BoxDecoration(
-                      border: Border.all(color: borderColor, width: 1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: isDark
+                          ? const Color(0xFF3A3A3A)
+                          : const Color(0xFFF8F9FA),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Table(
-                      border: TableBorder(
-                        horizontalInside:
-                            BorderSide(color: borderColor, width: 1),
-                      ),
-                      columnWidths: const {
-                        0: FixedColumnWidth(200),
-                        1: FixedColumnWidth(120),
-                        2: FixedColumnWidth(130),
-                      },
+                    children: [
+                      _moveHeaderCell('Product', isDark),
+                      _moveHeaderCell('Demand', isDark),
+                      _moveHeaderCell('Quantity', isDark),
+                    ],
+                  ),
+                  ...moveProducts.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final product = entry.value;
+                    final name = product.productId?[1]?.toString() ?? '';
+                    final VoidCallback? tap = canEdit
+                        ? () => _openEditLine(product, index)
+                        : null;
+                    return TableRow(
                       children: [
-                        TableRow(
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF3A3A3A)
-                                : const Color(0xFFF8F9FA),
-                          ),
-                          children: [
-                            _moveHeaderCell('Product', isDark),
-                            _moveHeaderCell('Demand', isDark),
-                            _moveHeaderCell('Quantity', isDark),
-                          ],
-                        ),
-                        ...moveProducts.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final product = entry.value;
-                          final name = product.productId?[1]?.toString() ?? '';
-                          final VoidCallback? tap =
-                              canEdit ? () => _openEditLine(product, index) : null;
-                          return TableRow(
+                        _moveCell(
+                          onTap: tap,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _moveCell(
-                                onTap: tap,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      width: 22,
-                                      child: Text('${index + 1}.',
-                                          style: _moveRowStyle(isDark)),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        name,
-                                        style: _moveRowStyle(isDark),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              _moveCell(
-                                onTap: tap,
+                              SizedBox(
+                                width: 22,
                                 child: Text(
-                                  _fmtMoveQty(product.productUomQty),
+                                  '${index + 1}.',
                                   style: _moveRowStyle(isDark),
                                 ),
                               ),
-                              _moveCell(
-                                onTap: tap,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppStyle.primaryColor,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Text(
-                                      _fmtMoveQty(product.quantity),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: _moveRowStyle(isDark),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
-                          );
-                        }),
+                          ),
+                        ),
+                        _moveCell(
+                          onTap: tap,
+                          child: Text(
+                            _fmtMoveQty(product.productUomQty),
+                            style: _moveRowStyle(isDark),
+                          ),
+                        ),
+                        _moveCell(
+                          onTap: tap,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppStyle.primaryColor,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                _fmtMoveQty(product.quantity),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
-                  ),
-                ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
           if (canEdit) _addLineButton(isDark),
         ],
@@ -4230,8 +4468,9 @@ return FadeTransition(opacity: animation, child: child);
       selectedPicking = product.productId?[0];
       selectedPickingName = product.productId?[1];
     });
-    final qtyController =
-        TextEditingController(text: product.quantity.toString());
+    final qtyController = TextEditingController(
+      text: product.quantity.toString(),
+    );
     showDialog(
       context: context,
       builder: (context) =>
@@ -4326,10 +4565,10 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   TextStyle _moveRowStyle(bool isDark) => TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: isDark ? Colors.grey[300] : Colors.grey[700],
-      );
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    color: isDark ? Colors.grey[300] : Colors.grey[700],
+  );
 
   String _fmtMoveQty(num value) =>
       value == value.truncate() ? value.toInt().toString() : '$value';
@@ -4338,7 +4577,7 @@ return FadeTransition(opacity: animation, child: child);
     final picking = pickings[0];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -4358,7 +4597,7 @@ return FadeTransition(opacity: animation, child: child);
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
@@ -4375,18 +4614,15 @@ return FadeTransition(opacity: animation, child: child);
                           value:
                               _selectedShippingPolicy ??
                               (pickings.isNotEmpty
-                                      ? pickings[0].moveType
-                                      : null) ??
+                                  ? pickings[0].moveType
+                                  : null) ??
                               'direct',
-                          // DropdownButton2.style REPLACES the default text
-                          // style (it doesn't merge), so build it from the
-                          // theme's titleMedium to keep the app font (Manrope)
-                          // instead of falling back to the platform default.
-                          style: (Theme.of(context).textTheme.titleMedium ??
-                                  const TextStyle())
-                              .copyWith(
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
+                          style:
+                              (Theme.of(context).textTheme.titleMedium ??
+                                      const TextStyle())
+                                  .copyWith(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
                           items: const [
                             DropdownMenuItem(
                               value: 'direct',
@@ -4441,7 +4677,7 @@ return FadeTransition(opacity: animation, child: child);
                     ],
                   ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           InfoRow(
             label: "Responsible",
             value: picking.userId,
@@ -4460,7 +4696,7 @@ return FadeTransition(opacity: animation, child: child);
             onTap: () {},
           ),
           if (picking.groupId != null && picking.groupId!.length > 1) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -4483,7 +4719,7 @@ return FadeTransition(opacity: animation, child: child);
               ],
             ),
           ],
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           if (_isEditing) ...[
             Text(
               "Company",
@@ -4493,20 +4729,41 @@ return FadeTransition(opacity: animation, child: child);
               ),
             ),
             const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2F4F6),
+            GestureDetector(
+              onTap: () => CustomSnackbar.showInfo(
+                context,
+                'Company cannot be changed.',
               ),
-              child: Text(
-                (picking.companyId != null && picking.companyId!.length > 1)
-                    ? picking.companyId![1]
-                    : "None",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.white54 : Colors.grey[600],
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: isDark
+                      ? const Color(0xFF2A2A2A)
+                      : const Color(0xFFF2F4F6),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (picking.companyId != null &&
+                                picking.companyId!.length > 1)
+                            ? picking.companyId![1]
+                            : "None",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white54 : Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      HugeIcons.strokeRoundedLock,
+                      size: 14,
+                      color: isDark ? Colors.white24 : Colors.grey[400],
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -4541,10 +4798,10 @@ return FadeTransition(opacity: animation, child: child);
 
   Widget _notesTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final String rawNote =
-        (pickings.isNotEmpty ? (pickings[0].note ?? '') : '');
-    final String plainNote =
-        rawNote.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final String rawNote = (pickings.isNotEmpty
+        ? (pickings[0].note ?? '')
+        : '');
+    final String plainNote = rawNote.replaceAll(RegExp(r'<[^>]*>'), '').trim();
 
     if (_isEditing) {
       return Padding(
@@ -4554,7 +4811,8 @@ return FadeTransition(opacity: animation, child: child);
           value: pickings.isNotEmpty ? pickings[0].note : '',
           isEditing: true,
           controller: _noteController,
-          readOnly: pickings.isNotEmpty &&
+          readOnly:
+              pickings.isNotEmpty &&
               ['done', 'cancel'].contains(pickings[0].state),
           onTap: () {},
         ),
@@ -4580,9 +4838,7 @@ return FadeTransition(opacity: animation, child: child);
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: isDark
-                  ? const Color(0xFF2A2A2A)
-                  : const Color(0xFFF2F4F6),
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2F4F6),
             ),
             child: plainNote.isNotEmpty
                 ? Text(

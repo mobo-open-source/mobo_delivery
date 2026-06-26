@@ -180,7 +180,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         color: isDark
                             ? const Color(0xFF2A2A2A)
                             : Theme.of(sheetContext).primaryColor,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
                             color: isDark

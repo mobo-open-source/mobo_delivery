@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+import '../../../../shared/utils/date_picker_utils.dart';
 import '../../../../shared/utils/globals.dart';
 
 /// Bottom sheet dialog for filtering pickings by:
@@ -127,7 +128,8 @@ class FilterBottomSheet extends StatelessWidget {
                       color: AppStyle.primaryColor,
                     ),
                     onTap: () async {
-                      final picked = await showDatePicker(
+                      final picked =
+                          await DatePickerUtils.showStandardDatePicker(
                         context: context,
                         initialDate: DateTime.now(),
                         firstDate: DateTime(2000),
@@ -217,7 +219,7 @@ class FilterBottomSheet extends StatelessWidget {
                           vertical: 14,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       onPressed: () {

@@ -98,8 +98,9 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
       setState(() {
         moveItems = items.map((item) {
           final qty = item['quantity'];
-          final text = qty is num ? qty.toString() : (qty?.toString() ?? '0');
-          item['qtyController'] = TextEditingController(text: text);
+          final hint = qty is num ? qty.toString() : (qty?.toString() ?? '0');
+          item['qtyHint'] = hint;
+          item['qtyController'] = TextEditingController();
           return item;
         }).toList();
         _moveItemsLoaded = true;
@@ -185,6 +186,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
             itemBuilder: (context, index) {
               final move = moveItems[index];
               final controller = move['qtyController'] as TextEditingController;
+              final qtyHint = move['qtyHint'] as String? ?? '0';
               final productName = move['product_id'] is List
                   ? (move['product_id'][1] ?? 'Unnamed')
                   : 'Unnamed';
@@ -198,6 +200,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                     MoboTextField(
                       controller: controller,
                       label: 'Qty',
+                      hintText: qtyHint,
                       showShadow: false,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -326,7 +329,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
           height: 40,
           decoration: BoxDecoration(
             color: AppStyle.primaryColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
             border: border,
           ),
           child: const Icon(
@@ -348,11 +351,11 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: border,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(11),
           child: Image.memory(
             bytes,
             width: 40,

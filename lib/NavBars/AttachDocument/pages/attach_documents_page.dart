@@ -229,7 +229,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                         color: isDark
                             ? Color(0xFF2A2A2A)
                             : AppStyle.primaryColor,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
                             color: isDark

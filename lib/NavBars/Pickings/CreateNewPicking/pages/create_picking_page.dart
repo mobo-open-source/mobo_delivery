@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
+import '../../../../shared/utils/date_picker_utils.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/inputs/mobo_text_field.dart';
@@ -533,7 +534,7 @@ return FadeTransition(opacity: animation, child: child);
               disabledBackgroundColor: Colors.grey[400],
               disabledForegroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.all(13),
             ),
@@ -607,6 +608,7 @@ return FadeTransition(opacity: animation, child: child);
                             RequiredLabel(
                               'Delivery Address',
                               isRequired: true,
+                              fontWeight: FontWeight.w500,
                               color: isDark
                                   ? Colors.white70
                                   : const Color(0xff7F7F7F),
@@ -634,6 +636,7 @@ return FadeTransition(opacity: animation, child: child);
                             RequiredLabel(
                               'Operation Type',
                               isRequired: true,
+                              fontWeight: FontWeight.w500,
                               color: isDark
                                   ? Colors.white70
                                   : const Color(0xff7F7F7F),
@@ -681,20 +684,18 @@ return FadeTransition(opacity: animation, child: child);
                               prefixIcon: HugeIcons.strokeRoundedCalendar03,
                               onTapEditing: () async {
                                 final now = DateTime.now();
-                                DateTime? pickedDate = await showDatePicker(
+                                DateTime? pickedDate =
+                                    await DatePickerUtils.showStandardDatePicker(
                                   context: context,
                                   initialDate: now,
                                   firstDate: DateTime(2000),
                                   lastDate: DateTime(2100),
-                                  builder: (context, child) =>
-                                      _whitePickerTheme(context, child),
                                 );
                                 if (pickedDate != null && context.mounted) {
-                                  TimeOfDay? pickedTime = await showTimePicker(
+                                  TimeOfDay? pickedTime =
+                                      await DatePickerUtils.showStandardTimePicker(
                                     context: context,
                                     initialTime: TimeOfDay.now(),
-                                    builder: (context, child) =>
-                                        _whitePickerTheme(context, child),
                                   );
                                   if (pickedTime != null) {
                                     final combined = DateTime(
@@ -900,28 +901,6 @@ return FadeTransition(opacity: animation, child: child);
 
   /// Forces the date/time pickers onto a clean white surface with mobo
   /// accents instead of the seeded pink-tinted Material 3 surface.
-  Widget _whitePickerTheme(BuildContext context, Widget? child) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        colorScheme: ColorScheme.light(
-          primary: AppStyle.primaryColor,
-          onPrimary: Colors.white,
-          surface: Colors.white,
-          onSurface: Colors.black87,
-        ),
-        datePickerTheme: const DatePickerThemeData(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-        ),
-        timePickerTheme: const TimePickerThemeData(
-          backgroundColor: Colors.white,
-        ),
-        dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
-      ),
-      child: child!,
-    );
-  }
-
   Widget _buildStyledTab(String text, double selectedness) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Match the sales app's order-details tabs: unselected = white pill with a
@@ -1002,7 +981,7 @@ return FadeTransition(opacity: animation, child: child);
               children: List.generate(3, (index) => Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Container(height: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15))),
+                  child: Container(height: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14))),
                 ),
               )),
             ),

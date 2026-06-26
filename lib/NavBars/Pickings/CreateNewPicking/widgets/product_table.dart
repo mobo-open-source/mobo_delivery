@@ -27,7 +27,7 @@ class ProductTable extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -35,7 +35,7 @@ class ProductTable extends StatelessWidget {
             _buildEmptyState(isDark)
           else
             ...moveProducts.map((product) => _buildProductCard(product, isDark)),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
           _buildAddLineButton(isDark),
         ],
       ),
@@ -76,7 +76,7 @@ class ProductTable extends StatelessWidget {
                 height: 56,
                 decoration: BoxDecoration(
                   color: AppStyle.primaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
                   ),
@@ -155,48 +155,44 @@ class ProductTable extends StatelessWidget {
 
   Widget _buildEmptyState(bool isDark) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.grey[50],
+        color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-          width: 1,
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppStyle.primaryColor.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              HugeIcons.strokeRoundedPackage,
-              size: 32,
-              color: AppStyle.primaryColor,
-            ),
+          Icon(
+            HugeIcons.strokeRoundedPackage,
+            size: 40,
+            color: isDark ? Colors.grey[600] : Colors.grey[400],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'No products added yet',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : Colors.grey[800],
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            'Tap "Add a line" below to add\nproducts to this picking.',
+            'Tap "Add a line" below to get started.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.w400,
-              height: 1.5,
               color: isDark ? Colors.white38 : Colors.grey[500],
             ),
           ),
