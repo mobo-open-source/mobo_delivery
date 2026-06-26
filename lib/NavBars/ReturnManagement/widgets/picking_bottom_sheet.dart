@@ -256,7 +256,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                 ],
               ),
             ),
-          MoboButton.danger(
+          MoboButton.primary(
             label: 'Return',
             icon: HugeIcons.strokeRoundedDeliveryReturn02,
             borderRadius: 8,

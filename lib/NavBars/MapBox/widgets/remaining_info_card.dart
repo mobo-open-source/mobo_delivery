@@ -242,7 +242,7 @@ class RemainingInfoCard extends StatelessWidget {
           ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.of(context).padding.bottom + 12),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(

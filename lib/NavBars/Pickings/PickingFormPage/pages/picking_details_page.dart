@@ -16,6 +16,7 @@ import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/utils/date_picker_utils.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../../shared/widgets/dialogs/common_dialog.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -679,6 +680,13 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     if (dataMatch != null) {
       final candidate = dataMatch.group(1)!.trim();
       if (candidate.isNotEmpty) return candidate;
+    }
+
+    // Expose plain Exception messages so our own throws and network errors are visible.
+    const exPrefix = 'Exception: ';
+    if (raw.startsWith(exPrefix)) {
+      final msg = raw.substring(exPrefix.length).trim();
+      if (msg.isNotEmpty && msg.length < 400) return msg;
     }
 
     return fallback;
@@ -1812,7 +1820,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     required String fallbackSuccessMessage,
   }) async {
     final resModel = action['res_model']?.toString() ?? '';
-    final wizardId = action['res_id'] is int ? action['res_id'] as int : null;
+    final rawResId = action['res_id'];
+    final wizardId = rawResId is int
+        ? rawResId
+        : rawResId is double
+            ? rawResId.toInt()
+            : null;
     final context0 = action['context'] is Map
         ? Map<String, dynamic>.from(action['context'] as Map)
         : <String, dynamic>{};
@@ -1944,40 +1957,27 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(ctx).brightness == Brightness.dark
-            ? Colors.grey[850]
-            : Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Send SMS?'),
-        content: const Text(
-          'Odoo can notify the customer that this delivery has been processed. '
-          'Send an SMS now, or validate without notifying?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await callWizardWithFallback(const [
-                'dont_send_sms',
-                'action_cancel',
-              ]);
-            },
-            child: const Text("Don't Send"),
-          ),
-          MoboButton.primary(
-            label: 'Send SMS',
-            fullWidth: false,
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await callWizardWithFallback(const [
-                'send_sms',
-                'action_send_sms',
-              ]);
-            },
-          ),
-        ],
+      builder: (ctx) => CommonDialog(
+        title: 'Send SMS?',
+        message:
+            'Odoo can notify the customer that this delivery has been processed. '
+            'Send an SMS now, or validate without notifying?',
+        secondaryLabel: "Don't Send",
+        onSecondary: () async {
+          Navigator.of(ctx).pop();
+          await callWizardWithFallback(const [
+            'dont_send_sms',
+            'action_cancel',
+          ]);
+        },
+        primaryLabel: 'Send SMS',
+        onPrimary: () async {
+          Navigator.of(ctx).pop();
+          await callWizardWithFallback(const [
+            'send_sms',
+            'action_send_sms',
+          ]);
+        },
       ),
     );
   }
@@ -2011,51 +2011,39 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(ctx).brightness == Brightness.dark
-            ? Colors.grey[850]
-            : Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          MoboButton.primary(
-            label: confirmLabel,
-            fullWidth: false,
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              setState(() => isSaving = true);
-              try {
-                await CompanySessionManager.callKwWithCompany({
-                  'model': wizardModel,
-                  'method': confirmMethod,
-                  'args': [
-                    [wizardId],
-                  ],
-                  'kwargs': {'context': context0},
-                });
-                await _loadSavingData();
-                if (mounted) {
-                  CustomSnackbar.showSuccess(context, successMessage);
-                }
-              } catch (e) {
-                if (mounted) {
-                  CustomSnackbar.showError(
-                    context,
-                    _extractOdooError(e, 'Failed to complete $wizardModel.'),
-                  );
-                }
-              } finally {
-                if (mounted) setState(() => isSaving = false);
-              }
-            },
-          ),
-        ],
+      builder: (ctx) => CommonDialog(
+        title: title,
+        message: message,
+        secondaryLabel: 'Cancel',
+        onSecondary: () => Navigator.of(ctx).pop(),
+        primaryLabel: confirmLabel,
+        onPrimary: () async {
+          Navigator.of(ctx).pop();
+          setState(() => isSaving = true);
+          try {
+            await CompanySessionManager.callKwWithCompany({
+              'model': wizardModel,
+              'method': confirmMethod,
+              'args': [
+                [wizardId],
+              ],
+              'kwargs': {'context': context0},
+            });
+            await _loadSavingData();
+            if (mounted) {
+              CustomSnackbar.showSuccess(context, successMessage);
+            }
+          } catch (e) {
+            if (mounted) {
+              CustomSnackbar.showError(
+                context,
+                _extractOdooError(e, 'Failed to complete $wizardModel.'),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => isSaving = false);
+          }
+        },
       ),
     );
   }
@@ -2082,175 +2070,189 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     return ctx;
   }
 
+  // Resolves the wizard record ID from the action returned by button_validate.
+  // Odoo 16 pre-creates the wizard and returns res_id as an int; Odoo 17 returns
+  // res_id: false and expects the client to create the wizard using the action context.
+  Future<int?> _resolveWizardId(
+      String model, int pickingId, dynamic action) async {
+    final rawId = action is Map ? action['res_id'] : null;
+    if (rawId is int && rawId > 0) return rawId;
+    if (rawId is double && rawId > 0) return rawId.toInt();
+
+    // Create the wizard; Odoo's default_get uses button_validate_picking_ids from
+    // context to populate the wizard's pick_ids field automatically.
+    final ctx = _wizardContext(pickingId, action);
+    final created = await CompanySessionManager.callKwWithCompany({
+      'model': model,
+      'method': 'create',
+      'args': [{}],
+      'kwargs': {'context': ctx},
+    });
+    if (created is int && created > 0) return created;
+    if (created is double && created > 0) return created.toInt();
+    return null;
+  }
+
   Future<void> _showImmediateTransferDialog(int pickingId, success) async {
-    final int? wizardId = success['res_id'] is int
-        ? success['res_id'] as int
-        : null;
+    int? wizardId;
+    try {
+      wizardId =
+          await _resolveWizardId('stock.immediate.transfer', pickingId, success);
+    } catch (e) {
+      if (!mounted) return;
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(e, 'Failed to prepare immediate transfer wizard.'),
+      );
+      return;
+    }
+    if (wizardId == null) {
+      if (!mounted) return;
+      CustomSnackbar.showError(
+        context,
+        'Failed to prepare immediate transfer: wizard ID could not be resolved.',
+      );
+      return;
+    }
+    final wId = wizardId;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[850]
-            : Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Immediate Transfer?'),
-        content: const Text(
-          'You have not recorded any quantities. Odoo will mark all products as done immediately. Do you want to proceed?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          MoboButton.primary(
-            label: 'Confirm',
-            fullWidth: false,
-            onPressed: () async {
-              Navigator.of(context).pop();
-              setState(() => isSaving = true);
-              try {
-                if (wizardId == null) {
-                  throw Exception(
-                    'Cannot process immediate transfer: wizard record ID not found. '
-                    'Please validate from the Odoo web interface.',
-                  );
-                }
-                await CompanySessionManager.callKwWithCompany({
-                  'model': 'stock.immediate.transfer',
-                  'method': 'process',
-                  'args': [
-                    [wizardId],
-                  ],
-                  'kwargs': {'context': _wizardContext(pickingId, success)},
-                });
-                await _loadSavingData();
-                if (mounted) {
-                  CustomSnackbar.showSuccess(
-                    context,
-                    'Transfer validated successfully.',
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  final msg = _extractOdooError(
-                    e,
-                    'Failed to process immediate transfer.',
-                  );
-                  CustomSnackbar.showError(context, msg);
-                }
-              } finally {
-                if (mounted) setState(() => isSaving = false);
-              }
-            },
-          ),
-        ],
+      builder: (context) => CommonDialog(
+        title: 'Immediate Transfer?',
+        message:
+            'You have not recorded any quantities. Odoo will mark all products as done immediately. Do you want to proceed?',
+        secondaryLabel: 'Cancel',
+        onSecondary: () => Navigator.of(context).pop(),
+        primaryLabel: 'Confirm',
+        onPrimary: () async {
+          Navigator.of(context).pop();
+          setState(() => isSaving = true);
+          try {
+            await CompanySessionManager.callKwWithCompany({
+              'model': 'stock.immediate.transfer',
+              'method': 'process',
+              'args': [
+                [wId],
+              ],
+              'kwargs': {'context': _wizardContext(pickingId, success)},
+            });
+            await _loadSavingData();
+            if (mounted) {
+              CustomSnackbar.showSuccess(
+                context,
+                'Transfer validated successfully.',
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              final msg = _extractOdooError(
+                e,
+                'Failed to process immediate transfer.',
+              );
+              CustomSnackbar.showError(context, msg);
+            }
+          } finally {
+            if (mounted) setState(() => isSaving = false);
+          }
+        },
       ),
     );
   }
 
   Future<void> _showBackorderDialog(int pickingId, success) async {
-    final int? wizardId = success['res_id'] is int
-        ? success['res_id'] as int
-        : null;
+    int? wizardId;
+    try {
+      wizardId = await _resolveWizardId(
+          'stock.backorder.confirmation', pickingId, success);
+    } catch (e) {
+      if (!mounted) return;
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(e, 'Failed to prepare backorder wizard.'),
+      );
+      return;
+    }
+    if (wizardId == null) {
+      if (!mounted) return;
+      CustomSnackbar.showError(
+        context,
+        'Failed to prepare backorder wizard: ID could not be resolved.',
+      );
+      return;
+    }
+    final wId = wizardId;
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[850]
-            : Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Create Backorder?'),
-        content: const Text(
-          'Some products are not fully available. Would you like to create a backorder for the remaining quantities, or validate only what is available?',
-        ),
-        actions: [
-          MoboButton.danger(
-            label: 'No Backorder',
-            fullWidth: false,
-            onPressed: () async {
-              Navigator.of(context).pop();
-              setState(() => isSaving = true);
-              try {
-                if (wizardId == null) {
-                  throw Exception(
-                    'Cannot process: backorder wizard record ID not found. '
-                    'Please validate from the Odoo web interface.',
-                  );
-                }
-                await CompanySessionManager.callKwWithCompany({
-                  'model': 'stock.backorder.confirmation',
-                  'method': 'process_cancel_backorder',
-                  'args': [
-                    [wizardId],
-                  ],
-                  'kwargs': {'context': _wizardContext(pickingId, success)},
-                });
-                await _loadSavingData();
-                if (mounted) setState(() => isSaving = false);
-                if (mounted) {
-                  CustomSnackbar.showWarning(
-                    context,
-                    'Picking validated without backorder.',
-                  );
-                }
-              } catch (e) {
-                if (mounted) setState(() => isSaving = false);
-                if (mounted) {
-                  final msg = _extractOdooError(
-                    e,
-                    'Failed to validate without backorder.',
-                  );
-                  CustomSnackbar.showError(context, msg);
-                }
-              }
-            },
-          ),
-          MoboButton.primary(
-            label: 'Create Backorder',
-            fullWidth: false,
-            onPressed: () async {
-              Navigator.of(context).pop();
-              setState(() => isSaving = true);
-              try {
-                if (wizardId == null) {
-                  throw Exception(
-                    'Cannot process: backorder wizard record ID not found. '
-                    'Please validate from the Odoo web interface.',
-                  );
-                }
-                await CompanySessionManager.callKwWithCompany({
-                  'model': 'stock.backorder.confirmation',
-                  'method': 'process',
-                  'args': [
-                    [wizardId],
-                  ],
-                  'kwargs': {'context': _wizardContext(pickingId, success)},
-                });
-                await _loadSavingData();
-                if (mounted) setState(() => isSaving = false);
-                if (mounted) {
-                  CustomSnackbar.showSuccess(
-                    context,
-                    'Backorder created successfully.',
-                  );
-                }
-              } catch (e) {
-                if (mounted) setState(() => isSaving = false);
-                if (mounted) {
-                  final msg = _extractOdooError(
-                    e,
-                    'Failed to create backorder.',
-                  );
-                  CustomSnackbar.showError(context, msg);
-                }
-              }
-            },
-          ),
-        ],
+      builder: (context) => CommonDialog(
+        title: 'Create Backorder?',
+        message:
+            'Some products are not fully available. Would you like to create a backorder for the remaining quantities, or validate only what is available?',
+        secondaryLabel: 'No Backorder',
+        onSecondary: () async {
+          Navigator.of(context).pop();
+          setState(() => isSaving = true);
+          try {
+            await CompanySessionManager.callKwWithCompany({
+              'model': 'stock.backorder.confirmation',
+              'method': 'process_cancel_backorder',
+              'args': [
+                [wId],
+              ],
+              'kwargs': {'context': _wizardContext(pickingId, success)},
+            });
+            await _loadSavingData();
+            if (mounted) setState(() => isSaving = false);
+            if (mounted) {
+              CustomSnackbar.showWarning(
+                context,
+                'Picking validated without backorder.',
+              );
+            }
+          } catch (e) {
+            if (mounted) setState(() => isSaving = false);
+            if (mounted) {
+              final msg = _extractOdooError(
+                e,
+                'Failed to validate without backorder.',
+              );
+              CustomSnackbar.showError(context, msg);
+            }
+          }
+        },
+        primaryLabel: 'Create Backorder',
+        onPrimary: () async {
+          Navigator.of(context).pop();
+          setState(() => isSaving = true);
+          try {
+            await CompanySessionManager.callKwWithCompany({
+              'model': 'stock.backorder.confirmation',
+              'method': 'process',
+              'args': [
+                [wId],
+              ],
+              'kwargs': {'context': _wizardContext(pickingId, success)},
+            });
+            await _loadSavingData();
+            if (mounted) setState(() => isSaving = false);
+            if (mounted) {
+              CustomSnackbar.showSuccess(
+                context,
+                'Backorder created successfully.',
+              );
+            }
+          } catch (e) {
+            if (mounted) setState(() => isSaving = false);
+            if (mounted) {
+              final msg = _extractOdooError(
+                e,
+                'Failed to create backorder.',
+              );
+              CustomSnackbar.showError(context, msg);
+            }
+          }
+        },
       ),
     );
   }

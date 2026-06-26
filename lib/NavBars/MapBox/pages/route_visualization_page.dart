@@ -19,6 +19,7 @@ import '../../../shared/widgets/error_state_widget.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
+import '../../../shared/widgets/dialogs/common_dialog.dart';
 import '../widgets/navigation_header.dart';
 import '../widgets/remaining_info_card.dart';
 import '../widgets/route_info_card.dart';
@@ -1997,9 +1998,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     ),
                   ),
                   Positioned(
-                    bottom: 20,
-                    left: 16,
-                    right: 16,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
                     child: RouteInfoCard(
                       routeDuration: _routeDuration,
                       routeDistance: _routeDistance,
@@ -2028,9 +2029,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
-                    bottom: _showRemainingInfo ? 20 : -300,
-                    left: 16,
-                    right: 16,
+                    bottom: _showRemainingInfo ? 0 : -300,
+                    left: 0,
+                    right: 0,
                     child: RemainingInfoCard(
                       remainingDistance: _remainingDistance,
                       remainingDuration: _remainingDuration,
@@ -2232,32 +2233,18 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           context: context,
           builder: (ctx) {
             final dark = Theme.of(ctx).brightness == Brightness.dark;
-            return AlertDialog(
-              backgroundColor:
-                  dark ? const Color(0xFF1C1C2E) : Colors.white,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: const Text('Far from Route Start',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
-              content: Text(
-                'Your current location is $km km away from the route\'s '
-                'starting point. Navigation may re-route immediately or '
-                'be inaccurate. Continue anyway?',
-                style: const TextStyle(fontSize: 14),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Continue',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
-              ],
+            return CommonDialog(
+              title: 'Far from Route Start',
+              message:
+                  'Your current location is $km km away from the route\'s '
+                  'starting point. Navigation may re-route immediately or '
+                  'be inaccurate. Continue anyway?',
+              icon: HugeIcons.strokeRoundedLocation01,
+              topIconCentered: true,
+              secondaryLabel: 'Cancel',
+              onSecondary: () => Navigator.pop(ctx, false),
+              primaryLabel: 'Continue',
+              onPrimary: () => Navigator.pop(ctx, true),
             );
           },
         );

@@ -74,6 +74,14 @@ class AppTheme {
         foregroundColor: Colors.white,
       ),
     ),
+    chipTheme: ChipThemeData(
+      selectedColor: primaryColor,
+      checkmarkColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      pressElevation: 0,
+      shadowColor: Colors.transparent,
+    ),
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       focusedBorder: OutlineInputBorder(
@@ -117,6 +125,14 @@ class AppTheme {
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
       ),
+    ),
+    chipTheme: ChipThemeData(
+      selectedColor: primaryColor,
+      checkmarkColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      pressElevation: 0,
+      shadowColor: Colors.transparent,
     ),
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

@@ -185,8 +185,40 @@ class FilterBottomSheet extends StatelessWidget {
                       spacing: 10,
                       children: [
                         ChoiceChip(
-                          label: const Text('Outgoing'),
+                          label: Text(
+                            'Outgoing',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: modalType == 'outgoing'
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: modalType == 'outgoing'
+                                  ? Colors.white
+                                  : (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black87),
+                            ),
+                          ),
                           selected: modalType == 'outgoing',
+                          selectedColor: AppStyle.primaryColor,
+                          backgroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white.withOpacity(0.08)
+                                  : AppStyle.primaryColor.withOpacity(0.08),
+                          surfaceTintColor: Colors.transparent,
+                          showCheckmark: false,
+                          elevation: 0,
+                          pressElevation: 0,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[600]!
+                                  : Colors.grey[300]!,
+                            ),
+                          ),
                           onSelected: (val) {
                             setModalState(() {
                               modalType = 'outgoing';
@@ -194,8 +226,40 @@ class FilterBottomSheet extends StatelessWidget {
                           },
                         ),
                         ChoiceChip(
-                          label: const Text('Incoming'),
+                          label: Text(
+                            'Incoming',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: modalType == 'incoming'
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: modalType == 'incoming'
+                                  ? Colors.white
+                                  : (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black87),
+                            ),
+                          ),
                           selected: modalType == 'incoming',
+                          selectedColor: AppStyle.primaryColor,
+                          backgroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white.withOpacity(0.08)
+                                  : AppStyle.primaryColor.withOpacity(0.08),
+                          surfaceTintColor: Colors.transparent,
+                          showCheckmark: false,
+                          elevation: 0,
+                          pressElevation: 0,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[600]!
+                                  : Colors.grey[300]!,
+                            ),
+                          ),
                           onSelected: (val) {
                             setModalState(() {
                               modalType = 'incoming';

@@ -163,9 +163,28 @@ class RouteInfoCard extends StatelessWidget {
             ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 12),
             child: Row(
               children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: accent,
+                      side: BorderSide(color: accent, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: onAddStopPressed,
+                    icon: const Icon(HugeIcons.strokeRoundedLocation01, size: 16),
+                    label: const Text(
+                      'Add Stop',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
@@ -180,25 +199,6 @@ class RouteInfoCard extends StatelessWidget {
                     icon: const Icon(HugeIcons.strokeRoundedNavigation03, size: 18),
                     label: const Text(
                       'Start',
-                      style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: accent,
-                      side: BorderSide(color: accent, width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    onPressed: onAddStopPressed,
-                    icon: const Icon(HugeIcons.strokeRoundedLocation01, size: 16),
-                    label: const Text(
-                      'Add Stop',
                       style: TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w600),
                     ),
