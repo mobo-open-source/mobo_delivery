@@ -815,6 +815,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       builder: (BuildContext context) {
         bool isFetchingStops = false;
         bool didAddStopField = false;
+        bool isPickingDropdownOpen = false;
         final pickingsDropdownKey =
             GlobalKey<DropdownSearchState<Map<String, dynamic>>>();
         final pickingsSearchCtrl = TextEditingController();
@@ -879,9 +880,22 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       const SizedBox(height: 16),
 
                       _fieldHeading('Pickings', isDark, isRequired: true),
-                      DropdownSearch<Map<String, dynamic>>.multiSelection(
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isPickingDropdownOpen
+                                ? AppStyle.primaryColor
+                                : Colors.transparent,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: DropdownSearch<Map<String, dynamic>>.multiSelection(
                         key: pickingsDropdownKey,
-                        items: pickings,
+                        items: [
+                          ...pickings.where((p) => selectedPickings.contains(p['id'])),
+                          ...pickings.where((p) => !selectedPickings.contains(p['id'])),
+                        ],
                         itemAsString: (p) =>
                             p['name']?.toString() ?? '',
                         compareFn: (a, b) => a['id'] == b['id'],
@@ -891,6 +905,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                             .toList(),
                         onBeforePopupOpening: (_) async {
                           pickingsSearchCtrl.clear();
+                          sheetSetState(() => isPickingDropdownOpen = true);
                           return true;
                         },
                         onChanged: (items) {
@@ -1052,6 +1067,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         ),
                         popupProps:
                             PopupPropsMultiSelection.menu(
+                          onDismissed: () =>
+                              sheetSetState(() => isPickingDropdownOpen = false),
                           showSearchBox: false,
                           searchFieldProps: TextFieldProps(
                               controller: pickingsSearchCtrl),
@@ -1311,6 +1328,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           },
                         ),
                       ),
+                      ), // closes Container
 
                       if (shouldValidate) ...[
                         const SizedBox(height: 8),
@@ -1768,9 +1786,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// When [isRequired] is true a red `*` marks the field as mandatory.
   Widget _fieldHeading(String text, bool isDark, {bool isRequired = false}) {
     final style = TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: isDark ? Colors.white70 : Colors.black87,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
     );
     return Align(
       alignment: Alignment.centerLeft,
@@ -1835,109 +1853,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         ],
       );
 
-  /// Non-editable "Your location" chip shown in the source field when GPS is
-  /// selected as the origin. Mirrors Google Maps / Waze style: blue pulsing dot,
-  /// "Your location" label, "Using GPS" subtitle, and an × to switch to manual entry.
   Widget _buildCurrentLocationChip({
     required bool isDark,
     required Color onSurface,
     required VoidCallback onClear,
   }) {
-    const gpsBlueDot = Color(0xFF4285F4);
-    return Container(
-      decoration: _fieldShadow,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: gpsBlueDot.withValues(alpha: 0.35),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Blue GPS pulsing dot (outer ring + inner filled dot)
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: gpsBlueDot.withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: gpsBlueDot,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 5,
-                        height: 5,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Your location',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white : const Color(0xFF202124),
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  const Text(
-                    'Using GPS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: gpsBlueDot,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: onClear,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  HugeIcons.strokeRoundedCancel01,
-                  size: 16,
-                  color: onSurface.withValues(alpha: 0.45),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _GpsLocationChip(
+      isDark: isDark,
+      onSurface: onSurface,
+      onClear: onClear,
     );
   }
 
@@ -2421,4 +2345,147 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     );
   }
 
+}
+
+/// Animated "Your location / Using GPS" chip with a light-green pulsing dot.
+/// Owns its own [AnimationController] so it doesn't pollute the parent state.
+class _GpsLocationChip extends StatefulWidget {
+  final bool isDark;
+  final Color onSurface;
+  final VoidCallback onClear;
+
+  const _GpsLocationChip({
+    required this.isDark,
+    required this.onSurface,
+    required this.onClear,
+  });
+
+  @override
+  State<_GpsLocationChip> createState() => _GpsLocationChipState();
+}
+
+class _GpsLocationChipState extends State<_GpsLocationChip>
+    with SingleTickerProviderStateMixin {
+  static const _green = Color(0xFF4CAF50);
+  late final AnimationController _controller;
+  late final Animation<double> _pulseScale;
+  late final Animation<double> _pulseOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+
+    _pulseScale = Tween<double>(begin: 1.0, end: 3.2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _pulseOpacity = Tween<double>(begin: 0.7, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: widget.isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          // Pulsing GPS icon badge
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Animated pulse ring
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (_, __) => Opacity(
+                    opacity: _pulseOpacity.value,
+                    child: Transform.scale(
+                      scale: _pulseScale.value,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: _green.withValues(alpha: 0.35),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Icon badge
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    color: _green,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    HugeIcons.strokeRoundedGps01,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Your location',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: widget.isDark ? Colors.white : const Color(0xFF202124),
+                  ),
+                ),
+                const SizedBox(height: 1),
+                const Text(
+                  'Using GPS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _green,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: widget.onClear,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                HugeIcons.strokeRoundedCancel01,
+                size: 16,
+                color: widget.onSurface.withValues(alpha: 0.45),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

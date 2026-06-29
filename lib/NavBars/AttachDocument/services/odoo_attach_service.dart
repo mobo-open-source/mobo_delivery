@@ -341,4 +341,23 @@ class OdooAttachService {
       return false;
     }
   }
+
+  /// Permanently deletes an `ir.attachment` record by its ID.
+  ///
+  /// Returns `true` on success, `false` on failure.
+  Future<bool> deleteAttachment(int attachmentId) async {
+    try {
+      await CompanySessionManager.callKwWithCompany({
+        'model': 'ir.attachment',
+        'method': 'unlink',
+        'args': [
+          [attachmentId],
+        ],
+        'kwargs': {},
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

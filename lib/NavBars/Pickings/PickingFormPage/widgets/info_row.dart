@@ -19,7 +19,7 @@ import '../../../../shared/utils/globals.dart';
 /// • Automatic controller text sync in non-editing mode
 ///
 /// Used extensively in `PickingDetailsPage` for partner, dates, origin, note, etc.
-class InfoRow extends StatelessWidget {
+class InfoRow extends StatefulWidget {
   final String label;
   final dynamic value;
   final Color? color;
@@ -50,41 +50,49 @@ class InfoRow extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<InfoRow> createState() => _InfoRowState();
+}
+
+class _InfoRowState extends State<InfoRow> {
+  bool _isOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     String displayValue;
-    if (label == 'Note' && value is String) {
-      displayValue = value.replaceAll(RegExp(r'<[^>]*>'), '');
-    } else if (value is List && value.length > 1) {
-      displayValue = value[1].toString();
-    } else if (value == null ||
-        value == false ||
-        value == 'false' ||
-        (value is String && value.trim().isEmpty)) {
+    if (widget.label == 'Note' && widget.value is String) {
+      displayValue = widget.value.replaceAll(RegExp(r'<[^>]*>'), '');
+    } else if (widget.value is List && widget.value.length > 1) {
+      displayValue = widget.value[1].toString();
+    } else if (widget.value == null ||
+        widget.value == false ||
+        widget.value == 'false' ||
+        (widget.value is String && widget.value.trim().isEmpty)) {
       displayValue = "None";
     } else {
-      displayValue = value.toString();
+      displayValue = widget.value.toString();
     }
 
-    if (isEditing && controller != null) {
-      if (controller!.text == "None" || controller!.text == "false") {
-        controller!.text = "";
+    if (widget.isEditing && widget.controller != null) {
+      if (widget.controller!.text == "None" || widget.controller!.text == "false") {
+        widget.controller!.text = "";
       }
-    } else if (!isEditing && controller != null && controller!.text != displayValue) {
-      controller!.text = displayValue;
+    } else if (!widget.isEditing && widget.controller != null && widget.controller!.text != displayValue) {
+      widget.controller!.text = displayValue;
     }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: isEditing && !readOnly
+      child: widget.isEditing && !widget.readOnly
           /// Builds the dropdown widget when `dropdownItems` are provided
-          ? (dropdownItems != null
+          ? (widget.dropdownItems != null
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        label,
+                        widget.label,
                         style: TextStyle(
+                          fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: isDark
                               ? Colors.white70
@@ -100,15 +108,22 @@ class InfoRow extends StatelessWidget {
                               ? const Color(0xFF2A2A2A)
                               : const Color(0xFFF2F4F6),
                           border: Border.all(
-                            color: Colors.transparent,
-                            width: 1,
+                            color: _isOpen
+                                ? AppStyle.primaryColor
+                                : Colors.transparent,
+                            width: 1.5,
                           ),
                         ),
                         child: DropdownSearch<Map<String, dynamic>>(
+                          onBeforePopupOpening: (_) async {
+                            setState(() => _isOpen = true);
+                            return true;
+                          },
                           popupProps: PopupProps.menu(
+                            onDismissed: () => setState(() => _isOpen = false),
                             menuProps: MenuProps(
                               backgroundColor:
-                                  isDark ? Colors.grey[900] : Colors.grey[50],
+                                  isDark ? Colors.grey[900] : Colors.white,
                               elevation: 8,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -158,58 +173,45 @@ class InfoRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          items: dropdownItems!,
+                          items: widget.dropdownItems!,
                           itemAsString: (item) => item?['name'] ?? '',
-                          selectedItem: dropdownItems!.firstWhere(
-                            (element) => element['id'] == selectedId,
+                          selectedItem: widget.dropdownItems!.firstWhere(
+                            (element) => element['id'] == widget.selectedId,
                             orElse: () => {'id': null, 'name': 'None'},
                           ),
-                          onChanged: onDropdownChanged,
+                          onChanged: widget.onDropdownChanged,
                           dropdownDecoratorProps: DropDownDecoratorProps(
                             dropdownSearchDecoration: InputDecoration(
-                              hintText: "Select $label",
+                              hintText: "Select ${widget.label}",
                               hintStyle: TextStyle(
+                                fontSize: 14,
                                 fontWeight: FontWeight.w400,
                                 color: isDark
                                     ? Colors.white54
                                     : Colors.grey[600],
                                 fontStyle: FontStyle.italic,
                               ),
+                              isDense: true,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
-                                vertical: 8,
+                                vertical: 12,
                               ),
-                              prefixIcon: prefixIcon != null
+                              prefixIcon: widget.prefixIcon != null
                                   ? Icon(
-                                      prefixIcon,
+                                      widget.prefixIcon,
+                                      size: 20,
                                       color: isDark
                                           ? Colors.white70
                                           : const Color(0xff7F7F7F),
                                     )
                                   : null,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(
-                                  color: Colors.transparent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppStyle.primaryColor,
-                                  width: 2,
-                                ),
-                              ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                             ),
                           ),
                           validator: (value) =>
-                              value == null ? 'Please select $label' : null,
+                              value == null ? 'Please select ${widget.label}' : null,
                         ),
                       ),
                     ],
@@ -219,8 +221,9 @@ class InfoRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        label,
+                        widget.label,
                         style: TextStyle(
+                          fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: isDark
                               ? Colors.white70
@@ -241,41 +244,48 @@ class InfoRow extends StatelessWidget {
                           ),
                         ),
                         child: TextFormField(
-                          controller: controller,
-                          readOnly: onTapEditing != null,
-                          onTap: onTapEditing,
-                          maxLines: label == 'Note' ? 5 : 1,
+                          controller: widget.controller,
+                          readOnly: widget.onTapEditing != null,
+                          onTap: widget.onTapEditing,
+                          maxLines: widget.label == 'Note' ? 5 : 1,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
                           decoration: InputDecoration(
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 8,
                             ),
-                            hintText: label,
+                            hintText: widget.label,
                             hintStyle: TextStyle(
+                              fontSize: 14,
                               fontWeight: FontWeight.w400,
                               color: isDark ? Colors.white54 : Colors.grey[600],
                               fontStyle: FontStyle.italic,
                             ),
-                            prefixIcon: prefixIcon != null
+                            prefixIcon: widget.prefixIcon != null
                                 ? Icon(
-                                    prefixIcon,
+                                    widget.prefixIcon,
+                                    size: 20,
                                     color: isDark
                                         ? Colors.white70
                                         : const Color(0xff7F7F7F),
                                   )
                                 : null,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                               borderSide: const BorderSide(
                                 color: Colors.transparent,
                                 width: 1.5,
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
                                 color: isDark
                                     ? Colors.white
@@ -285,7 +295,7 @@ class InfoRow extends StatelessWidget {
                             ),
                           ),
                           onChanged: (value) {
-                            if (label == 'Note') {}
+                            if (widget.label == 'Note') {}
                           },
                         ),
                       ),
@@ -293,12 +303,12 @@ class InfoRow extends StatelessWidget {
                   ))
           /// Builds the read-only view mode (label + tappable value)
           : GestureDetector(
-              onTap: onTap,
+              onTap: widget.onTap,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    label,
+                    widget.label,
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
                       fontWeight: FontWeight.w500,
@@ -312,7 +322,7 @@ class InfoRow extends StatelessWidget {
                         fontWeight: FontWeight.normal,
                         color: isDark
                             ? Colors.white60
-                            : color ?? Colors.black87,
+                            : widget.color ?? Colors.black87,
                       ),
                     ),
                   ),

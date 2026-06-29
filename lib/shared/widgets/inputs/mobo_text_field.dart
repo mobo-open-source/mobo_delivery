@@ -100,7 +100,7 @@ class MoboTextField extends StatelessWidget {
     this.enabled = true,
     this.showBorder = false,
     this.isRequired = false,
-    this.showShadow = true,
+    this.showShadow = false,
   });
 
   @override

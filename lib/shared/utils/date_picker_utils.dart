@@ -130,16 +130,39 @@ class DatePickerUtils {
             ),
             timePickerTheme: TimePickerThemeData(
               backgroundColor: isDark ? Colors.grey[850] : Colors.white,
-              hourMinuteTextColor: isDark ? Colors.white : Colors.black,
-              hourMinuteColor:
-                  isDark ? Colors.grey[800] : Colors.grey[100],
-              dayPeriodTextColor: isDark ? Colors.white : Colors.black,
-              dayPeriodColor:
-                  isDark ? Colors.grey[800] : Colors.grey[100],
+              hourMinuteTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return isDark ? Colors.white : Colors.black;
+              }),
+              hourMinuteColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return primaryColor;
+                }
+                return isDark ? Colors.grey[800]! : Colors.grey[100]!;
+              }),
+              dayPeriodTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return isDark ? Colors.white70 : Colors.black54;
+              }),
+              dayPeriodColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.black;
+                }
+                return isDark ? Colors.grey[800]! : Colors.grey[100]!;
+              }),
               dialHandColor: primaryColor,
               dialBackgroundColor:
                   isDark ? Colors.grey[800] : Colors.grey[100],
-              dialTextColor: isDark ? Colors.white : Colors.black,
+              dialTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return Colors.white;
+                }
+                return isDark ? Colors.white : Colors.black;
+              }),
               entryModeIconColor: isDark ? Colors.white : Colors.black,
               hourMinuteTextStyle: const TextStyle(
                 fontSize: 32,

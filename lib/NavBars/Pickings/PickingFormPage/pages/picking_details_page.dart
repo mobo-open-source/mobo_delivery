@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
@@ -79,12 +80,17 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   List<User> userList = [];
   List<StockMove> moveProducts = [];
 
+  // Tab header scroll: keeps the selected pill visible when swiping the body.
+  final ScrollController _tabHeaderScrollController = ScrollController();
+  final List<GlobalKey> _tabItemKeys = List.generate(3, (_) => GlobalKey());
+
   List<Map<String, dynamic>> pickingStockLine = [];
   List<Map<String, dynamic>> returnDataList = [];
 
   String _errorMessage = '';
   bool isDataAvailable = true;
   bool _isEditing = false;
+  bool _isShippingPolicyOpen = false;
 
   /// Snapshot of the editable header fields taken when edit mode is entered.
   /// The "Save Delivery" button is only enabled while the current values
@@ -210,6 +216,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
   @override
   void dispose() {
+    _tabHeaderScrollController.dispose();
     _networkTimer?.cancel();
     deliveryAddressController.dispose();
     operationTypeController.dispose();
@@ -220,6 +227,23 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     sourceDocController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  /// Scrolls the tab header ListView so the pill at [index] is fully visible.
+  /// Called after any tab change (tap or swipe) via a post-frame callback so
+  /// the item is already laid out before we measure its position.
+  void _ensureTabVisible(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _tabItemKeys[index];
+      if (key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+        );
+      }
+    });
   }
 
   /// Starts a periodic network availability check (every 30 seconds).
@@ -3175,62 +3199,56 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         ),
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
-                          child: Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: DefaultTabController(
-                              length: 3,
-                              child: Builder(
-                                builder: (context) {
-                                  final TabController tabController =
-                                      DefaultTabController.of(context);
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: SizedBox(
-                                          height: 40,
-                                          child: ListView.separated(
-                                            scrollDirection: Axis.horizontal,
-                                            physics:
-                                                const ClampingScrollPhysics(),
-                                            itemCount: 3,
-                                            separatorBuilder: (_, __) =>
-                                                const SizedBox(width: 8),
-                                            itemBuilder: (context, index) {
-                                              const labels = [
-                                                'Operations',
-                                                'Additional Info',
-                                                'Note',
-                                              ];
-                                              return AnimatedBuilder(
-                                                animation:
-                                                    tabController.animation!,
-                                                builder: (context, _) {
-                                                  final activeIndex =
-                                                      tabController
-                                                          .animation!
-                                                          .value
-                                                          .round();
-                                                  return GestureDetector(
-                                                    onTap: () => tabController
-                                                        .animateTo(index),
-                                                    child: _buildPillTab(
-                                                      label: labels[index],
-                                                      isSelected:
-                                                          activeIndex == index,
-                                                      isDark: isDark,
-                                                    ),
-                                                  );
+                          child: DefaultTabController(
+                            length: 3,
+                            child: Builder(
+                              builder: (context) {
+                                final TabController tabController =
+                                    DefaultTabController.of(context);
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      height: 40,
+                                      child: ListView.separated(
+                                        controller: _tabHeaderScrollController,
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const ClampingScrollPhysics(),
+                                        itemCount: 3,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(width: 8),
+                                        itemBuilder: (context, index) {
+                                          const labels = [
+                                            'Operations',
+                                            'Additional Info',
+                                            'Note',
+                                          ];
+                                          return ListenableBuilder(
+                                            listenable: tabController,
+                                            builder: (context, _) {
+                                              return GestureDetector(
+                                                key: _tabItemKeys[index],
+                                                onTap: () {
+                                                  tabController.animateTo(index);
+                                                  _ensureTabVisible(index);
                                                 },
+                                                child: _buildPillTab(
+                                                  label: labels[index],
+                                                  isSelected:
+                                                      tabController.index ==
+                                                      index,
+                                                  isDark: isDark,
+                                                ),
                                               );
                                             },
-                                          ),
-                                        ),
+                                          );
+                                        },
                                       ),
+                                    ),
                                       Container(
                                         width: double.infinity,
                                         // Keep a consistent section height so short
@@ -3270,18 +3288,18 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                                 details.primaryVelocity ?? 0;
                                             if (v < -250 &&
                                                 tabController.index < 2) {
-                                              tabController.animateTo(
-                                                tabController.index + 1,
-                                              );
+                                              final next = tabController.index + 1;
+                                              tabController.animateTo(next);
+                                              _ensureTabVisible(next);
                                             } else if (v > 250 &&
                                                 tabController.index > 0) {
-                                              tabController.animateTo(
-                                                tabController.index - 1,
-                                              );
+                                              final prev = tabController.index - 1;
+                                              tabController.animateTo(prev);
+                                              _ensureTabVisible(prev);
                                             }
                                           },
-                                          child: AnimatedBuilder(
-                                            animation: tabController.animation!,
+                                          child: ListenableBuilder(
+                                            listenable: tabController,
                                             builder: (context, _) {
                                               switch (tabController.index) {
                                                 case 1:
@@ -3301,7 +3319,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -3366,6 +3383,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           Text(
             'Product Availability',
             style: TextStyle(
+              fontSize: 14,
               fontWeight: FontWeight.w400,
               color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
             ),
@@ -3384,15 +3402,15 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                     : const Color(0xFFF2F4F6),
                 border: Border.all(color: Colors.transparent, width: 1),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
                   Icon(
                     HugeIcons.strokeRoundedPackage,
-                    size: 18,
+                    size: 20,
                     color: isDark ? Colors.white54 : const Color(0xff7F7F7F),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       display,
@@ -3436,16 +3454,17 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         ),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : (isDark ? Colors.grey[400] : Colors.grey[700]),
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+        style: TextStyle(
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.grey[400] : Colors.grey[700]),
+          fontSize: 15,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
         ),
       ),
     );
@@ -4028,7 +4047,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                   Expanded(
                     child: MoboButton.primary(
                       label: 'Add',
-                      icon: HugeIcons.strokeRoundedAdd01,
+                      icon:  HugeIcons.strokeRoundedPackageAdd,
                       borderRadius: 8,
                       onPressed: () async {
                         setState(() {
@@ -4516,13 +4535,13 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              HugeIcons.strokeRoundedAdd01,
+              HugeIcons.strokeRoundedPackageAdd,
               size: 18,
               color: isDark ? Colors.white : AppStyle.primaryColor,
             ),
             const SizedBox(width: 6),
             Text(
-              'Add a line',
+              'Add a product',
               style: TextStyle(
                 color: isDark ? Colors.white : AppStyle.primaryColor,
                 fontWeight: FontWeight.w600,
@@ -4591,6 +4610,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                       Text(
                         "Shipping Policy",
                         style: TextStyle(
+                          fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: isDark
                               ? Colors.white70
@@ -4598,7 +4618,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
@@ -4606,8 +4626,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                               ? const Color(0xFF2A2A2A)
                               : const Color(0xFFF2F4F6),
                           border: Border.all(
-                            color: Colors.transparent,
-                            width: 1,
+                            color: _isShippingPolicyOpen
+                                ? AppStyle.primaryColor
+                                : Colors.transparent,
+                            width: 1.5,
                           ),
                         ),
                         child: DropdownButton2<String>(
@@ -4618,20 +4640,47 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   ? pickings[0].moveType
                                   : null) ??
                               'direct',
-                          style:
-                              (Theme.of(context).textTheme.titleMedium ??
-                                      const TextStyle())
-                                  .copyWith(
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                          items: const [
+                          style: GoogleFonts.manrope(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                          buttonStyleData: ButtonStyleData(
+                            height: 44,
+                            padding: const EdgeInsets.only(left: 12, right: 4),
+                          ),
+                          menuItemStyleData: const MenuItemStyleData(
+                            padding: EdgeInsets.zero,
+                          ),
+                          iconStyleData: IconStyleData(
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: isDark ? Colors.white54 : Colors.grey[600],
+                            ),
+                            iconSize: 24,
+                          ),
+                          items: [
                             DropdownMenuItem(
                               value: 'direct',
-                              child: Text("As soon as possible"),
+                              child: Text(
+                                "As soon as possible",
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'one',
-                              child: Text("When all products are ready"),
+                              child: Text(
+                                "When all products are ready",
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
                             ),
                           ],
                           onChanged: (value) {
@@ -4641,11 +4690,16 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                               });
                             }
                           },
+                          onMenuStateChange: (isOpen) {
+                            setState(() => _isShippingPolicyOpen = isOpen);
+                          },
                           dropdownStyleData: DropdownStyleData(
                             maxHeight: 200,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              color: isDark
+                                  ? const Color(0xFF2C2C2C)
+                                  : Colors.white,
                             ),
                             offset: const Offset(0, -3),
                           ),
@@ -4725,6 +4779,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             Text(
               "Company",
               style: TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w400,
                 color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
               ),
@@ -4738,7 +4793,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
               child: Container(
                 width: double.infinity,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   color: isDark
@@ -4747,6 +4802,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 ),
                 child: Row(
                   children: [
+                    Icon(
+                      HugeIcons.strokeRoundedBuilding01,
+                      size: 20,
+                      color: isDark ? Colors.white54 : const Color(0xff7F7F7F),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         (picking.companyId != null &&
@@ -4755,7 +4816,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                             : "None",
                         style: TextStyle(
                           fontSize: 14,
-                          color: isDark ? Colors.white54 : Colors.grey[600],
+                          fontWeight: FontWeight.w400,
+                          color: isDark ? Colors.white70 : Colors.black87,
                         ),
                       ),
                     ),

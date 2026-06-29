@@ -12,32 +12,34 @@ class ProductModel extends Equatable {
   final int id;
   final String name;
   final int uom_id;
+  final String? imageBase64;
 
   const ProductModel({
     required this.id,
     required this.name,
     required this.uom_id,
+    this.imageBase64,
   });
 
-  /// Creates a `ProductModel` from Odoo `search_read` result. Prefers
-  /// `display_name` over `name` so variants render with their attribute
-  /// suffix.
+  /// Returns the product name with any leading [SKU] reference stripped.
+  String get cleanName => name.replaceAll(RegExp(r'^\[.*?\]\s*'), '');
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     String pickName(dynamic v) =>
         (v is String && v.isNotEmpty && v.toLowerCase() != 'false') ? v : '';
     final displayName = pickName(json['display_name']);
     final rawName = pickName(json['name']);
+    final image = json['image_128'];
     return ProductModel(
       id: json['id'] as int,
       name: displayName.isNotEmpty ? displayName : rawName,
       uom_id: json['uom_id'][0] as int,
+      imageBase64: (image is String && image.isNotEmpty && image != 'false')
+          ? image
+          : null,
     );
   }
 
-  /// Properties used for value-based equality comparison (via `equatable`).
-  ///
-  /// Two products are equal if they share the same `id`, `name` and `uom_id`.
-  /// Helps when comparing items in lists, state management, or deduplication.
   @override
   List<Object?> get props => [id, name, uom_id];
 }

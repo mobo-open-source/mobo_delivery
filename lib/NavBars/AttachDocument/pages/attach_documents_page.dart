@@ -727,17 +727,21 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           style: TextStyle(color: isDark ? Colors.white54 : dateInfo['color']),
         ),
         trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+            color: statusColor.withValues(alpha: isDark ? 0.20 : 0.12),
+            borderRadius: BorderRadius.circular(18),
+            border: isDark
+                ? Border.all(color: statusColor.withValues(alpha: 0.35), width: 0.8)
+                : null,
           ),
           child: Text(
             readableState,
             style: TextStyle(
-              color: statusColor,
+              color: isDark ? statusColor.withValues(alpha: 0.95) : statusColor,
               fontWeight: FontWeight.w600,
               fontSize: 12,
+              letterSpacing: 0.1,
             ),
           ),
         ),
@@ -1126,24 +1130,26 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                         trailing: Container(
                                                           padding:
                                                               const EdgeInsets.symmetric(
-                                                                horizontal: 8,
+                                                                horizontal: 10,
                                                                 vertical: 4,
                                                               ),
                                                           decoration: BoxDecoration(
                                                             color: statusColor
-                                                                .withOpacity(0.1),
+                                                                .withValues(alpha: isDark ? 0.20 : 0.12),
                                                             borderRadius:
-                                                                BorderRadius.circular(
-                                                                  6,
-                                                                ),
+                                                                BorderRadius.circular(18),
+                                                            border: isDark
+                                                                ? Border.all(color: statusColor.withValues(alpha: 0.35), width: 0.8)
+                                                                : null,
                                                           ),
                                                           child: Text(
                                                             readableState,
                                                             style: TextStyle(
                                                               fontWeight:
                                                                   FontWeight.w600,
-                                                              color: statusColor,
+                                                              color: isDark ? statusColor.withValues(alpha: 0.95) : statusColor,
                                                               fontSize: 12,
+                                                              letterSpacing: 0.1,
                                                             ),
                                                           ),
                                                         ),

@@ -29,59 +29,68 @@ class ErrorStateWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 220,
-              height: 220,
-              child: Lottie.asset(
-                _getLottieAsset(),
-                fit: BoxFit.contain,
-                repeat: true,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  _getFallbackIcon(),
-                  size: 100,
-                  color: isDark ? Colors.red[700] : Colors.red[400],
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 220,
+                  height: 220,
+                  child: Lottie.asset(
+                    _getLottieAsset(),
+                    fit: BoxFit.contain,
+                    repeat: true,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      _getFallbackIcon(),
+                      size: 100,
+                      color: isDark ? Colors.red[700] : Colors.red[400],
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: (isDark ? Colors.red[900] : Colors.red[50])?.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: (isDark ? Colors.red[700] : Colors.red[200])!.withValues(alpha: 0.3),
-                  width: 1,
+                const SizedBox(height: 24),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              child: Text(
-                message,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: isDark ? Colors.grey[300] : Colors.black54,
-                  height: 1.5,
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.red[900] : Colors.red[50])?.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: (isDark ? Colors.red[700] : Colors.red[200])!.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: isDark ? Colors.grey[300] : Colors.black54,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
+                const SizedBox(height: 16),
+              ],
             ),
-            const SizedBox(height: 32),
-            Wrap(
+          ),
+        ),
+        if (onRetry != null || onContactSupport != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            child: Wrap(
               spacing: 12,
               runSpacing: 12,
               alignment: WrapAlignment.center,
@@ -104,9 +113,8 @@ class ErrorStateWidget extends StatelessWidget {
                   ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 

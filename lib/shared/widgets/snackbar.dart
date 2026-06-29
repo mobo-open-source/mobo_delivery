@@ -45,31 +45,32 @@ class CustomSnackbar {
       return;
     }
 
-    void tryShow() {
+    try {
+      ScaffoldMessengerState? messenger;
+
+      // Prefer context-based messenger so Flutter correctly anchors the
+      // snackbar above the active scaffold's bottomNavigationBar. Fall back
+      // to the global key for callers that have no live context (e.g. services).
       try {
-        final ScaffoldMessengerState? messenger =
-            scaffoldMessengerKey.currentState;
-        if (messenger == null || !messenger.mounted) {
-          return;
+        if (context.mounted) {
+          messenger = ScaffoldMessenger.of(context);
         }
+      } catch (_) {}
 
-        BuildContext? themeCtx;
-        try {
-          themeCtx = navigatorKey.currentContext;
-          if (themeCtx != null && themeCtx.mounted) {
-            Theme.of(themeCtx);
-          } else {
-            themeCtx = null;
-          }
-        } catch (e) {
-          themeCtx = null;
-        }
+      messenger ??= scaffoldMessengerKey.currentState;
 
-        _showWithMessenger(messenger, themeCtx, title, message, type, duration);
-      } catch (e) {}
-    }
+      if (messenger == null || !messenger.mounted) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => tryShow());
+      BuildContext? themeCtx;
+      try {
+        themeCtx = context.mounted ? context : navigatorKey.currentContext;
+        if (themeCtx != null && !themeCtx.mounted) themeCtx = null;
+      } catch (_) {
+        themeCtx = null;
+      }
+
+      _showWithMessenger(messenger, themeCtx, title, message, type, duration);
+    } catch (_) {}
   }
 
   static void _showWithMessenger(
@@ -148,14 +149,18 @@ class CustomSnackbar {
               ],
             ),
             backgroundColor: colors.backgroundColor,
-            behavior: SnackBarBehavior.fixed,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
             duration: duration,
             elevation: 8,
           ),
         );
+        // Force a frame so the snackbar animation starts immediately even
+        // when nothing else is marking the tree dirty.
+        WidgetsBinding.instance.scheduleFrame();
       } catch (e) {}
     } catch (e) {}
   }

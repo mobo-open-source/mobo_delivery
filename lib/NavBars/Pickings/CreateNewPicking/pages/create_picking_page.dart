@@ -81,11 +81,37 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
   final HiveService _hiveService = HiveService();
   final odooPickingFormService = OdooPickingFormService();
 
+  final ScrollController _tabHeaderScrollController = ScrollController();
+  final List<GlobalKey> _tabItemKeys = List.generate(3, (_) => GlobalKey());
+
   @override
   void initState() {
     super.initState();
     odooService = OdooCreatePickingService(widget.url);
     _initializeData();
+  }
+
+  @override
+  void dispose() {
+    scheduledDateController.dispose();
+    sourceDocController.dispose();
+    _noteController.dispose();
+    _tabHeaderScrollController.dispose();
+    super.dispose();
+  }
+
+  void _ensureTabVisible(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _tabItemKeys[index];
+      if (key.currentContext != null) {
+        Scrollable.ensureVisible(
+          key.currentContext!,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          alignment: 0.5,
+        );
+      }
+    });
   }
 
   /// Loads dropdown data (products, partners, users, operation types) either online or from Hive cache.
@@ -212,8 +238,9 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
     int productId,
     String productName,
     int productUomId,
-    double quantity,
-  ) {
+    double quantity, {
+    String? imageBase64,
+  }) {
     setState(() {
       moveProducts.add(
         StockMoveModel(
@@ -222,6 +249,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           productUomQty: quantity,
           productUomId: productUomId,
           quantity: quantity,
+          imageBase64: imageBase64,
         ),
       );
     });
@@ -445,14 +473,59 @@ return FadeTransition(opacity: animation, child: child);
           if (selectedProduct != null && quantity > 0) {
             addProductToLine(
               selectedProduct.id,
-              selectedProduct.name,
+              selectedProduct.cleanName,
               selectedProduct.uom_id,
               quantity,
+              imageBase64: selectedProduct.imageBase64,
             );
           }
         },
       ),
     );
+  }
+
+  void _showEditProductDialog(int index) {
+    final move = moveProducts[index];
+    // Find the full ProductModel (with image) from the loaded list, fall back
+    // to a minimal one built from the stored move data.
+    final existing = products.cast<ProductModel?>().firstWhere(
+      (p) => p?.id == move.productId,
+      orElse: () => null,
+    );
+    final initial = existing ??
+        ProductModel(
+          id: move.productId,
+          name: move.productName,
+          uom_id: 0,
+          imageBase64: move.imageBase64,
+        );
+
+    showDialog(
+      context: context,
+      builder: (context) => AddProductDialog(
+        products: products,
+        initialProduct: initial,
+        initialQuantity: move.productUomQty,
+        onAdd: (selectedProduct, quantity) {
+          if (selectedProduct != null && quantity > 0) {
+            setState(() {
+              moveProducts[index] = StockMoveModel(
+                productId: selectedProduct.id,
+                productName: selectedProduct.cleanName,
+                productUomQty: quantity,
+                productUomId: selectedProduct.uom_id,
+                quantity: quantity,
+                imageBase64: selectedProduct.imageBase64,
+              );
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  void _deleteProduct(int index) {
+    setState(() => moveProducts.removeAt(index));
   }
 
   @override
@@ -743,60 +816,48 @@ return FadeTransition(opacity: animation, child: child);
 
                 Container(
                   margin: const EdgeInsets.only(bottom: 24),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2.0),
-                    child: DefaultTabController(
-                      length: 3,
-                      child: Builder(
-                        builder: (context) {
-                          final TabController tabController =
-                              DefaultTabController.of(context)!;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                margin: const EdgeInsets.symmetric(vertical: 8),
-                                padding: const EdgeInsets.all(4),
-                                child: AnimatedBuilder(
-                                  animation: tabController.animation!,
-                                  builder: (context, _) {
-                                    final double animValue =
-                                        tabController.animation!.value;
-                                    return TabBar(
-                                      controller: tabController,
-                                      indicator: BoxDecoration(
-                                        color: Colors.transparent,
-                                      ),
-                                      dividerColor: Colors.transparent,
-                                      labelPadding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                      ),
-                                      overlayColor: WidgetStateProperty.all(
-                                        Colors.transparent,
-                                      ),
-                                      tabs: List.generate(3, (index) {
-                                        String text;
-                                        switch (index) {
-                                          case 0:
-                                            text = "Operations";
-                                            break;
-                                          case 1:
-                                            text = "Additional Info";
-                                            break;
-                                          case 2:
-                                            text = "Note";
-                                            break;
-                                          default:
-                                            text = "";
-                                        }
-                                        final double selectedness =
-                                            (1.0 - (animValue - index).abs())
-                                                .clamp(0.0, 1.0);
-                                        return _buildStyledTab(
-                                          text,
-                                          selectedness,
+                  child: DefaultTabController(
+                    length: 3,
+                    child: Builder(
+                      builder: (context) {
+                        final TabController tabController =
+                            DefaultTabController.of(context)!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              height: 40,
+                                child: ListView.separated(
+                                  controller: _tabHeaderScrollController,
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const ClampingScrollPhysics(),
+                                  itemCount: 3,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 8),
+                                  itemBuilder: (context, index) {
+                                    const labels = [
+                                      'Operations',
+                                      'Additional Info',
+                                      'Note',
+                                    ];
+                                    return ListenableBuilder(
+                                      listenable: tabController,
+                                      builder: (context, _) {
+                                        return GestureDetector(
+                                          key: _tabItemKeys[index],
+                                          onTap: () {
+                                            tabController.animateTo(index);
+                                            _ensureTabVisible(index);
+                                          },
+                                          child: _buildPillTab(
+                                            label: labels[index],
+                                            isSelected:
+                                                tabController.index == index,
+                                            isDark: isDark,
+                                          ),
                                         );
-                                      }),
+                                      },
                                     );
                                   },
                                 ),
@@ -826,12 +887,14 @@ return FadeTransition(opacity: animation, child: child);
                                   onHorizontalDragEnd: (details) {
                                     final v = details.primaryVelocity ?? 0;
                                     if (v < -250 && tabController.index < 2) {
-                                      tabController
-                                          .animateTo(tabController.index + 1);
+                                      final next = tabController.index + 1;
+                                      tabController.animateTo(next);
+                                      _ensureTabVisible(next);
                                     } else if (v > 250 &&
                                         tabController.index > 0) {
-                                      tabController
-                                          .animateTo(tabController.index - 1);
+                                      final prev = tabController.index - 1;
+                                      tabController.animateTo(prev);
+                                      _ensureTabVisible(prev);
                                     }
                                   },
                                   child: AnimatedBuilder(
@@ -864,6 +927,8 @@ return FadeTransition(opacity: animation, child: child);
                                           return ProductTable(
                                             moveProducts: moveProducts,
                                             onAddLine: _showAddProductDialog,
+                                            onEdit: _showEditProductDialog,
+                                            onDelete: _deleteProduct,
                                           );
                                       }
                                     },
@@ -876,7 +941,6 @@ return FadeTransition(opacity: animation, child: child);
                       ),
                     ),
                   ),
-                ),
 
                 if (_errorMessage.isNotEmpty)
                   Padding(
@@ -899,46 +963,36 @@ return FadeTransition(opacity: animation, child: child);
     );
   }
 
-  /// Forces the date/time pickers onto a clean white surface with mobo
-  /// accents instead of the seeded pink-tinted Material 3 surface.
-  Widget _buildStyledTab(String text, double selectedness) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Match the sales app's order-details tabs: unselected = white pill with a
-    // grey border, selected = solid black. Lerp gives a smooth transition.
-    final bgColor = Color.lerp(Colors.white, Colors.black, selectedness)!;
-    final textColor = Color.lerp(
-      isDark ? Colors.grey[400] : Colors.grey[700],
-      Colors.white,
-      selectedness,
-    )!;
-    final borderColor = Color.lerp(
-      isDark ? Colors.grey[600] : Colors.grey[300],
-      Colors.black,
-      selectedness,
-    )!;
-    return Tab(
-      child: Container(
-        width: double.infinity,
-        height: 42,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: borderColor, width: 1),
+  Widget _buildPillTab({
+    required String label,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Colors.black
+            : (isDark ? Colors.grey[800] : Colors.white),
+        border: Border.all(
+          color: isSelected
+              ? Colors.black
+              : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
+          width: 1,
         ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            text,
-            maxLines: 1,
-            softWrap: false,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: textColor,
-            ),
-          ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+        style: TextStyle(
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.grey[400] : Colors.grey[700]),
+          fontSize: 15,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
         ),
       ),
     );

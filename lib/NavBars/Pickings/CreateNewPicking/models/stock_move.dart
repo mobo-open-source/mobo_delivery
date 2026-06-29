@@ -15,6 +15,7 @@ class StockMoveModel extends Equatable {
   final double productUomQty;
   final int productUomId;
   final double quantity;
+  final String? imageBase64;
 
   const StockMoveModel({
     required this.productId,
@@ -22,12 +23,9 @@ class StockMoveModel extends Equatable {
     required this.productUomQty,
     required this.productUomId,
     required this.quantity,
+    this.imageBase64,
   });
 
-  /// Properties used for value equality (via equatable)
-  ///
-  /// Two stock moves are considered equal if all these fields match.
-  /// Important when comparing lists of moves or detecting changes.
   @override
   List<Object?> get props => [productId, productName, productUomQty, productUomId, quantity];
 }

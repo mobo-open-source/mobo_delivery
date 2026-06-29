@@ -54,7 +54,7 @@ class OdooCreatePickingService {
         'method': 'search_read',
         'args': [[]],
         'kwargs': {
-          'fields': ['id', 'display_name', 'name', 'uom_id'],
+          'fields': ['id', 'display_name', 'name', 'uom_id', 'image_128'],
         },
       });
       final items = (productItems as List?)?.cast<Map<String, dynamic>>() ?? [];

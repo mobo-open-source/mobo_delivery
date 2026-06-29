@@ -1,25 +1,22 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/utils/globals.dart';
 import '../models/stock_move.dart';
 
-/// Product (stock move) section of the create-picking form.
-///
-/// Each added product is shown as a card — product thumbnail + name on top,
-/// then a Demand / Quantity metric row — matching the sale-order line design
-/// used in the mobo sales app. A styled "Add a line" button sits at the
-/// bottom to open the product selection dialog.
 class ProductTable extends StatelessWidget {
-  /// List of stock move lines (products) currently added to the picking
   final List<StockMoveModel> moveProducts;
-
-  /// Callback invoked when user taps "Add a line" to select and add a product
   final VoidCallback onAddLine;
+  final void Function(int index) onEdit;
+  final void Function(int index) onDelete;
 
   const ProductTable({
     Key? key,
     required this.moveProducts,
     required this.onAddLine,
+    required this.onEdit,
+    required this.onDelete,
   }) : super(key: key);
 
   @override
@@ -34,7 +31,9 @@ class ProductTable extends StatelessWidget {
           if (moveProducts.isEmpty)
             _buildEmptyState(isDark)
           else
-            ...moveProducts.map((product) => _buildProductCard(product, isDark)),
+            ...moveProducts.asMap().entries.map(
+              (e) => _buildProductCard(e.value, e.key, isDark),
+            ),
           const SizedBox(height: 12),
           _buildAddLineButton(isDark),
         ],
@@ -42,158 +41,191 @@ class ProductTable extends StatelessWidget {
     );
   }
 
-  /// A single product line rendered as a card (sale-order line style from the
-  /// mobo sales app: white surface, soft shadow, brand-colored product name,
-  /// bordered thumbnail).
-  Widget _buildProductCard(StockMoveModel product, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.grey[850]! : Colors.grey[200]!,
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 6),
-            blurRadius: 16,
-            spreadRadius: 2,
+  Widget _buildProductCard(StockMoveModel product, int index, bool isDark) {
+    return GestureDetector(
+      onTap: () => onEdit(index),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.grey.shade200,
+            width: 1,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppStyle.primaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                  ),
-                ),
-                child: const Icon(
-                  HugeIcons.strokeRoundedPackage,
-                  color: AppStyle.primaryColor,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
+        ),
+        child: Row(
+          children: [
+            _buildProductImage(product),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     product.productName,
-                    style: TextStyle(
-                      fontSize: 15,
+                    style: GoogleFonts.manrope(
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : AppStyle.primaryColor,
-                      letterSpacing: -0.1,
+                      color: isDark ? Colors.white : Colors.black87,
                       height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 8),
+                  _buildBadge(
+                    'Qty',
+                    _fmtQty(product.productUomQty),
+                    isDark,
+                    highlight: true,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () => onDelete(index),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  HugeIcons.strokeRoundedDelete02,
+                  size: 16,
+                  color: Colors.red.shade400,
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage(StockMoveModel product) {
+    if (product.imageBase64 != null && product.imageBase64!.isNotEmpty) {
+      try {
+        final base64String = product.imageBase64!.contains(',')
+            ? product.imageBase64!.split(',')[1]
+            : product.imageBase64!;
+        final bytes = base64Decode(base64String);
+        return Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            image: DecorationImage(
+              image: MemoryImage(bytes),
+              fit: BoxFit.cover,
+            ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _metric('DEMAND', _fmtQty(product.productUomQty), isDark),
-              ),
-              Expanded(
-                child: _metric('QUANTITY', _fmtQty(product.quantity), isDark),
-              ),
-            ],
+        );
+      } catch (_) {}
+    }
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppStyle.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(
+        HugeIcons.strokeRoundedPackage,
+        size: 22,
+        color: AppStyle.primaryColor,
+      ),
+    );
+  }
+
+  Widget _buildBadge(
+    String label,
+    String value,
+    bool isDark, {
+    bool highlight = false,
+  }) {
+    final bgColor = highlight
+        ? AppStyle.primaryColor.withValues(alpha: 0.1)
+        : (isDark ? Colors.white10 : Colors.grey.shade100);
+    final labelColor = highlight
+        ? AppStyle.primaryColor
+        : (isDark ? Colors.white38 : Colors.grey.shade500);
+    final valueColor = highlight
+        ? AppStyle.primaryColor
+        : (isDark ? Colors.white70 : Colors.black87);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: labelColor,
+            ),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: valueColor,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _metric(String label, String value, bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isDark ? Colors.grey[500] : Colors.grey[600],
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : Colors.grey[900],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Formats a quantity without a trailing ".0" for whole numbers.
   String _fmtQty(double value) =>
       value.truncateToDouble() == value ? value.toStringAsFixed(0) : '$value';
 
   Widget _buildEmptyState(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? Colors.grey[800] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         children: [
           Icon(
             HugeIcons.strokeRoundedPackage,
-            size: 40,
+            size: 48,
             color: isDark ? Colors.grey[600] : Colors.grey[400],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
             'No products added yet',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black87,
+            style: GoogleFonts.manrope(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
-            'Tap "Add a line" below to get started.',
+            'Tap "Add a product" below to get started',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
+            style: GoogleFonts.manrope(
+              fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: isDark ? Colors.white38 : Colors.grey[500],
+              color: isDark ? Colors.grey[500] : Colors.grey[500],
             ),
           ),
         ],
@@ -202,34 +234,34 @@ class ProductTable extends StatelessWidget {
   }
 
   Widget _buildAddLineButton(bool isDark) {
-    return GestureDetector(
-      onTap: onAddLine,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark
-                ? Colors.white24
-                : AppStyle.primaryColor.withValues(alpha: 0.5),
-            width: 1.2,
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: onAddLine,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppStyle.primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              HugeIcons.strokeRoundedAdd01,
-              size: 18,
-              color: isDark ? Colors.white : AppStyle.primaryColor,
+            const Icon(
+              HugeIcons.strokeRoundedPackageAdd,
+              size: 20,
+              color: Colors.white,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Text(
-              'Add a line',
-              style: TextStyle(
-                color: isDark ? Colors.white : AppStyle.primaryColor,
+              'Add a product',
+              style: GoogleFonts.manrope(
+                color: Colors.white,
                 fontWeight: FontWeight.w600,
-                fontSize: 15,
+                fontSize: 16,
               ),
             ),
           ],
