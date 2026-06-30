@@ -158,8 +158,6 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(HugeIcons.strokeRoundedBuilding05, size: 16, color: textColor),
-            const SizedBox(width: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 160),
               child: Text(

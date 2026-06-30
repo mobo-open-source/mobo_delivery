@@ -849,14 +849,17 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     maxHeight: MediaQuery.of(context).size.height * 0.90,
                   ),
                   child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SingleChildScrollView(
-                      physics: const ClampingScrollPhysics(),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      Column(
                         children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              physics: const ClampingScrollPhysics(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                       Container(
                         width: 40,
                         height: 4,
@@ -1647,96 +1650,90 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           );
                         }),
 
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize:
-                                    const Size(double.infinity, 44),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                side: BorderSide(
-                                    color: theme.primaryColor),
-                                foregroundColor: theme.primaryColor,
-                              ),
-                              child: const Text(
-                                'Cancel',
-                                style:
-                                    TextStyle(fontWeight: FontWeight.w600),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                minimumSize:
-                                    const Size(double.infinity, 44),
-                                backgroundColor: theme.primaryColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(double.infinity, 44),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      side: BorderSide(color: theme.primaryColor),
+                                      foregroundColor: theme.primaryColor,
+                                    ),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
                                 ),
-                                elevation: 0,
-                              ),
-                              onPressed: () async {
-                                if (!fromAddStop && selectedPickings.isEmpty) {
-                                  setState(
-                                      () => shouldValidate = true);
-                                  if (!popCalled) {
-                                    popCalled = true;
-                                    Navigator.of(context).pop(true);
-                                  }
-                                  _showEnterRootPopup();
-                                  return;
-                                }
-                                needsAutoRoute = false;
-                                if (!popCalled) {
-                                  popCalled = true;
-                                  Navigator.of(context).pop(true);
-                                }
-                                if (!mounted) return;
-                                setState(() {
-                                  _showLocationNames = true;
-                                  _showOtherFABs = false;
-                                  _showLayer = false;
-                                  _showStopLocationFields = true;
-                                  _infoCard = false;
-                                  if (fromAddStop) {
-                                    _isNavigationStarted = false;
-                                  }
-                                  sourceSearchController.text =
-                                      sourceController.text;
-                                });
-                                await _getOptimizedRoute();
-                                if (mounted) setState(() {});
-                              },
-                              icon: const Icon(
-                                  HugeIcons.strokeRoundedNavigation03,
-                                  size: 18),
-                              label: const FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'Show Directions',
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      minimumSize: const Size(double.infinity, 44),
+                                      backgroundColor: theme.primaryColor,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    onPressed: () async {
+                                      if (!fromAddStop && selectedPickings.isEmpty) {
+                                        setState(() => shouldValidate = true);
+                                        if (!popCalled) {
+                                          popCalled = true;
+                                          Navigator.of(context).pop(true);
+                                        }
+                                        _showEnterRootPopup();
+                                        return;
+                                      }
+                                      needsAutoRoute = false;
+                                      if (!popCalled) {
+                                        popCalled = true;
+                                        Navigator.of(context).pop(true);
+                                      }
+                                      if (!mounted) return;
+                                      setState(() {
+                                        _showLocationNames = true;
+                                        _showOtherFABs = false;
+                                        _showLayer = false;
+                                        _showStopLocationFields = true;
+                                        _infoCard = false;
+                                        if (fromAddStop) {
+                                          _isNavigationStarted = false;
+                                        }
+                                        sourceSearchController.text = sourceController.text;
+                                      });
+                                      await _getOptimizedRoute();
+                                      if (mounted) setState(() {});
+                                    },
+                                    icon: const Icon(HugeIcons.strokeRoundedNavigation03, size: 18),
+                                    label: const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Show Directions',
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
                       ),
                       if (isFetchingStops)
                         Positioned.fill(

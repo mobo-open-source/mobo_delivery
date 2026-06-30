@@ -397,10 +397,8 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     ),
                     child: TabBar(
                       indicator: BoxDecoration(
-                        color: isDark
-                            ? Color(0xFF2A2A2A)
-                            : AppStyle.primaryColor,
-                        borderRadius: BorderRadius.circular(14),
+                        color: isDark ? const Color(0xFF2A2A2A) : AppStyle.primaryColor,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       indicatorPadding: const EdgeInsets.all(4),
                       indicatorSize: TabBarIndicatorSize.tab,
@@ -411,15 +409,15 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                       unselectedLabelColor: isDark
                           ? Colors.grey[400]
                           : Colors.grey[600],
-                      labelStyle: TextStyle(
+                      labelStyle: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
-                      unselectedLabelStyle: TextStyle(
+                      unselectedLabelStyle: const TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
                       ),
-                      tabs: [
+                      tabs: const [
                         Tab(height: 48, text: "Filter"),
                         Tab(height: 48, text: "Group By"),
                       ],
@@ -506,7 +504,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                 pressElevation: 0,
                                 shadowColor: Colors.transparent,
                                 surfaceTintColor: Colors.transparent,
-                                showCheckmark: false,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
@@ -555,8 +552,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                               onTap: () =>
                                   setDialogState(() => tempGroupBy = null),
                             ),
-                            // Single divider after "None" only — the remaining
-                            // options are listed without lines between them.
                             Divider(
                               height: 1,
                               color: isDark
@@ -696,20 +691,19 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              isSelected
-                  ? HugeIcons.strokeRoundedCheckmarkCircle01
-                  : HugeIcons.strokeRoundedCircle,
-              color: isSelected
-                  ? (isDark ? Colors.white : AppStyle.primaryColor)
-                  : Colors.grey,
-              size: 22,
+            Radio<bool>(
+              value: true,
+              groupValue: isSelected,
+              onChanged: (_) => onTap(),
+              activeColor: AppStyle.primaryColor,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -915,7 +909,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             ),
                           ),
                         ),
-                        if (hasNext) ...[
+                        if (hasNext && firstLoc != null) ...[
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -926,7 +920,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                   ? (isDark ? Colors.white70 : Colors.black87)
                                   : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
                             ),
-                            onPressed: currentPage > 0 ? () => _loadPrevPage(firstLoc!) : null,
+                            onPressed: currentPage > 0 ? () => _loadPrevPage(firstLoc) : null,
                           ),
                           IconButton(
                             padding: EdgeInsets.zero,
@@ -936,7 +930,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                               size: 25,
                               color: isDark ? Colors.white70 : Colors.black87,
                             ),
-                            onPressed: () => _loadNextPage(firstLoc!),
+                            onPressed: () => _loadNextPage(firstLoc),
                           ),
                         ],
                       ],
@@ -1338,11 +1332,11 @@ return FadeTransition(opacity: animation, child: child);
 
     switch (state) {
       case 'done':
-        color = statusTeal;
+        color = statusGreen;
         label = 'Done';
         break;
       case 'assigned':
-        color = statusGreen;
+        color = statusBlue;
         label = 'Ready';
         break;
       case 'waiting':
@@ -1358,7 +1352,7 @@ return FadeTransition(opacity: animation, child: child);
         label = 'Cancelled';
         break;
       case 'draft':
-        color = statusBlue;
+        color = statusGrey;
         label = 'Draft';
         break;
       default:

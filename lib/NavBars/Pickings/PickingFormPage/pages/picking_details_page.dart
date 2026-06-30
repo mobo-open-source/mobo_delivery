@@ -289,7 +289,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   ///   4. Surfaces an error only if both paths leave `pickings` empty.
   Future<void> _fetchData() async {
     final rawId = widget.picking['id'];
-    debugPrint('[PickingDetail] Fetch START id=$rawId');
     final odooPickingFormService = OdooPickingFormService();
     if (mounted) {
       setState(() {
@@ -319,22 +318,18 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       try {
         await _loadOfflineData();
       } catch (e, st) {
-        debugPrint(
-          '[PickingDetail] Fetch offline-load FAILED id=$rawId: $e\n$st',
-        );
+        // offline load failure is non-fatal — online path may still succeed
       }
 
       if (isOnline) {
         try {
           await _loadOnlineData();
         } catch (e, st) {
-          debugPrint(
-            '[PickingDetail] Fetch online-load FAILED id=$rawId: $e\n$st',
-          );
+          // online load failure is surfaced via the error message below
         }
       }
     } catch (e, st) {
-      debugPrint('[PickingDetail] Fetch EXCEPTION id=$rawId: $e\n$st');
+      // unexpected top-level failure — error message shown in finally
     } finally {
       if (mounted) {
         setState(() {
@@ -346,11 +341,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           }
         });
       }
-      debugPrint(
-        '[PickingDetail] Fetch END id=$rawId '
-        'online=$isOnline pickings=${pickings.length} '
-        'moves=${moveProducts.length} err=${_errorMessage.isEmpty ? "none" : _errorMessage}',
-      );
     }
   }
 
@@ -366,14 +356,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     final odooPickingFormService = OdooPickingFormService();
     await odooPickingFormService.initializeOdooClient();
     final pickingId = int.parse(widget.picking['id'].toString());
-    debugPrint('[PickingDetail] Reload START id=$pickingId');
 
     final results = await Future.wait<dynamic>([
       odooPickingFormService.loadPickings(pickingId),
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
-        debugPrint(
-          '[PickingDetail] Reload moves FAILED id=$pickingId: $e\n$st',
-        );
         return moveProducts;
       }),
     ]);
@@ -381,13 +367,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     final freshPickings = results[0] as List<PickingForm>;
     final freshMoves = results[1] as List<StockMove>;
 
-    debugPrint(
-      '[PickingDetail] Reload id=$pickingId '
-      'pickings=${freshPickings.length} moves=${freshMoves.length}',
-    );
-
     if (freshPickings.isEmpty) {
-      debugPrint('[PickingDetail] Reload EARLY-RETURN — header empty');
       if (mounted) setState(() {});
       return;
     }
@@ -445,9 +425,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     final results = await Future.wait<dynamic>([
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
-        debugPrint(
-          '[PickingDetail] loadProductMoves FAILED id=$pickingId: $e\n$st',
-        );
         if (mounted) {
           final msg = _extractOdooError(
             e,
@@ -498,19 +475,15 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     try {
       final results = await Future.wait<dynamic>([
         service.loadProducts().catchError((e) {
-          debugPrint('loadProducts error: $e');
           return <Product>[];
         }),
         service.loadPartners().catchError((e) {
-          debugPrint('loadPartners error: $e');
           return <Partner>[];
         }),
         service.loadUsers().catchError((e) {
-          debugPrint('loadUsers error: $e');
           return <User>[];
         }),
         service.loadOperationTypes().catchError((e) {
-          debugPrint('loadOperationTypes error: $e');
           return <Map<String, dynamic>>[];
         }),
       ]);
@@ -523,12 +496,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       final freshOpTypes =
           (results[3] as List?)?.cast<Map<String, dynamic>>() ??
           <Map<String, dynamic>>[];
-      debugPrint(
-        '[EditDropdowns] products=${freshProducts.length} '
-        'partners=${freshPartners.length} '
-        'users=${freshUsers.length} '
-        'opTypes=${freshOpTypes.length}',
-      );
       setState(() {
         if (freshProducts.isNotEmpty) products = freshProducts;
         if (freshPartners.isNotEmpty) partnerList = freshPartners;
@@ -536,7 +503,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         if (freshOpTypes.isNotEmpty) operationTypesList = freshOpTypes;
       });
     } catch (e) {
-      debugPrint('[EditDropdowns] load failed: $e');
+      // dropdown refresh failure is non-fatal; cached values remain usable
     }
   }
 
@@ -1476,9 +1443,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     try {
       pickingId = int.parse(widget.picking['id'].toString());
     } catch (e) {
-      debugPrint(
-        '[PickingDetail] Save aborted — bad picking id: ${widget.picking['id']} ($e)',
-      );
       if (mounted) {
         CustomSnackbar.showError(
           context,
@@ -1488,15 +1452,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       return;
     }
 
-    debugPrint(
-      '[PickingDetail] Save START id=$pickingId fields=${listOfUpdates.keys.toList()}',
-    );
     final odooPickingFormService = OdooPickingFormService();
 
     try {
       await odooPickingFormService.initializeOdooClient();
     } catch (e) {
-      debugPrint('[PickingDetail] Save init failed for id=$pickingId: $e');
       if (mounted) {
         CustomSnackbar.showError(
           context,
@@ -1529,23 +1489,14 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     try {
       final isOnline = isOnlineAvailability;
-      debugPrint('[PickingDetail] Save id=$pickingId online=$isOnline');
       if (isOnline) {
         final success = await odooPickingFormService
             .saveChanges(pickingId, updatedListOfUpdates)
             .timeout(const Duration(seconds: 15));
-        debugPrint('[PickingDetail] Save RPC id=$pickingId result=$success');
         if (success) {
           try {
             await _loadSavingData().timeout(const Duration(seconds: 15));
-            debugPrint(
-              '[PickingDetail] Reload after save id=$pickingId OK '
-              '(pickings=${pickings.length}, moves=${moveProducts.length})',
-            );
           } catch (e, st) {
-            debugPrint(
-              '[PickingDetail] Reload after save id=$pickingId FAILED: $e\n$st',
-            );
             if (mounted) {
               CustomSnackbar.showWarning(
                 context,
@@ -1567,9 +1518,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             'user_name': selectedUserName,
             'updates': updatedListOfUpdates,
           });
-          debugPrint(
-            '[PickingDetail] Save id=$pickingId queued offline (RPC returned false)',
-          );
           if (mounted) {
             setState(() {
               _isEditing = false;
@@ -1593,9 +1541,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           'user_name': selectedUserName,
           'updates': updatedListOfUpdates,
         });
-        debugPrint(
-          '[PickingDetail] Save id=$pickingId queued offline (offline path)',
-        );
         if (mounted) {
           setState(() {
             _isEditing = false;
@@ -1608,7 +1553,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         }
       }
     } catch (e, st) {
-      debugPrint('[PickingDetail] Save id=$pickingId EXCEPTION: $e\n$st');
       if (mounted) {
         CustomSnackbar.showError(
           context,
@@ -1617,7 +1561,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       }
     } finally {
       if (mounted) setState(() => isSaving = false);
-      debugPrint('[PickingDetail] Save END id=$pickingId');
     }
   }
 
@@ -1653,7 +1596,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   Future<void> _commitDelivery(String title) async {
     final headerUpdates = _buildHeaderUpdates() ?? <String, dynamic>{};
 
-    // Header-only change → existing flow handles online/offline + reload.
     if (!_hasStagedProductChanges) {
       await _saveChanges(headerUpdates, title);
       return;
@@ -1690,18 +1632,15 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     try {
       if (isOnline) {
-        // 1. Header (only if it actually changed).
         if (_isHeaderDirty && headerUpdates.isNotEmpty) {
           final ok = await service
               .saveChanges(pickingId, headerUpdates)
               .timeout(const Duration(seconds: 20));
           if (!ok) throw Exception('Failed to save the delivery details.');
         }
-        // 2. Deletions of existing lines.
         for (final moveId in _stagedDeletedMoveIds) {
           await service.deleteProductMove(moveId, pickingId);
         }
-        // 3. Edits of existing lines.
         for (final entry in _stagedEditedMoves.entries) {
           await service.updateProductMove(
             entry.key,
@@ -1709,7 +1648,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             entry.value.quantity,
           );
         }
-        // 4. New lines.
         if (_stagedNewMoves.isNotEmpty) {
           final loc = await _resolvePickingLocations(pickingId, service);
           if (loc.srcId == null || loc.destId == null) {
@@ -1736,11 +1674,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             try {
               await service.checkAvailability(pickingId);
             } catch (e) {
-              debugPrint('[PickingDetail] checkAvailability failed: $e');
+              // availability check after adding lines is best-effort
             }
           }
         }
-        // 5. Reload, exit edit, clear staging.
         try {
           await _loadSavingData().timeout(const Duration(seconds: 15));
         } catch (_) {
@@ -2504,7 +2441,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 ),
                 actions: [
                   if (!_isEditing) ...[
-                    // Detailed Operations (Moves)
                     IconButton(
                       onPressed: _stockMoveLine,
                       tooltip: 'Detailed Operations',
@@ -2513,7 +2449,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
-                    // View existing returns
                     if (pickings.isNotEmpty && pickings[0].returnCount > 0)
                       Stack(
                         clipBehavior: Clip.none,
@@ -3279,8 +3214,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                             ),
                                           ],
                                         ),
-                                        // Swipe the body left/right to move to the
-                                        // adjacent tab section (like the sales app).
                                         child: GestureDetector(
                                           behavior: HitTestBehavior.translucent,
                                           onHorizontalDragEnd: (details) {
@@ -3774,7 +3707,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         productUomId: product.productUomId,
                       );
 
-                      // Edit mode → stage; committed on "Save Delivery".
                       if (_isEditing) {
                         setState(() {
                           moveProducts[index] = moveUpdate;
@@ -3791,7 +3723,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         return;
                       }
 
-                      // View mode → commit immediately.
                       setStateDialog(() {
                         _isLoading = true;
                         _errorMessage = '';
@@ -4093,7 +4024,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                             isCreateSaving = false;
                             selectedPicking = 0;
                             selectedPickingName = null;
-                            // Rebuilds the PAGE (not just this dialog).
                             _stageNewMove(newMove);
                             Navigator.of(context).pop();
                             return;
@@ -4192,7 +4122,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   await odooPickingFormService
                                       .checkAvailability(pickingId);
                                 } catch (e) {
-                                  debugPrint('Check availability failed: $e');
+                                  // availability check after adding a line is best-effort
                                 }
                               }
                               await _loadSavingData();

@@ -392,8 +392,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                               onTap: () =>
                                   setDialogState(() => tempGroupBy = null),
                             ),
-                            // Single divider after "None" only — the remaining
-                            // options are listed without lines between them.
                             Divider(
                               height: 1,
                               color: isDark
@@ -706,20 +704,20 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF000000).withOpacity(0.05),
-            offset: const Offset(0, 6),
-            blurRadius: 16,
-            spreadRadius: 2,
+            color: const Color(0xFF000000).withOpacity(0.04),
+            offset: const Offset(0, 2),
+            blurRadius: 8,
           ),
         ],
       ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         title: Text(
           picking['name'] ?? 'Unnamed Picking',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 15,
-            color: isDark ? Colors.white : AppStyle.primaryColor,
+            fontSize: 14,
+            color: isDark ? Colors.white : const Color(0xFF1A1A1A),
           ),
         ),
         subtitle: Text(
@@ -1057,8 +1055,32 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                               top: 4,
                                               bottom: 16,
                                             ),
-                                            itemCount: pickings.length,
+                                            itemCount: pickings.length + (isFetchingMore ? 1 : 0),
                                             itemBuilder: (context, index) {
+                                              if (index == pickings.length) {
+                                                return Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                                  child: Center(
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const LoadingWidget(
+                                                          size: 26,
+                                                          variant: LoadingVariant.staggeredDots,
+                                                        ),
+                                                        const SizedBox(width: 10),
+                                                        Text(
+                                                          'Loading more documents...',
+                                                          style: TextStyle(
+                                                            fontSize: 13,
+                                                            color: isDark ? Colors.white70 : Colors.grey[600],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              }
                                               final picking = pickings[index];
                                               final scheduledDateRaw2 =
                                                   picking['scheduled_date'];
@@ -1083,9 +1105,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                       .stateColors[rawState] ??
                                                   Colors.black;
 
-                                              return Column(
-                                                children: [
-                                                  Padding(
+                                              return Padding(
                                                     padding: const EdgeInsets.symmetric(
                                                       horizontal: 16,
                                                     ),
@@ -1099,24 +1119,24 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                         ),
                                                         boxShadow: [
                                                           BoxShadow(
-                                                            color: const Color(0xFF000000).withOpacity(0.05),
-                                                            offset: const Offset(0, 6),
-                                                            blurRadius: 16,
-                                                            spreadRadius: 2,
+                                                            color: const Color(0xFF000000).withOpacity(0.04),
+                                                            offset: const Offset(0, 2),
+                                                            blurRadius: 8,
                                                           ),
                                                         ],
                                                       ),
                                                       margin: const EdgeInsets.only(bottom: 12),
                                                       child: ListTile(
+                                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                                                         title: Text(
                                                           picking['name'] ??
                                                               'Unnamed Picking',
                                                           style: TextStyle(
                                                             fontWeight: FontWeight.w600,
-                                                            fontSize: 15,
+                                                            fontSize: 14,
                                                             color: isDark
                                                                 ? Colors.white
-                                                                : AppStyle.primaryColor,
+                                                                : const Color(0xFF1A1A1A),
                                                           ),
                                                         ),
                                                         subtitle: Text(
@@ -1154,9 +1174,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           ),
                                                         ),
                                                         onTap: () {
-                                                          // Open the picking's
-                                                          // documents (view +
-                                                          // preview + add).
                                                           Navigator.of(context)
                                                               .push(
                                                             MaterialPageRoute(
@@ -1169,40 +1186,11 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                         },
                                                       ),
                                                     ),
-                                                  ),
-                                                ],
-                                              );
+                                                  );
                                             },
                                           ),
                                         ),
                                       ),
-                                if (isFetchingMore)
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 14),
-                                    child: Center(
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const LoadingWidget(
-                                            size: 26,
-                                            variant:
-                                                LoadingVariant.staggeredDots,
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            'Loading more documents...',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: isDark
-                                                  ? Colors.white70
-                                                  : Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
                               ],
                             );
                       },

@@ -225,6 +225,27 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     _errorMessage = '';
                   });
                 },
+                dropdownBuilder: (context, item) {
+                  if (item == null) return const SizedBox.shrink();
+                  return Row(
+                    children: [
+                      _buildProductImage(item, size: 32),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.cleanName,
+                          style: GoogleFonts.manrope(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  );
+                },
                 dropdownDecoratorProps: DropDownDecoratorProps(
                   dropdownSearchDecoration: InputDecoration(
                     isDense: true,
@@ -238,16 +259,11 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       color: isDark ? Colors.white54 : Colors.grey[500],
                       fontStyle: FontStyle.italic,
                     ),
-                    prefixIcon: selectedProduct != null
-                        ? Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: _buildProductImage(selectedProduct!, size: 28),
-                          )
-                        : Icon(
-                            HugeIcons.strokeRoundedPackage,
-                            size: 20,
-                            color: isDark ? Colors.grey[400] : Colors.grey[500],
-                          ),
+                    prefixIcon: Icon(
+                      HugeIcons.strokeRoundedPackage,
+                      size: 20,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    ),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,

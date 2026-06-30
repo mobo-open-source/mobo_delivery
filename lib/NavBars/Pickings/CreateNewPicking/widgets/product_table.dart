@@ -30,12 +30,13 @@ class ProductTable extends StatelessWidget {
         children: [
           if (moveProducts.isEmpty)
             _buildEmptyState(isDark)
-          else
+          else ...[
             ...moveProducts.asMap().entries.map(
               (e) => _buildProductCard(e.value, e.key, isDark),
             ),
-          const SizedBox(height: 12),
-          _buildAddLineButton(isDark),
+            const SizedBox(height: 12),
+            _buildAddLineButton(isDark),
+          ],
         ],
       ),
     );
@@ -194,7 +195,7 @@ class ProductTable extends StatelessWidget {
   Widget _buildEmptyState(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[800] : Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
@@ -218,50 +219,55 @@ class ProductTable extends StatelessWidget {
               color: isDark ? Colors.grey[400] : Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            'Tap "Add a product" below to get started',
+            'Add a product to get started',
             textAlign: TextAlign.center,
             style: GoogleFonts.manrope(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w400,
-              color: isDark ? Colors.grey[500] : Colors.grey[500],
+              color: isDark ? Colors.grey[600] : Colors.grey[500],
             ),
           ),
+          const SizedBox(height: 20),
+          _buildAddLineButton(isDark),
         ],
       ),
     );
   }
 
   Widget _buildAddLineButton(bool isDark) {
+    final bgColor = isDark ? Colors.grey[700]! : Colors.grey[500]!;
+    final fgColor = isDark ? Colors.white : Colors.white;
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 48,
       child: ElevatedButton(
         onPressed: onAddLine,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppStyle.primaryColor,
-          foregroundColor: Colors.white,
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
           elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               HugeIcons.strokeRoundedPackageAdd,
-              size: 20,
-              color: Colors.white,
+              size: 18,
+              color: fgColor,
             ),
             const SizedBox(width: 8),
             Text(
               'Add a product',
               style: GoogleFonts.manrope(
-                color: Colors.white,
+                color: fgColor,
                 fontWeight: FontWeight.w600,
-                fontSize: 16,
+                fontSize: 15,
               ),
             ),
           ],

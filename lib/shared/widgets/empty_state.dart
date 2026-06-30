@@ -38,54 +38,52 @@ class EmptyState extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Lottie.asset(
-                lottieAsset ?? ghostAsset,
-                width: 220,
-                height: 220,
-                repeat: true,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stack) => Icon(
-                  HugeIcons.strokeRoundedArchive03,
-                  size: 80,
-                  color: isDark ? Colors.grey[700] : Colors.grey[400],
-                ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Lottie.asset(
+              lottieAsset ?? ghostAsset,
+              width: 220,
+              height: 220,
+              repeat: true,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stack) => Icon(
+                HugeIcons.strokeRoundedArchive03,
+                size: 80,
+                color: isDark ? Colors.grey[700] : Colors.grey[400],
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 8),
               Text(
-                title,
+                subtitle!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 15,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
                 ),
               ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  subtitle!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                ),
-              ],
-              if (actionLabel != null && onAction != null) ...[
-                const SizedBox(height: 24),
-                MoboButton.secondary(
-                  label: actionLabel!,
-                  fullWidth: false,
-                  borderRadius: 8,
-                  onPressed: onAction,
-                ),
-              ],
             ],
-          ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 24),
+              MoboButton.secondary(
+                label: actionLabel!,
+                fullWidth: false,
+                borderRadius: 8,
+                onPressed: onAction,
+              ),
+            ],
+          ],
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/company/session/company_session_manager.dart';
@@ -223,14 +224,26 @@ class OdooReturnManagementService {
         'args': [
           {'picking_id': pickingId},
         ],
-        'kwargs': {},
+        'kwargs': {
+          'context': {
+            'active_id': pickingId,
+            'active_model': 'stock.picking',
+          },
+        },
       });
 
       final int wizardId;
       if (createResult is int) {
         wizardId = createResult;
       } else if (createResult is List && createResult.isNotEmpty) {
-        wizardId = createResult.first as int;
+        final first = createResult.first;
+        if (first is int) {
+          wizardId = first;
+        } else if (first is Map) {
+          wizardId = first['id'] as int;
+        } else {
+          throw Exception('Unexpected wizard id type: ${first.runtimeType}');
+        }
       } else {
         throw Exception('Failed to create return wizard.');
       }
@@ -246,9 +259,9 @@ class OdooReturnManagementService {
       });
 
       if (wizardRows is! List || wizardRows.isEmpty) return [];
-      final lineIds = (wizardRows.first as Map<String, dynamic>)[
-              'product_return_moves'] as List? ??
-          const [];
+      final firstRow = wizardRows.first;
+      if (firstRow is! Map) return [];
+      final lineIds = (firstRow as Map<String, dynamic>)['product_return_moves'] as List? ?? const [];
       if (lineIds.isEmpty) return [];
 
       final lines = await CompanySessionManager.callKwWithCompany({
@@ -263,10 +276,6 @@ class OdooReturnManagementService {
 
       final result = List<Map<String, dynamic>>.from(lines ?? const []);
 
-      // Fetch each product's thumbnail (image_128) so the return dialog can
-      // show the real product image. The return line model has no image
-      // field, so we read it from product.product by id and attach an
-      // `image` (base64 string) to each line.
       final productIds = <int>{
         for (final line in result)
           if (line['product_id'] is List && (line['product_id'] as List).isNotEmpty)
@@ -302,7 +311,7 @@ class OdooReturnManagementService {
             }
           }
         } catch (_) {
-          // Images are non-critical — fall back to the placeholder icon.
+          // image fetch is best-effort; the line data is still usable without it
         }
       }
 
@@ -312,11 +321,6 @@ class OdooReturnManagementService {
     }
   }
 
-  /// Fetches all move lines (`stock.move`) for a given picking ID
-  ///
-  /// Used in return creation bottom sheet to show editable return quantities.
-  /// Returns raw list of move data maps.
-  /// Throws exception on failure.
   Future<List<Map<String, dynamic>>> fetchMoveItems(int pickingId) async {
     try {
       final moveData = await CompanySessionManager.callKwWithCompany({
@@ -365,14 +369,26 @@ class OdooReturnManagementService {
       'args': [
         {'picking_id': pickingId},
       ],
-      'kwargs': {},
+      'kwargs': {
+        'context': {
+          'active_id': pickingId,
+          'active_model': 'stock.picking',
+        },
+      },
     });
 
     final int wizardId;
     if (createResult is int) {
       wizardId = createResult;
     } else if (createResult is List && createResult.isNotEmpty) {
-      wizardId = createResult.first as int;
+      final first = createResult.first;
+      if (first is int) {
+        wizardId = first;
+      } else if (first is Map) {
+        wizardId = first['id'] as int;
+      } else {
+        throw Exception('Unexpected wizard id type: ${first.runtimeType}');
+      }
     } else {
       throw Exception('Failed to create return wizard.');
     }

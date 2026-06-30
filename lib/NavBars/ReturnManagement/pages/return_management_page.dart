@@ -347,8 +347,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                               onTap: () =>
                                   setDialogState(() => tempGroupBy = null),
                             ),
-                            // Single divider after "None" only — the remaining
-                            // options are listed without lines between them.
                             Divider(
                               height: 1,
                               color: isDark
@@ -556,7 +554,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           final groupNameRaw = state.groupedPickings.keys.elementAt(index);
           final groupName = (groupNameRaw == 'false' || groupNameRaw == 'None' || groupNameRaw.isEmpty) ? 'None' : groupNameRaw;
           final groupPickings = state.groupedPickings[groupNameRaw]!;
-          final isExpanded = _groupExpanded[groupNameRaw] ?? true;
+          final isExpanded = _groupExpanded[groupName] ?? true;
 
           return Container(
             decoration: BoxDecoration(
@@ -741,50 +739,14 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          reference,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : primaryColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (hasOrigin)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.amber.withValues(alpha: 0.2)
-                                  : Colors.amber.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.amber.shade300
-                                    : Colors.amber.shade700,
-                                width: 0.5,
-                              ),
-                            ),
-                            child: Text(
-                              'Return',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? Colors.amber.shade200
-                                    : Colors.amber.shade900,
-                              ),
-                            ),
-                          ),
-                      ],
+                    child: Text(
+                      reference,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : primaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -827,6 +789,23 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (hasOrigin) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      HugeIcons.strokeRoundedArrowTurnBackward,
+                      size: 13,
+                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Return',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -879,16 +858,18 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   Color _getStatusColor(String state) {
     switch (state) {
       case 'done':
-        return Colors.green;
+        return const Color(0xFF00A63E);
       case 'assigned':
-        return Colors.blue;
+        return const Color(0xFF3B82F6);
       case 'waiting':
       case 'confirmed':
-        return Colors.orange;
+        return const Color(0xFFF97316);
       case 'cancel':
-        return Colors.red;
+        return const Color(0xFFEF4444);
+      case 'draft':
+        return const Color(0xFF6B7280);
       default:
-        return Colors.grey;
+        return const Color(0xFF6B7280);
     }
   }
 

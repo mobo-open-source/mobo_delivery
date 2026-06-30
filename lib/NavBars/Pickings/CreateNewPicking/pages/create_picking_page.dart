@@ -135,19 +135,15 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
       if (isOnline) {
         final results = await Future.wait([
           odooService.loadProducts().catchError((e) {
-            debugPrint('loadProducts error: $e');
             return <ProductModel>[];
           }),
           odooService.loadPartners().catchError((e) {
-            debugPrint('loadPartners error: $e');
             return <PartnerModel>[];
           }),
           odooService.loadUsers().catchError((e) {
-            debugPrint('loadUsers error: $e');
             return <UserModel>[];
           }),
           odooService.loadOperationTypes().catchError((e) {
-            debugPrint('loadOperationTypes error: $e');
             return <OperationTypeModel>[];
           }),
         ]);
@@ -177,7 +173,6 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
         });
       }
     } catch (e) {
-      debugPrint("Error initializing data: $e");
       if (mounted && partnerList.isEmpty && operationTypes.isEmpty) {
         setState(() {
           _errorMessage = "Error loading data: ${e.toString().replaceFirst('Exception: ', '')}";
@@ -881,7 +876,6 @@ return FadeTransition(opacity: animation, child: child);
                                     ),
                                   ],
                                 ),
-                                // Swipe the body to move to the adjacent section.
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.translucent,
                                   onHorizontalDragEnd: (details) {

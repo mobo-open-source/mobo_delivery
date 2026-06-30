@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:odoo_delivery_app/Rating/review_service.dart';
 
 /// A customizable rating dialog that allows users to rate the app
@@ -135,10 +135,12 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                   onTap: () => setState(() => _rating = index + 1),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(
-                      filled ? HugeIcons.strokeRoundedRanking : HugeIcons.strokeRoundedRanking,
-                      color: _starColor,
-                      size: 44,
+                    child: SvgPicture.asset(
+                      filled
+                          ? 'assets/icons/star_filled.svg'
+                          : 'assets/icons/star_outlined.svg',
+                      width: 44,
+                      height: 44,
                     ),
                   ),
                 );
