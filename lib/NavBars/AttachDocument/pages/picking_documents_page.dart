@@ -594,18 +594,18 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
   (String, Color) _statusInfo(String state) {
     switch (state) {
       case 'done':
-        return ('Done', const Color(0xFF2E7D32));
+        return ('Done', const Color(0xFF00A63E));
       case 'cancel':
-        return ('Cancelled', const Color(0xFFC62828));
+        return ('Cancelled', const Color(0xFFEF4444));
       case 'assigned':
-        return ('Ready', const Color(0xFF1565C0));
+        return ('Ready', const Color(0xFF3B82F6));
       case 'confirmed':
       case 'waiting':
-        return ('Waiting', const Color(0xFFE08600));
+        return ('Waiting', const Color(0xFFF97316));
       case 'draft':
-        return ('Draft', Colors.grey);
+        return ('Draft', const Color(0xFF6B7280));
       default:
-        return (state, Colors.grey);
+        return (state, const Color(0xFF6B7280));
     }
   }
 

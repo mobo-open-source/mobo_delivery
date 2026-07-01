@@ -2232,7 +2232,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     const Color statusBlue = Color(0xFF3B82F6);
     const Color statusOrange = Color(0xFFF97316);
     const Color statusRed = Color(0xFFEF4444);
-    const Color statusTeal = Color(0xFF14B8A6);
     const Color statusGrey = Color(0xFF6B7280);
 
     Color color;
@@ -2240,11 +2239,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
     switch (status.toLowerCase()) {
       case 'done':
-        color = statusTeal;
+        color = statusGreen;
         label = 'Done';
         break;
       case 'assigned':
-        color = statusGreen;
+        color = statusBlue;
         label = 'Ready';
         break;
       case 'waiting':
@@ -2260,7 +2259,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         label = 'Cancelled';
         break;
       case 'draft':
-        color = statusBlue;
+        color = statusGrey;
         label = 'Draft';
         break;
       default:
@@ -2323,10 +2322,25 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       child: Stack(
         children: [
           if (_errorMessage.isNotEmpty)
-            ErrorStateWidget(
-              title: 'Something went wrong',
-              message: _errorMessage,
-              onRetry: _fetchData,
+            Scaffold(
+              backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+              appBar: AppBar(
+                forceMaterialTransparency: true,
+                backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                leading: IconButton(
+                  icon: Icon(
+                    HugeIcons.strokeRoundedArrowLeft01,
+                    color: isDark ? Colors.white : Colors.black,
+                    size: 28,
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              body: ErrorStateWidget(
+                title: 'Something went wrong',
+                message: _errorMessage,
+                onRetry: _fetchData,
+              ),
             )
           else if (isDataAvailable) ...[
             Scaffold(
@@ -2820,7 +2834,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                 Row(
                                   children: [
                                     Icon(
-                                      HugeIcons.strokeRoundedCalendar01,
+                                      HugeIcons.strokeRoundedCalendar03,
                                       size: 13,
                                       color: isDark
                                           ? Colors.white54
@@ -2940,7 +2954,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                               DateTime.now().toString(),
                                         ),
                                         prefixIcon:
-                                            HugeIcons.strokeRoundedCalendar01,
+                                            HugeIcons.strokeRoundedCalendar03,
                                         onTapEditing: () async {
                                           final initial =
                                               DateTime.tryParse(
@@ -2992,7 +3006,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           ),
                                           isEditing: _isEditing,
                                           prefixIcon:
-                                              HugeIcons.strokeRoundedCalendar01,
+                                              HugeIcons.strokeRoundedCalendar03,
                                           controller: deadlineController,
                                           color: getScheduledDateColor(
                                             pickings[0].dateDeadline ??
@@ -3050,7 +3064,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           isEditing: _isEditing,
                                           controller: dateDoneController,
                                           prefixIcon:
-                                              HugeIcons.strokeRoundedCalendar01,
+                                              HugeIcons.strokeRoundedCalendar03,
                                           color: getScheduledDateColor(
                                             pickings[0].dateDone ??
                                                 DateTime.now().toString(),
@@ -3149,7 +3163,13 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                         bottom: 12,
                                       ),
                                       height: 40,
-                                      child: ListView.separated(
+                                      child: MediaQuery(
+                                        data: MediaQuery.of(context).copyWith(
+                                          textScaler: MediaQuery.of(context)
+                                              .textScaler
+                                              .clamp(maxScaleFactor: 1.1),
+                                        ),
+                                        child: ListView.separated(
                                         controller: _tabHeaderScrollController,
                                         scrollDirection: Axis.horizontal,
                                         physics: const ClampingScrollPhysics(),
@@ -3183,6 +3203,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           );
                                         },
                                       ),
+                                      ),
                                     ),
                                       Container(
                                         width: double.infinity,
@@ -3192,7 +3213,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                         constraints: const BoxConstraints(
                                           minHeight: 240,
                                         ),
-                                        clipBehavior: Clip.antiAlias,
+                                        clipBehavior: Clip.antiAliasWithSaveLayer,
                                         decoration: BoxDecoration(
                                           color: isDark
                                               ? Colors.grey[850]
@@ -3440,6 +3461,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     TextEditingController qtyController,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    bool isDropdownOpen = false;
     return StatefulBuilder(
       builder: (context, setStateDialog) {
         return AlertDialog(
@@ -3448,164 +3470,260 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'Edit Product Line',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-              ),
-            ],
+          title: Text(
+            'Edit Product Line',
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
-          content: Container(
-            height: _errorMessage.isNotEmpty
-                ? MediaQuery.of(context).size.height * 0.20
-                : MediaQuery.of(context).size.height * 0.17,
+          content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.95,
             child: Stack(
               children: [
-                SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RequiredLabel(
-                            "Product",
-                            isRequired: true,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white60 : Colors.black87,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RequiredLabel(
+                      "Product",
+                      isRequired: true,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white60 : Colors.black87,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: isDark
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xFFF8FAFB),
+                        border: Border.all(
+                          color: isDropdownOpen
+                              ? AppStyle.primaryColor
+                              : Colors.transparent,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: DropdownSearch<Product>(
+                        onBeforePopupOpening: (_) async {
+                          setStateDialog(() => isDropdownOpen = true);
+                          return true;
+                        },
+                        popupProps: PopupProps.menu(
+                          onDismissed: () =>
+                              setStateDialog(() => isDropdownOpen = false),
+                          menuProps: MenuProps(
+                            backgroundColor:
+                                isDark ? Colors.grey[900] : Colors.white,
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
-                          const SizedBox(height: 5),
-                          DropdownSearch<Map<String, dynamic>>(
-                            popupProps: PopupProps.menu(
-                              showSearchBox: true,
-                              searchFieldProps: TextFieldProps(
-                                decoration: InputDecoration(
-                                  labelText: "Search Product",
-                                  labelStyle: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                                  prefixIcon: Icon(
-                                    HugeIcons.strokeRoundedSearch01,
-                                  ),
-                                  border: OutlineInputBorder(),
+                          showSearchBox: true,
+                          searchFieldProps: TextFieldProps(
+                            decoration: InputDecoration(
+                              hintText: 'Search products...',
+                              hintStyle: GoogleFonts.manrope(
+                                fontWeight: FontWeight.w400,
+                                color: isDark
+                                    ? Colors.white54
+                                    : Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
+                              prefixIcon: Icon(
+                                HugeIcons.strokeRoundedSearch01,
+                                size: 20,
+                                color: isDark
+                                    ? Colors.white54
+                                    : Colors.grey[500],
+                              ),
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.grey[850]
+                                  : Colors.grey[100],
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: AppStyle.primaryColor,
+                                  width: 1.5,
                                 ),
                               ),
                             ),
-                            items: products.map((p) => p.toJson()).toList(),
-                            itemAsString: (item) => item['name'] ?? '',
-                            selectedItem: products
-                                .firstWhere(
-                                  (element) => element.id == selectedPicking,
-                                  orElse: () =>
-                                      Product(id: 0, name: '', uom_id: 0),
-                                )
-                                .toJson(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedPicking = value?['id'];
-                                selectedPickingName = value?['name'];
-                              });
-                            },
-                            dropdownDecoratorProps: DropDownDecoratorProps(
-                              dropdownSearchDecoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                hintText: "Select Product",
-                                hintStyle: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? Colors.white60
-                                      : Colors.black87,
-                                ),
-                                prefixIcon: Icon(
-                                  HugeIcons.strokeRoundedPackage,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[500],
-                                ),
-                                filled: true,
-                                fillColor: isDark
-                                    ? const Color(0xFF2A2A2A)
-                                    : const Color(0xffF8FAFB),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: AppStyle.primaryColor,
-                                    width: 1,
-                                  ),
-                                ),
+                          ),
+                          itemBuilder: (context, p, isSelected) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
-                            ),
-                            validator: (value) => value == null
-                                ? 'Please select a product'
-                                : null,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RequiredLabel(
-                            "Quantity",
-                            isRequired: true,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white60 : Colors.black87,
-                          ),
-                          const SizedBox(height: 5),
-                          MoboTextField(
-                            controller: qtyController,
-                            hintText: 'Add Quantity',
-                            keyboardType: TextInputType.number,
-                            prefixIcon: Icon(
-                              HugeIcons.strokeRoundedListView,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (_errorMessage.isNotEmpty)
-                        Text(
-                          _errorMessage,
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w400,
-                            fontSize: 13,
+                              child: Row(
+                                children: [
+                                  _buildProductImage(p, size: 38),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      p.cleanName,
+                                      style: GoogleFonts.manrope(
+                                        fontSize: 14,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: isSelected
+                                            ? AppStyle.primaryColor
+                                            : (isDark
+                                                ? Colors.white
+                                                : Colors.black87),
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 18,
+                                      color: AppStyle.primaryColor,
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        items: products,
+                        itemAsString: (p) => p.cleanName,
+                        compareFn: (a, b) => a.id == b.id,
+                        selectedItem: products.firstWhere(
+                          (p) => p.id == selectedPicking,
+                          orElse: () => Product(
+                            id: selectedPicking ?? 0,
+                            name: selectedPickingName ?? '',
+                            uom_id: selectedPickingUom ?? 1,
                           ),
                         ),
+                        onChanged: (value) {
+                          setState(() {
+                            _errorMessage = '';
+                            selectedPicking = value?.id;
+                            selectedPickingName = value?.name;
+                            selectedPickingUom = value?.uom_id;
+                          });
+                        },
+                        dropdownBuilder: (context, item) {
+                          if (item == null || item.id == 0) {
+                            return Text(
+                              'Select a product',
+                              style: GoogleFonts.manrope(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                fontStyle: FontStyle.italic,
+                                color: isDark
+                                    ? Colors.white54
+                                    : Colors.grey[500],
+                              ),
+                            );
+                          }
+                          return Row(
+                            children: [
+                              _buildProductImage(item, size: 32),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  item.cleanName,
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                        dropdownDecoratorProps: DropDownDecoratorProps(
+                          dropdownSearchDecoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            prefixIcon: (selectedPicking == null ||
+                                    selectedPicking == 0)
+                                ? Icon(
+                                    HugeIcons.strokeRoundedPackage,
+                                    size: 20,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[500],
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                        ),
+                        validator: (value) =>
+                            value == null ? 'Please select a product' : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    RequiredLabel(
+                      "Quantity",
+                      isRequired: true,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white60 : Colors.black87,
+                    ),
+                    const SizedBox(height: 8),
+                    MoboTextField(
+                      controller: qtyController,
+                      hintText: 'Enter quantity',
+                      keyboardType: TextInputType.number,
+                      prefixIcon: Icon(
+                        HugeIcons.strokeRoundedPinCode,
+                        size: 20,
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                    ),
+                    if (_errorMessage.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _errorMessage,
+                        style: GoogleFonts.manrope(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w400,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
                 if (_isLoading)
-                  Container(
-                    color: Colors.black26,
-                    child: const Center(
-                      child: LoadingWidget(
-                        size: 60,
-                        variant: LoadingVariant.staggeredDots,
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black26,
+                      child: const Center(
+                        child: LoadingWidget(
+                          size: 60,
+                          variant: LoadingVariant.staggeredDots,
+                        ),
                       ),
                     ),
                   ),
@@ -3807,11 +3925,47 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     );
   }
 
+  Widget _buildProductImage(Product product, {double size = 40}) {
+    if (product.imageBase64 != null && product.imageBase64!.isNotEmpty) {
+      try {
+        final base64String = product.imageBase64!.contains(',')
+            ? product.imageBase64!.split(',')[1]
+            : product.imageBase64!;
+        final bytes = base64Decode(base64String);
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            image: DecorationImage(
+              image: MemoryImage(bytes),
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      } catch (_) {}
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppStyle.primaryColor.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        HugeIcons.strokeRoundedPackage,
+        size: size * 0.45,
+        color: AppStyle.primaryColor,
+      ),
+    );
+  }
+
   Widget _addProductLine(
     BuildContext context,
     TextEditingController qtyController,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    bool isDropdownOpen = false;
     return StatefulBuilder(
       builder: (context, setState) => Stack(
         children: [
@@ -3821,144 +3975,250 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    'Add a Product Line',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                  ),
-                ),
-              ],
+            title: Text(
+              'Add a Product',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
-            content: Container(
-              height: _errorMessage.isNotEmpty
-                  ? MediaQuery.of(context).size.height * 0.20
-                  : MediaQuery.of(context).size.height * 0.17,
+            content: SizedBox(
               width: MediaQuery.of(context).size.width * 0.95,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RequiredLabel(
-                          "Product",
-                          isRequired: true,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white60 : Colors.black87,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RequiredLabel(
+                    "Product",
+                    isRequired: true,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white60 : Colors.black87,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: isDark
+                          ? const Color(0xFF2A2A2A)
+                          : const Color(0xFFF8FAFB),
+                      border: Border.all(
+                        color: isDropdownOpen
+                            ? AppStyle.primaryColor
+                            : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: DropdownSearch<Product>(
+                      onBeforePopupOpening: (_) async {
+                        setState(() => isDropdownOpen = true);
+                        return true;
+                      },
+                      popupProps: PopupProps.menu(
+                        onDismissed: () =>
+                            setState(() => isDropdownOpen = false),
+                        menuProps: MenuProps(
+                          backgroundColor:
+                              isDark ? Colors.grey[900] : Colors.white,
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        const SizedBox(height: 5),
-                        DropdownSearch<Map<String, dynamic>>(
-                          popupProps: PopupProps.menu(
-                            showSearchBox: true,
-                            searchFieldProps: TextFieldProps(
-                              decoration: InputDecoration(
-                                hintText: "Search Product",
-                                hintStyle: TextStyle(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: 'Search products...',
+                            hintStyle: GoogleFonts.manrope(
+                              fontWeight: FontWeight.w400,
+                              color: isDark
+                                  ? Colors.white54
+                                  : Colors.grey[500],
+                              fontStyle: FontStyle.italic,
+                            ),
+                            prefixIcon: Icon(
+                              HugeIcons.strokeRoundedSearch01,
+                              size: 20,
+                              color: isDark
+                                  ? Colors.white54
+                                  : Colors.grey[500],
+                            ),
+                            filled: true,
+                            fillColor:
+                                isDark ? Colors.grey[850] : Colors.grey[100],
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppStyle.primaryColor,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        itemBuilder: (context, product, isSelected) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                _buildProductImage(product, size: 38),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    product.cleanName,
+                                    style: GoogleFonts.manrope(
+                                      fontSize: 14,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: isSelected
+                                          ? AppStyle.primaryColor
+                                          : (isDark
+                                              ? Colors.white
+                                              : Colors.black87),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 18,
+                                    color: AppStyle.primaryColor,
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      items: products,
+                      itemAsString: (p) => p.cleanName,
+                      compareFn: (a, b) => a.id == b.id,
+                      selectedItem: selectedPicking != null &&
+                              selectedPicking != 0
+                          ? products.firstWhere(
+                              (p) => p.id == selectedPicking,
+                              orElse: () => Product(
+                                id: 0,
+                                name: selectedPickingName ?? '',
+                                uom_id: selectedPickingUom ?? 1,
+                              ),
+                            )
+                          : null,
+                      onChanged: (value) {
+                        setState(() {
+                          _errorMessage = '';
+                          selectedPicking = value?.id;
+                          selectedPickingName = value?.name;
+                          selectedPickingUom = value?.uom_id ?? 1;
+                        });
+                      },
+                      dropdownBuilder: (context, item) {
+                        if (item == null) {
+                          return Text(
+                            'Select a product',
+                            style: GoogleFonts.manrope(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.italic,
+                              color: isDark
+                                  ? Colors.white54
+                                  : Colors.grey[500],
+                            ),
+                          );
+                        }
+                        return Row(
+                          children: [
+                            _buildProductImage(item, size: 32),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                item.cleanName,
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w500,
-                                  color: isDark ? Colors.white : Colors.black,
+                                  color: isDark
+                                      ? Colors.white
+                                      : Colors.black87,
                                 ),
-                                prefixIcon: Icon(
-                                  HugeIcons.strokeRoundedSearch01,
-                                ),
-                                border: OutlineInputBorder(),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                          ],
+                        );
+                      },
+                      dropdownDecoratorProps: DropDownDecoratorProps(
+                        dropdownSearchDecoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
                           ),
-                          items: products.map((p) => p.toJson()).toList(),
-                          itemAsString: (item) => item['name'] ?? '',
-                          onChanged: (value) {
-                            setState(() {
-                              _errorMessage = '';
-                              selectedPicking = value?['id'];
-                              selectedPickingName = value?['name'];
-                              selectedPickingUom = value?['uom_id'] ?? 1;
-                            });
-                          },
-                          dropdownDecoratorProps: DropDownDecoratorProps(
-                            dropdownSearchDecoration: InputDecoration(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              hintText: "Select Product",
-                              hintStyle: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? Colors.white60 : Colors.black87,
-                              ),
-                              prefixIcon: Icon(
-                                HugeIcons.strokeRoundedPackage,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[500],
-                              ),
-                              filled: true,
-                              fillColor: isDark
-                                  ? const Color(0xFF2A2A2A)
-                                  : const Color(0xffF8FAFB),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: AppStyle.primaryColor,
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                          ),
-                          validator: (value) =>
-                              value == null ? 'Please select a product' : null,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RequiredLabel(
-                          "Quantity",
-                          isRequired: true,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white60 : Colors.black87,
-                        ),
-                        const SizedBox(height: 5),
-                        MoboTextField(
-                          controller: qtyController,
-                          hintText: 'Add Quantity',
-                          keyboardType: TextInputType.number,
-                          prefixIcon: Icon(
-                            HugeIcons.strokeRoundedListView,
-                            color: isDark ? Colors.grey[400] : Colors.grey[500],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (_errorMessage.isNotEmpty)
-                      Text(
-                        _errorMessage,
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.w400,
-                          fontSize: 13,
+                          prefixIcon: (selectedPicking == null ||
+                                  selectedPicking == 0)
+                              ? Icon(
+                                  HugeIcons.strokeRoundedPackage,
+                                  size: 20,
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[500],
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                         ),
                       ),
+                      validator: (value) =>
+                          value == null ? 'Please select a product' : null,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  RequiredLabel(
+                    "Quantity",
+                    isRequired: true,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white60 : Colors.black87,
+                  ),
+                  const SizedBox(height: 8),
+                  MoboTextField(
+                    controller: qtyController,
+                    hintText: 'Enter quantity',
+                    keyboardType: TextInputType.number,
+                    prefixIcon: Icon(
+                      HugeIcons.strokeRoundedPinCode,
+                      size: 20,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    ),
+                  ),
+                  if (_errorMessage.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _errorMessage,
+                      style: GoogleFonts.manrope(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w400,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
             actions: [
@@ -3966,11 +4226,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 children: [
                   Expanded(
                     child: MoboButton.secondary(
-                      label: "CANCEL",
+                      label: 'CANCEL',
                       borderRadius: 8,
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -4233,17 +4491,23 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         pickings[0].state != 'cancel';
 
     if (moveProducts.isEmpty) {
+      // Only surface the "products couldn't be loaded from server" warning
+      // when we're viewing (not editing). In edit mode, an empty list means
+      // the user just deleted the last product locally — that's not a load
+      // failure, so show the neutral "No products added yet" state instead.
       final bool showWarn =
+          !_isEditing &&
           ['assigned', 'confirmed', 'waiting'].contains(pickings[0].state) &&
           isOnlineAvailability;
       return Padding(
         padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (showWarn)
-                Column(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (showWarn)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
                   children: [
                     Icon(
                       HugeIcons.strokeRoundedAlert02,
@@ -4277,24 +4541,24 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                       onPressed: _fetchData,
                     ),
                   ],
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'No products added yet',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white54 : Colors.grey[500],
-                      ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 140,
+                child: Center(
+                  child: Text(
+                    'No products added yet',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white54 : Colors.grey[500],
                     ),
                   ),
                 ),
-              const SizedBox(height: 16),
-              if (canEdit) _addLineButton(isDark),
-            ],
-          ),
+              ),
+            const SizedBox(height: 16),
+            if (canEdit) _addLineButton(isDark),
+          ],
         ),
       );
     }
@@ -4307,9 +4571,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: borderColor, width: 1),
+            child: Material(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: borderColor, width: 1),
                 borderRadius: BorderRadius.circular(8),
               ),
               clipBehavior: Clip.antiAlias,
@@ -4417,6 +4682,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       _errorMessage = "";
       selectedPicking = product.productId?[0];
       selectedPickingName = product.productId?[1];
+      selectedPickingUom = product.productUomId;
     });
     final qtyController = TextEditingController(
       text: product.quantity.toString(),

@@ -180,35 +180,26 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         color: isDark
                             ? const Color(0xFF2A2A2A)
                             : Theme.of(sheetContext).primaryColor,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? const Color(0xFF2A2A2A).withValues(alpha: 0.3)
-                                : Theme.of(
-                                    sheetContext,
-                                  ).primaryColor.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       indicatorPadding: const EdgeInsets.all(4),
                       indicatorSize: TabBarIndicatorSize.tab,
                       dividerColor: Colors.transparent,
+                      overlayColor: WidgetStateProperty.all(Colors.transparent),
+                      splashFactory: NoSplash.splashFactory,
                       labelColor: Colors.white,
                       unselectedLabelColor: isDark
                           ? Colors.grey[400]
                           : Colors.grey[600],
-                      labelStyle: TextStyle(
+                      labelStyle: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
-                      unselectedLabelStyle: TextStyle(
+                      unselectedLabelStyle: const TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
                       ),
-                      tabs: [
+                      tabs: const [
                         Tab(height: 48, text: "Filter"),
                         Tab(height: 48, text: "Group By"),
                       ],
@@ -298,7 +289,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                 pressElevation: 0,
                                 shadowColor: Colors.transparent,
                                 surfaceTintColor: Colors.transparent,
-                                showCheckmark: false,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
@@ -332,8 +322,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                 'Group returns by',
                                 style: TextStyle(
                                   color: isDark
-                                      ? Colors.white70
-                                      : Colors.black54,
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -372,7 +362,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[850] : Colors.grey[50],
+                      color: isDark ? const Color(0xFF232323) : Colors.white,
                       border: Border(
                         top: BorderSide(
                           color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
@@ -488,20 +478,19 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              isSelected
-                  ? HugeIcons.strokeRoundedCheckmarkCircle01
-                  : HugeIcons.strokeRoundedCircle,
-              color: isSelected
-                  ? (isDark ? Colors.white : Theme.of(context).primaryColor)
-                  : Colors.grey,
-              size: 22,
+            Radio<bool>(
+              value: true,
+              groupValue: isSelected,
+              onChanged: (_) => onTap(),
+              activeColor: Theme.of(context).primaryColor,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,7 +508,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     subtitle,
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -774,7 +763,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
               Row(
                 children: [
                   Icon(
-                    HugeIcons.strokeRoundedCalendar01,
+                    HugeIcons.strokeRoundedCalendar03,
                     size: 14,
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
                   ),

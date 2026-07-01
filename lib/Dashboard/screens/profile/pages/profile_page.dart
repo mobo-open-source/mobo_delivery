@@ -61,40 +61,48 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     if (mounted) setState(() {});
   }
 
+  String? _initError;
+
   Future<void> _initBloc() async {
-    final sessionData = await storageService.getSessionData();
-    userId = sessionData['userId'];
-    companyId = sessionData['companyId'];
-    isSystem = sessionData['isSystem'];
+    try {
+      final sessionData = await storageService.getSessionData();
+      userId = sessionData['userId'];
+      companyId = sessionData['companyId'];
+      isSystem = sessionData['isSystem'];
 
-    final session = OdooSession(
-      id: sessionData['sessionId'],
-      userId: userId ?? 0,
-      partnerId: sessionData['partnerId'],
-      userLogin: sessionData['userLogin'],
-      userName: sessionData['userName'],
-      userLang: sessionData['userLang'],
-      userTz: '',
-      isSystem: isSystem ?? false,
-      dbName: sessionData['db'],
-      serverVersion: sessionData['serverVersion'],
-      companyId: companyId ?? 1,
-      allowedCompanies: storageService.parseCompanies(
-        sessionData['allowedCompanies'],
-      ),
-    );
+      final session = OdooSession(
+        id: sessionData['sessionId'],
+        userId: userId ?? 0,
+        partnerId: sessionData['partnerId'],
+        userLogin: sessionData['userLogin'],
+        userName: sessionData['userName'],
+        userLang: sessionData['userLang'],
+        userTz: '',
+        isSystem: isSystem ?? false,
+        dbName: sessionData['db'],
+        serverVersion: sessionData['serverVersion'],
+        companyId: companyId ?? 1,
+        allowedCompanies: storageService.parseCompanies(
+          sessionData['allowedCompanies'],
+        ),
+      );
 
-    odooService = OdooDashboardService(sessionData['url'], session);
+      odooService = OdooDashboardService(sessionData['url'], session);
 
-    if (mounted) {
-      setState(() {
-        _profileBloc = ProfileBloc(
-          odooService: odooService,
-          storageService: storageService,
-          encryptionService: encryptionService,
-        );
-      });
-      _profileBloc!.add(LoadProfile());
+      if (mounted) {
+        setState(() {
+          _profileBloc = ProfileBloc(
+            odooService: odooService,
+            storageService: storageService,
+            encryptionService: encryptionService,
+          );
+        });
+        _profileBloc!.add(LoadProfile());
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _initError = e.toString());
+      }
     }
   }
 
@@ -138,7 +146,28 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     if (_profileBloc == null) {
       return Scaffold(
         backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-        body: const Center(child: ProfileShimmer()),
+        appBar: AppBar(
+          forceMaterialTransparency: true,
+          backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(HugeIcons.strokeRoundedArrowLeft01,
+                color: isDark ? Colors.white : Colors.black),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: _initError != null
+            ? ErrorStateWidget(
+                title: 'Something went wrong',
+                message:
+                    'Unable to open your profile. Please try again.\n\n$_initError',
+                errorType: ErrorType.general,
+                onRetry: () {
+                  setState(() => _initError = null);
+                  _initAll();
+                },
+              )
+            : const Center(child: ProfileShimmer()),
       );
     }
 
@@ -311,7 +340,6 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       message: 'Are you sure you want to log out? Your session will be ended.',
       confirmText: 'Log Out',
       cancelText: 'Cancel',
-      destructive: false,
       centered: false,
     );
 

@@ -2,6 +2,7 @@ import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
+import 'profile_detail_shimmer.dart';
 import '../../../../shared/widgets/odoo_avatar.dart';
 import '../../../../shared/widgets/forms/custom_dropdown_field.dart';
 import '../../../../shared/widgets/forms/custom_text_field.dart';
@@ -929,7 +930,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         ),
         backgroundColor: isDark ? Colors.grey[900]! : Colors.white,
         body: _isLoading && _userData == null
-            ? Center(child: LoadingWidget(size: 40, variant: LoadingVariant.staggeredDots))
+            ? const ProfileDetailShimmer()
             : _userData == null
                 ? Center(
                     child: Padding(

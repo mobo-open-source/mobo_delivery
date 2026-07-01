@@ -226,7 +226,17 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   });
                 },
                 dropdownBuilder: (context, item) {
-                  if (item == null) return const SizedBox.shrink();
+                  if (item == null) {
+                    return Text(
+                      'Select a product',
+                      style: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        fontStyle: FontStyle.italic,
+                        color: isDark ? Colors.white54 : Colors.grey[500],
+                      ),
+                    );
+                  }
                   return Row(
                     children: [
                       _buildProductImage(item, size: 32),
@@ -253,17 +263,13 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       horizontal: 12,
                       vertical: 12,
                     ),
-                    hintText: 'Select Product',
-                    hintStyle: GoogleFonts.manrope(
-                      fontWeight: FontWeight.w400,
-                      color: isDark ? Colors.white54 : Colors.grey[500],
-                      fontStyle: FontStyle.italic,
-                    ),
-                    prefixIcon: Icon(
-                      HugeIcons.strokeRoundedPackage,
-                      size: 20,
-                      color: isDark ? Colors.grey[400] : Colors.grey[500],
-                    ),
+                    prefixIcon: selectedProduct == null
+                        ? Icon(
+                            HugeIcons.strokeRoundedPackage,
+                            size: 20,
+                            color: isDark ? Colors.grey[400] : Colors.grey[500],
+                          )
+                        : null,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,

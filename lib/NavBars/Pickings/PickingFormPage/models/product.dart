@@ -26,7 +26,21 @@ class Product {
   @HiveField(2)
   final int uom_id;
 
-  Product({required this.id, required this.name, required this.uom_id});
+  /// Product thumbnail (Odoo `image_1920`) as a base64 string. Non-persistent
+  /// (not annotated for Hive) — populated only when products are loaded fresh
+  /// from Odoo; falls back to `null` for cached-only loads.
+  final String? imageBase64;
+
+  Product({
+    required this.id,
+    required this.name,
+    required this.uom_id,
+    this.imageBase64,
+  });
+
+  /// Product name with the leading `[SKU]` prefix stripped, e.g.
+  /// `[CONS_89957] Bolt` → `Bolt`. Used for display in dropdowns.
+  String get cleanName => name.replaceAll(RegExp(r'^\[.*?\]\s*'), '');
 
   /// Creates a `Product` instance from Odoo JSON. Prefers `display_name`
   /// over `name` so variants render with their attribute suffix.
@@ -35,12 +49,16 @@ class Product {
         (v is String && v.isNotEmpty && v.toLowerCase() != 'false') ? v : '';
     final displayName = pickName(json['display_name']);
     final rawName = pickName(json['name']);
+    final image = json['image_1920'];
     return Product(
       id: json['id'] ?? 0,
       name: displayName.isNotEmpty ? displayName : rawName,
       uom_id: (json['uom_id'] != null && json['uom_id'] is List && json['uom_id'].isNotEmpty)
           ? json['uom_id'][0] as int
           : 0,
+      imageBase64: (image is String && image.isNotEmpty && image != 'false')
+          ? image
+          : null,
     );
   }
 

@@ -15,7 +15,6 @@ class CommonDialog extends StatelessWidget {
   final VoidCallback onPrimary;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
-  final bool destructivePrimary;
   final bool topIconCentered;
   final Widget? body;
 
@@ -31,7 +30,6 @@ class CommonDialog extends StatelessWidget {
     required this.onPrimary,
     this.secondaryLabel,
     this.onSecondary,
-    this.destructivePrimary = false,
     this.topIconCentered = false,
     this.body,
   });
@@ -65,12 +63,12 @@ class CommonDialog extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: (destructivePrimary ? Colors.red : primary).withOpacity(0.12),
+                      color: primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: _buildIcon(
                       icon,
-                      destructivePrimary ? Colors.red[600]! : primary,
+                      primary,
                       28,
                     ),
                   ),
@@ -106,12 +104,12 @@ class CommonDialog extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: (destructivePrimary ? Colors.red : primary).withOpacity(0.12),
+                        color: primary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: _buildIcon(
                         icon,
-                        destructivePrimary ? Colors.red[600]! : primary,
+                        primary,
                         22,
                       ),
                     ),
@@ -176,15 +174,10 @@ class CommonDialog extends StatelessWidget {
                   const SizedBox(width: 12),
                 ],
                 Expanded(
-                  child: destructivePrimary
-                      ? MoboButton.danger(
-                          label: primaryLabel,
-                          onPressed: onPrimary,
-                        )
-                      : MoboButton.primary(
-                          label: primaryLabel,
-                          onPressed: onPrimary,
-                        ),
+                  child: MoboButton.primary(
+                    label: primaryLabel,
+                    onPressed: onPrimary,
+                  ),
                 ),
               ],
             ),
@@ -200,7 +193,6 @@ class CommonDialog extends StatelessWidget {
     String? message,
     String confirmText = 'Confirm',
     String cancelText = 'Cancel',
-    bool destructive = false,
     dynamic icon,
     bool centered = true,
   }) {
@@ -214,7 +206,6 @@ class CommonDialog extends StatelessWidget {
         onPrimary: () => Navigator.of(ctx).pop(true),
         secondaryLabel: cancelText,
         onSecondary: () => Navigator.of(ctx).pop(false),
-        destructivePrimary: destructive,
         topIconCentered: centered,
       ),
     );

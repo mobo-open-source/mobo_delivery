@@ -265,7 +265,6 @@ class _ConfigurationState extends State<Configuration> {
                     'Are you sure you want to log out? Your session will be ended.',
                 confirmText: 'Log Out',
                 cancelText: 'Cancel',
-                destructive: false,
                 centered: false,
               );
 
@@ -438,44 +437,89 @@ class _ConfigurationState extends State<Configuration> {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              user['userLogin'] ?? user['database'] ?? '',
-              style: TextStyle(
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
-                fontSize: 12,
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            user['database'] ?? 'Unknown Database',
+            style: TextStyle(
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+              fontSize: 12,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        trailing: PopupMenuButton<String>(
+          icon: Icon(
+            Icons.more_vert,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            size: 20,
+          ),
+          tooltip: 'Account options',
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          onSelected: (value) {
+            if (value == 'remove') _confirmRemoveAccount(user);
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              value: 'remove',
+              child: Row(
+                children: [
+                  Icon(
+                    HugeIcons.strokeRoundedDelete02,
+                    size: 18,
+                    color: Colors.red[600],
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Remove',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        trailing: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            minimumSize: const Size(50, 28),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            side: BorderSide(
-              color: isDark ? Colors.white : AppTheme.primaryColor,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          onPressed: () => _switchAccount(user),
-          child: Text(
-            'Switch',
-            style: TextStyle(
-              color: isDark ? Colors.white : AppTheme.primaryColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
-          ),
-        ),
+        onTap: () => _switchAccount(user),
       ),
     );
+  }
+
+  Future<void> _confirmRemoveAccount(Map<String, dynamic> user) async {
+    final confirmed = await CommonDialog.confirm(
+      context,
+      title: 'Remove Account?',
+      message:
+          'Remove ${user['userName'] ?? 'this account'} from this device? You can add it back later by signing in again.',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await storageService.removeAccount(
+        userLogin: user['userLogin'] ?? '',
+        userName: user['userName'] ?? '',
+        userId: user['userId'] ?? 0,
+        url: user['url'] ?? '',
+        database: user['database'] ?? '',
+      );
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) {
+        CustomSnackbar.showError(context, 'Failed to remove account: $e');
+      }
+    }
   }
 
   Widget _buildDefaultAvatar(Map<String, dynamic> user, bool isDark) {

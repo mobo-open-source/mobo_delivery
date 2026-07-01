@@ -823,6 +823,12 @@ return FadeTransition(opacity: animation, child: child);
                             Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               height: 40,
+                              child: MediaQuery(
+                                data: MediaQuery.of(context).copyWith(
+                                  textScaler: MediaQuery.of(context)
+                                      .textScaler
+                                      .clamp(maxScaleFactor: 1.1),
+                                ),
                                 child: ListView.separated(
                                   controller: _tabHeaderScrollController,
                                   scrollDirection: Axis.horizontal,
@@ -857,11 +863,12 @@ return FadeTransition(opacity: animation, child: child);
                                   },
                                 ),
                               ),
+                              ),
                               Container(
                                 width: double.infinity,
                                 constraints:
                                     const BoxConstraints(minHeight: 240),
-                                clipBehavior: Clip.antiAlias,
+                                clipBehavior: Clip.antiAliasWithSaveLayer,
                                 decoration: BoxDecoration(
                                   color:
                                       isDark ? Colors.grey[850] : Colors.white,

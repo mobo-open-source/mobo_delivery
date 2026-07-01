@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -873,7 +874,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Enter Route',
-                          style: TextStyle(
+                          style: GoogleFonts.manrope(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.black87,
@@ -1061,10 +1062,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppStyle.primaryColor,
-                                width: 1,
-                              ),
+                              borderSide: BorderSide.none,
                             ),
                           ),
                         ),
@@ -1246,12 +1244,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                 }
                                               }
                                             }
-                                            if (_stopSearchControllers
-                                                    .isEmpty ||
-                                                _stopSearchControllers
-                                                    .last.text
-                                                    .trim()
-                                                    .isNotEmpty) {
+                                            if (_stopSearchControllers.isEmpty) {
                                               _stopSearchControllers.add(
                                                   TextEditingController());
                                               _stopSuggestions.add([]);
@@ -1385,7 +1378,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           },
                         ),
                         ),
-                      if (_sourceSuggestions.isNotEmpty)
+                      if (_sourceSuggestions.isNotEmpty &&
+                          sourceController.text != 'Your Location')
                         Container(
                           margin: const EdgeInsets.only(top: 4),
                           decoration: BoxDecoration(
@@ -1650,6 +1644,44 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           );
                         }),
 
+                      if (_stopSearchControllers.isEmpty ||
+                          _stopSearchControllers.last.text
+                              .trim()
+                              .isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () {
+                              sheetSetState(() {
+                                _stopSearchControllers
+                                    .add(TextEditingController());
+                                _stopSuggestions.add([]);
+                              });
+                            },
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              foregroundColor: AppStyle.primaryColor,
+                            ),
+                            icon: const Icon(
+                              HugeIcons.strokeRoundedAdd01,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Add another stop',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppStyle.primaryColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                                 ],
                               ),
                             ),
@@ -1782,28 +1814,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// Left-aligned static heading shown above an input box in the bottom sheet.
   /// When [isRequired] is true a red `*` marks the field as mandatory.
   Widget _fieldHeading(String text, bool isDark, {bool isRequired = false}) {
-    final style = TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-      color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
-    );
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 6),
-        child: RichText(
-          text: TextSpan(
-            text: text,
-            style: style,
-            children: isRequired
-                ? const [
-                    TextSpan(
-                      text: ' *',
-                      style: TextStyle(color: Color(0xFFD32F2F)),
-                    ),
-                  ]
-                : null,
-          ),
+        child: RequiredLabel(
+          text,
+          isRequired: isRequired,
         ),
       ),
     );
@@ -2395,37 +2412,41 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: widget.isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          // Pulsing GPS icon badge
-          SizedBox(
-            width: 38,
-            height: 38,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Animated pulse ring
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (_, __) => Opacity(
-                    opacity: _pulseOpacity.value,
-                    child: Transform.scale(
-                      scale: _pulseScale.value,
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: _green.withValues(alpha: 0.35),
-                          shape: BoxShape.circle,
+          // Pulsing GPS icon badge — clipped to its 38×38 slot so the
+          // animated ring can't overflow into the label or outside the
+          // field's rounded rectangle.
+          ClipOval(
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Animated pulse ring
+                  AnimatedBuilder(
+                    animation: _controller,
+                    builder: (_, __) => Opacity(
+                      opacity: _pulseOpacity.value,
+                      child: Transform.scale(
+                        scale: _pulseScale.value,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: _green.withValues(alpha: 0.35),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 // Icon badge
                 Container(
                   width: 30,
@@ -2440,7 +2461,8 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
                     color: Colors.white,
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 12),

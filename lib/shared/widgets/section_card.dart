@@ -5,14 +5,12 @@ class SectionCard extends StatelessWidget {
   final String title;
   final dynamic icon;
   final List<Widget> children;
-  final Widget? headerTrailing;
 
   const SectionCard({
     super.key,
     required this.title,
     required this.icon,
     required this.children,
-    this.headerTrailing,
   });
 
   @override
@@ -50,7 +48,6 @@ class SectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (headerTrailing != null) headerTrailing!,
               ],
             ),
           ),

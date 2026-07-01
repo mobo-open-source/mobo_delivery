@@ -124,7 +124,7 @@ class FilterBottomSheet extends StatelessWidget {
                       ),
                     ),
                     trailing: Icon(
-                      HugeIcons.strokeRoundedCalendar01,
+                      HugeIcons.strokeRoundedCalendar03,
                       color: AppStyle.primaryColor,
                     ),
                     onTap: () async {

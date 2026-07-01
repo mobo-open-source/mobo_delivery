@@ -226,36 +226,27 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                     ),
                     child: TabBar(
                       indicator: BoxDecoration(
-                        color: isDark
-                            ? Color(0xFF2A2A2A)
-                            : AppStyle.primaryColor,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Color(0xFF2A2A2A).withOpacity(0.3)
-                                : AppStyle.primaryColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: isDark ? const Color(0xFF2A2A2A) : AppStyle.primaryColor,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       indicatorPadding: const EdgeInsets.all(4),
                       indicatorSize: TabBarIndicatorSize.tab,
                       dividerColor: Colors.transparent,
+                      overlayColor: WidgetStateProperty.all(Colors.transparent),
+                      splashFactory: NoSplash.splashFactory,
                       labelColor: Colors.white,
                       unselectedLabelColor: isDark
                           ? Colors.grey[400]
                           : Colors.grey[600],
-                      labelStyle: TextStyle(
+                      labelStyle: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
-                      unselectedLabelStyle: TextStyle(
+                      unselectedLabelStyle: const TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
                       ),
-                      tabs: [
+                      tabs: const [
                         Tab(height: 48, text: "Filter"),
                         Tab(height: 48, text: "Group By"),
                       ],
@@ -343,7 +334,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                 pressElevation: 0,
                                 shadowColor: Colors.transparent,
                                 surfaceTintColor: Colors.transparent,
-                                showCheckmark: false,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
@@ -377,8 +367,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                 'Group documents by',
                                 style: TextStyle(
                                   color: isDark
-                                      ? Colors.white70
-                                      : Colors.black54,
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -417,7 +407,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[850] : Colors.grey[50],
+                      color: isDark ? const Color(0xFF232323) : Colors.white,
                       border: Border(
                         top: BorderSide(
                           color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
@@ -546,20 +536,19 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              isSelected
-                  ? HugeIcons.strokeRoundedCheckmarkCircle01
-                  : HugeIcons.strokeRoundedCircle,
-              color: isSelected
-                  ? (isDark ? Colors.white : AppStyle.primaryColor)
-                  : Colors.grey,
-              size: 22,
+            Radio<bool>(
+              value: true,
+              groupValue: isSelected,
+              onChanged: (_) => onTap(),
+              activeColor: AppStyle.primaryColor,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -577,7 +566,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                     subtitle,
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),
                   ),

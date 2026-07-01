@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:lottie/lottie.dart';
-import 'buttons/mobo_button.dart';
+import '../utils/globals.dart';
 
 /// Defines the type of error to display the appropriate Lottie animation and colors.
 enum ErrorType { network, server, general }
@@ -29,92 +28,127 @@ class ErrorStateWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Column(
-      children: [
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 220,
-                  height: 220,
-                  child: Lottie.asset(
-                    _getLottieAsset(),
-                    fit: BoxFit.contain,
-                    repeat: true,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                      _getFallbackIcon(),
-                      size: 100,
-                      color: isDark ? Colors.red[700] : Colors.red[400],
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        height: 220,
+                        child: Lottie.asset(
+                          _getLottieAsset(),
+                          fit: BoxFit.contain,
+                          repeat: true,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            _getFallbackIcon(),
+                            size: 100,
+                            color: isDark ? Colors.red[700] : Colors.red[400],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: (isDark ? Colors.red[900] : Colors.red[50])
+                              ?.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: (isDark ? Colors.red[700] : Colors.red[200])!
+                                .withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          message,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: isDark ? Colors.grey[300] : Colors.black54,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: (isDark ? Colors.red[900] : Colors.red[50])?.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: (isDark ? Colors.red[700] : Colors.red[200])!.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    message,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: isDark ? Colors.grey[300] : Colors.black54,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+              );
+            },
           ),
         ),
         if (onRetry != null || onContactSupport != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
               alignment: WrapAlignment.center,
               children: [
                 if (onRetry != null)
-                  MoboButton.secondary(
-                    label: 'Retry',
-                    icon: HugeIcons.strokeRoundedRefresh,
-                    fullWidth: false,
-                    borderRadius: 10,
+                  OutlinedButton.icon(
                     onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 20),
+                    label: const Text('Retry'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
+                      side: BorderSide(
+                        color: isDark
+                            ? Colors.grey[600]!
+                            : AppStyle.primaryColor.withOpacity(0.4),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
                 if (onContactSupport != null)
-                  MoboButton.primary(
-                    label: 'Contact Support',
-                    icon: HugeIcons.strokeRoundedCustomerSupport,
-                    fullWidth: false,
-                    borderRadius: 10,
+                  ElevatedButton.icon(
                     onPressed: onContactSupport,
+                    icon: const Icon(Icons.support_agent, size: 20),
+                    label: const Text('Contact Support'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      backgroundColor: AppStyle.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
               ],
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -132,11 +166,11 @@ class ErrorStateWidget extends StatelessWidget {
   IconData _getFallbackIcon() {
     switch (errorType) {
       case ErrorType.network:
-        return HugeIcons.strokeRoundedLocationOffline01;
+        return Icons.wifi_off_rounded;
       case ErrorType.server:
-        return HugeIcons.strokeRoundedLocationOffline01;
+        return Icons.cloud_off_rounded;
       case ErrorType.general:
-        return HugeIcons.strokeRoundedAlert02;
+        return Icons.error_outline_rounded;
     }
   }
 }

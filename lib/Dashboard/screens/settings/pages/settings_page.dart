@@ -265,13 +265,6 @@ class _SettingsPageState extends State<SettingsPage> {
     return SectionCard(
       title: 'Language & Region',
       icon: HugeIcons.strokeRoundedSettings02,
-      headerTrailing: IconButton(
-        tooltip: 'Refresh',
-        onPressed: () {
-          context.read<SettingsBloc>().add(RefreshLanguageAndRegionEvent());
-        },
-        icon: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Colors.grey, size: 18),
-      ),
       children: [
         OdooDropdownTile(
           title: 'Language',
@@ -387,47 +380,46 @@ class _SettingsPageState extends State<SettingsPage> {
       title: 'About',
       icon: HugeIcons.strokeRoundedBuilding06,
       children: [
+        ActionTile(
+          title: 'Visit Website',
+          subtitle: 'www.cybrosys.com',
+          icon: HugeIcons.strokeRoundedGlobe02,
+          onTap: () => _launchUrlSmart(
+            'https://www.cybrosys.com/',
+            title: 'Our Website',
+          ),
+        ),
+        ActionTile(
+          title: 'Contact Us',
+          subtitle: 'info@cybrosys.com',
+          icon: HugeIcons.strokeRoundedMail01,
+          onTap: () => _launchUrlSmart('mailto:info@cybrosys.com'),
+        ),
+        if (Theme.of(context).platform == TargetPlatform.android)
+          ActionTile(
+            title: 'More Apps',
+            subtitle: 'View our other apps on Play Store',
+            icon: HugeIcons.strokeRoundedPlayStore,
+            onTap: () => _launchUrlSmart(
+              'https://play.google.com/store/apps/developer?id=Cybrosys',
+              title: 'Play Store',
+            ),
+          ),
+        if (Theme.of(context).platform == TargetPlatform.iOS)
+          ActionTile(
+            title: 'More Apps',
+            subtitle: 'View our other apps on App Store',
+            icon: HugeIcons.strokeRoundedAppStore,
+            onTap: () => _launchUrlSmart(
+              'https://apps.apple.com/in/developer/cybrosys-technologies/id1805306445',
+              title: 'App Store',
+            ),
+          ),
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ActionTile(
-                title: 'Visit Website',
-                subtitle: 'www.cybrosys.com',
-                icon: HugeIcons.strokeRoundedGlobe02,
-                onTap: () => _launchUrlSmart(
-                  'https://www.cybrosys.com/',
-                  title: 'Our Website',
-                ),
-              ),
-              ActionTile(
-                title: 'Contact Us',
-                subtitle: 'info@cybrosys.com',
-                icon: HugeIcons.strokeRoundedMail01,
-                onTap: () => _launchUrlSmart('mailto:info@cybrosys.com'),
-              ),
-              if (Theme.of(context).platform == TargetPlatform.android)
-                ActionTile(
-                  title: 'More Apps',
-                  subtitle: 'View our other apps on Play Store',
-                  icon: HugeIcons.strokeRoundedPlayStore,
-                  onTap: () => _launchUrlSmart(
-                    'https://play.google.com/store/apps/developer?id=Cybrosys',
-                    title: 'Play Store',
-                  ),
-                ),
-              if (Theme.of(context).platform == TargetPlatform.iOS)
-                ActionTile(
-                  title: 'More Apps',
-                  subtitle: 'View our other apps on App Store',
-                  icon: HugeIcons.strokeRoundedAppStore,
-                  onTap: () => _launchUrlSmart(
-                    'https://apps.apple.com/in/developer/cybrosys-technologies/id1805306445',
-                    title: 'App Store',
-                  ),
-                ),
-              const SizedBox(height: 16),
               Divider(color: isDark ? Colors.grey[800] : Colors.grey[200]),
               const SizedBox(height: 16),
               Center(

@@ -156,7 +156,7 @@ class OdooPickingFormService {
             'method': 'search_read',
             'args': [[]],
             'kwargs': {
-              'fields': ['id', 'display_name', 'uom_id'],
+              'fields': ['id', 'display_name', 'uom_id', 'image_1920'],
             },
           }))?.cast<Map<String, dynamic>>() ??
           [];
