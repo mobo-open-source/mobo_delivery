@@ -661,66 +661,70 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     final labelColor = isDark ? Colors.grey[500]! : Colors.grey[600]!;
     final valueColor = isDark ? Colors.grey[300]! : Colors.grey[800]!;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () async {
-        if (!isOnline) {
-          CustomSnackbar.showError(
-            context,
-            'Cannot return while offline. Please try again later.',
-          );
-          return;
-        }
-        final odooService = OdooReturnManagementService();
-        final bloc = context.read<ReturnManagementBloc>();
-
-        final result = await showDialog<int>(
-          context: context,
-          builder: (ctx) => Dialog(
-            backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-            surfaceTintColor: Colors.transparent,
-            insetPadding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(ctx).size.height * 0.7,
-              ),
-              child: PickingBottomSheet(
-                picking: picking,
-                odooService: odooService,
-                bloc: bloc,
-              ),
-            ),
-          ),
+    Future<void> handleTap() async {
+      if (!isOnline) {
+        CustomSnackbar.showError(
+          context,
+          'Cannot return while offline. Please try again later.',
         );
+        return;
+      }
+      final odooService = OdooReturnManagementService();
+      final bloc = context.read<ReturnManagementBloc>();
 
-        if (result != null && mounted) {
-          bloc.add(HighlightPicking(result));
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[850] : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-            width: 0.5,
+      final result = await showDialog<int>(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+          surfaceTintColor: Colors.transparent,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF000000).withValues(alpha: 0.05),
-              offset: const Offset(0, 6),
-              blurRadius: 16,
-              spreadRadius: 2,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.7,
             ),
-          ],
+            child: PickingBottomSheet(
+              picking: picking,
+              odooService: odooService,
+              bloc: bloc,
+            ),
+          ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      );
+
+      if (result != null && mounted) {
+        bloc.add(HighlightPicking(result));
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF000000).withValues(alpha: 0.05),
+            offset: const Offset(0, 6),
+            blurRadius: 16,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: handleTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -800,6 +804,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -894,28 +899,59 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
 
 
   Widget _buildEmptyState(bool isDark, BuildContext context) {
-    final hasAnyFilter = hasFilters || hasGroupBy || _searchController.text.isNotEmpty;
+    final searchTerm = _searchController.text.trim();
+    final hasSearch = searchTerm.isNotEmpty;
+    final hasActiveFilters = hasFilters || hasGroupBy;
+    final bool searchOnly = hasSearch && !hasActiveFilters;
+
+    String title;
+    String subtitle;
+    String? actionLabel;
+    VoidCallback? onAction;
+
+    if (searchOnly) {
+      title = 'No results for "$searchTerm"';
+      subtitle = 'Try a different search term.';
+      actionLabel = 'Clear Search';
+      onAction = () {
+        setState(() => _searchController.clear());
+        context.read<ReturnManagementBloc>().add(
+              FetchStockPickings(
+                0,
+                searchText: null,
+                filters: _selectedFilters,
+                groupBy: _selectedGroupBy,
+              ),
+            );
+      };
+    } else if (hasActiveFilters) {
+      title = 'No returns found';
+      subtitle = 'Try adjusting your filters or search term.';
+      actionLabel = 'Clear All Filters';
+      onAction = () {
+        setState(() {
+          _selectedFilters.clear();
+          _selectedGroupBy = null;
+          hasFilters = false;
+          hasGroupBy = false;
+          _groupExpanded.clear();
+          _searchController.clear();
+        });
+        context.read<ReturnManagementBloc>().add(
+              FetchStockPickings(0,
+                  searchText: null, filters: const [], groupBy: null),
+            );
+      };
+    } else {
+      title = 'No returns found';
+      subtitle = 'There are no return items available.';
+    }
+
     return EmptyState(
-      title: 'No returns found',
-      subtitle: hasAnyFilter
-          ? 'Try adjusting your filters or search term'
-          : 'There are no return items available.',
-      actionLabel: hasAnyFilter ? 'Clear All Filters' : null,
-      onAction: hasAnyFilter
-          ? () {
-              setState(() {
-                _selectedFilters.clear();
-                _selectedGroupBy = null;
-                hasFilters = false;
-                hasGroupBy = false;
-                _groupExpanded.clear();
-                _searchController.clear();
-              });
-              context.read<ReturnManagementBloc>().add(
-                FetchStockPickings(0, searchText: null, filters: const [], groupBy: null),
-              );
-            }
-          : null,
+      title: title,
+      subtitle: subtitle,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -1062,6 +1098,10 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         (state.currentPage + 1) * ReturnManagementState.itemsPerPage <
         state.totalCount;
     final hasPagination = state.totalCount > 0;
+    // Show the prev/next arrows only when the data actually spans more than
+    // one page; a single-page list gets the range badge alone.
+    final needsPageArrows =
+        state.totalCount > ReturnManagementState.itemsPerPage;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -1113,53 +1153,57 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     ],
                   ),
                 ),
-                if (canGoNext) ...[
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      HugeIcons.strokeRoundedArrowLeft01,
-                      size: 25,
-                      color: canGoPrev
-                          ? (isDark ? Colors.white70 : Colors.black87)
-                          : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
-                    ),
-                    onPressed: canGoPrev
-                        ? () {
-                            context.read<ReturnManagementBloc>().add(
-                              FetchStockPickings(
-                                state.currentPage - 1,
-                                searchText: _searchController.text.trim().isNotEmpty
-                                    ? _searchController.text.trim()
-                                    : null,
-                                filters: _selectedFilters,
-                                groupBy: _selectedGroupBy,
-                              ),
-                            );
-                          }
-                        : null,
+                if (needsPageArrows) ...[
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(
+                    HugeIcons.strokeRoundedArrowLeft01,
+                    size: 25,
+                    color: canGoPrev
+                        ? (isDark ? Colors.white70 : Colors.black87)
+                        : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
                   ),
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      HugeIcons.strokeRoundedArrowRight01,
-                      size: 25,
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                    onPressed: () {
-                      context.read<ReturnManagementBloc>().add(
-                        FetchStockPickings(
-                          state.currentPage + 1,
-                          searchText: _searchController.text.trim().isNotEmpty
-                              ? _searchController.text.trim()
-                              : null,
-                          filters: _selectedFilters,
-                          groupBy: _selectedGroupBy,
-                        ),
-                      );
-                    },
+                  onPressed: canGoPrev
+                      ? () {
+                          context.read<ReturnManagementBloc>().add(
+                            FetchStockPickings(
+                              state.currentPage - 1,
+                              searchText: _searchController.text.trim().isNotEmpty
+                                  ? _searchController.text.trim()
+                                  : null,
+                              filters: _selectedFilters,
+                              groupBy: _selectedGroupBy,
+                            ),
+                          );
+                        }
+                      : null,
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(
+                    HugeIcons.strokeRoundedArrowRight01,
+                    size: 25,
+                    color: canGoNext
+                        ? (isDark ? Colors.white70 : Colors.black87)
+                        : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
                   ),
+                  onPressed: canGoNext
+                      ? () {
+                          context.read<ReturnManagementBloc>().add(
+                            FetchStockPickings(
+                              state.currentPage + 1,
+                              searchText: _searchController.text.trim().isNotEmpty
+                                  ? _searchController.text.trim()
+                                  : null,
+                              filters: _selectedFilters,
+                              groupBy: _selectedGroupBy,
+                            ),
+                          );
+                        }
+                      : null,
+                ),
                 ],
               ],
             ),
@@ -1179,18 +1223,20 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         ),
       );
     }
+    final accent = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent, width: 1.2),
       ),
       child: Text(
         '$count active',
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.black : Colors.white,
+          color: accent,
         ),
       ),
     );

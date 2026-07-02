@@ -8,7 +8,7 @@ import '../../../shared/utils/globals.dart';
 /// Displays travel mode selector (chips), duration + distance summary,
 /// scrollable leg list, and Start / Add Stop action buttons.
 /// Uses a standard white/surface card style (no solid brand-color fill).
-class RouteInfoCard extends StatelessWidget {
+class RouteInfoCard extends StatefulWidget {
   final String routeDuration;
   final String routeDistance;
 
@@ -18,6 +18,11 @@ class RouteInfoCard extends StatelessWidget {
   final VoidCallback? onStartPressed;
   final VoidCallback onAddStopPressed;
 
+  /// Optional error message shown when the routing engine failed to
+  /// compute a route (e.g. NO_ROUTE_FOUND). When non-null the card
+  /// replaces the duration/legs area with a friendly error block.
+  final String? routeError;
+
   const RouteInfoCard({
     super.key,
     required this.routeDuration,
@@ -25,7 +30,27 @@ class RouteInfoCard extends StatelessWidget {
     required this.legInfo,
     this.onStartPressed,
     required this.onAddStopPressed,
+    this.routeError,
   });
+
+  @override
+  State<RouteInfoCard> createState() => _RouteInfoCardState();
+}
+
+class _RouteInfoCardState extends State<RouteInfoCard> {
+  bool _collapsed = false;
+
+  void _toggle() => setState(() => _collapsed = !_collapsed);
+
+  void _handleDragUpdate(DragUpdateDetails d) {
+    // Only react to noticeable swipes so the handle doesn't flip on jitter.
+    if (d.primaryDelta == null) return;
+    if (d.primaryDelta! > 6 && !_collapsed) {
+      setState(() => _collapsed = true);
+    } else if (d.primaryDelta! < -6 && _collapsed) {
+      setState(() => _collapsed = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,8 +60,18 @@ class RouteInfoCard extends StatelessWidget {
     final secondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF70757A);
     final accent = AppStyle.primaryColor;
     final dividerColor = isDark ? Colors.white12 : const Color(0xFFE8E8E8);
+    final routeDuration = widget.routeDuration;
+    final routeDistance = widget.routeDistance;
+    final legInfo = widget.legInfo;
+    final routeError = widget.routeError;
+    final onStartPressed = widget.onStartPressed;
+    final onAddStopPressed = widget.onAddStopPressed;
 
-    return Container(
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      alignment: Alignment.topCenter,
+      child: Container(
       constraints: const BoxConstraints(maxHeight: 430),
       decoration: BoxDecoration(
         color: surface,
@@ -52,17 +87,76 @@ class RouteInfoCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 10),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
+          // Drag-handle area — tap to toggle, vertical drag to expand/collapse.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggle,
+            onVerticalDragUpdate: _handleDragUpdate,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 14),
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 14),
 
+          if (!_collapsed) ...[
+
+          if (routeError != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      HugeIcons.strokeRoundedAlert02,
+                      size: 22,
+                      color: Colors.orange[700],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Route unavailable',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          routeError,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.35,
+                            color: secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -161,6 +255,8 @@ class RouteInfoCard extends StatelessWidget {
                 },
               ),
             ),
+          ],
+          ],
 
           Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 12),
@@ -208,6 +304,7 @@ class RouteInfoCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

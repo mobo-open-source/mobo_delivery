@@ -7,6 +7,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/dialogs/common_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -192,14 +193,10 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
         Widget tile(IconData icon, String label, VoidCallback onTap) =>
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppStyle.primaryColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: AppStyle.primaryColor, size: 20),
+              leading: Icon(
+                icon,
+                color: isDark ? Colors.grey[400] : Colors.grey[700],
+                size: 22,
               ),
               title: Text(
                 label,
@@ -244,88 +241,32 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     );
   }
 
-  void _showDocumentOptions({
-    required Map<String, dynamic> attachment,
-    required bool isDark,
-  }) {
+  Future<void> _confirmDeleteAttachment(Map<String, dynamic> attachment) async {
     final id = int.tryParse(attachment['id']?.toString() ?? '');
-    final name = (attachment['name'] ?? 'Document').toString();
+    final name = (attachment['name'] ?? 'this document').toString();
+    if (id == null) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.black12,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white54 : Colors.grey[500],
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Divider(height: 1),
-              const SizedBox(height: 4),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
-                ),
-                title: const Text(
-                  'Delete',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red),
-                ),
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  if (id == null) return;
-                  setState(() => _busy = true);
-                  final ok = await _service.deleteAttachment(id);
-                  if (!mounted) return;
-                  if (ok) {
-                    _thumbnailCache.remove(id);
-                    CustomSnackbar.showSuccess(context, 'Document deleted.');
-                    await _loadAttachments();
-                  } else {
-                    CustomSnackbar.showError(context, 'Failed to delete document.');
-                  }
-                  if (mounted) setState(() => _busy = false);
-                },
-              ),
-              const SizedBox(height: 4),
-            ],
-          ),
-        ),
-      ),
+    final confirmed = await CommonDialog.confirm(
+      context,
+      title: 'Delete Document?',
+      message:
+          'Are you sure you want to delete "$name"? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
     );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    final ok = await _service.deleteAttachment(id);
+    if (!mounted) return;
+    if (ok) {
+      _thumbnailCache.remove(id);
+      CustomSnackbar.showSuccess(context, 'Document deleted.');
+      await _loadAttachments();
+    } else {
+      CustomSnackbar.showError(context, 'Failed to delete document.');
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   void _showPendingOptions({
@@ -794,9 +735,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     final size = _formatSize(a['file_size']);
     final date = _formatDate(a['create_date']);
 
-    return GestureDetector(
-      onLongPress: () => _showDocumentOptions(attachment: a, isDark: isDark),
-      child: Material(
+    return Material(
       color: isDark ? Colors.grey[850] : Colors.white,
       borderRadius: BorderRadius.circular(12),
       elevation: 1.5,
@@ -851,22 +790,24 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => _showDocumentOptions(attachment: a, isDark: isDark),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.more_vert_rounded,
-                    size: 20,
-                    color: isDark ? Colors.grey[500] : Colors.grey[400],
-                  ),
+              IconButton(
+                onPressed: () => _confirmDeleteAttachment(a),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
                 ),
+                splashRadius: 20,
+                icon: Icon(
+                  HugeIcons.strokeRoundedDelete02,
+                  size: 20,
+                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+                ),
+                tooltip: 'Delete document',
               ),
             ],
           ),
         ),
-      ),
       ),
     );
   }

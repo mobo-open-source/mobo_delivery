@@ -149,39 +149,9 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
     searchQuery = event.searchQuery;
 
     try {
-      // First page / pull-to-refresh → show shimmer skeletons (full reload).
-      // Subsequent pages → keep the list and show the inline footer loader.
-      if (event.page == 0) {
-        emit(AttachDocumentsLoading());
-      } else {
-        emit(
-          AttachDocumentsLoaded(
-            pickings: state is AttachDocumentsLoaded
-                ? (state as AttachDocumentsLoaded).pickings
-                : state is AttachDocumentsFileUploaded
-                ? (state as AttachDocumentsFileUploaded).pickings
-                : state is AttachDocumentsError
-                ? (state as AttachDocumentsError).pickings
-                : [],
-            currentPage: event.page,
-            isFetchingMore: true,
-            displayedCount: state is AttachDocumentsLoaded
-                ? (state as AttachDocumentsLoaded).displayedCount
-                : state is AttachDocumentsFileUploaded
-                ? (state as AttachDocumentsFileUploaded).displayedCount
-                : state is AttachDocumentsError
-                ? (state as AttachDocumentsError).displayedCount
-                : 0,
-            totalCount: state is AttachDocumentsLoaded
-                ? (state as AttachDocumentsLoaded).totalCount
-                : state is AttachDocumentsFileUploaded
-                ? (state as AttachDocumentsFileUploaded).totalCount
-                : state is AttachDocumentsError
-                ? (state as AttachDocumentsError).totalCount
-                : 0,
-          ),
-        );
-      }
+      // Any page fetch (initial, pull-to-refresh, or pagination) shows the
+      // full shimmer skeleton so the transition is consistent across loads.
+      emit(AttachDocumentsLoading());
 
       final totalCount = await _odooService.StockCount(
         searchText: event.searchQuery,

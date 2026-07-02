@@ -143,18 +143,20 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         ),
       );
     }
+    final accent = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent, width: 1.2),
       ),
       child: Text(
         '$count active',
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.black : Colors.white,
+          color: accent,
         ),
       ),
     );
@@ -916,6 +918,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                               ],
                                             ),
                                           ),
+                                          if (totalCount > context.read<AttachDocumentsBloc>().itemsPerPage) ...[
                                           IconButton(
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
@@ -935,6 +938,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           context.read<AttachDocumentsBloc>().itemsPerPage,
                                                           searchQuery: _searchController.text,
                                                           filters: _selectedFilters,
+                                                          groupBy: _selectedGroupBy,
                                                         ),
                                                       );
                                                     } else {
@@ -982,11 +986,13 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                         context.read<AttachDocumentsBloc>().itemsPerPage,
                                                         searchQuery: _searchController.text,
                                                         filters: _selectedFilters,
+                                                        groupBy: _selectedGroupBy,
                                                       ),
                                                     );
                                                   }
                                                 : null,
                                           ),
+                                          ],
                                         ],
                                       ),
                                     ],
@@ -994,31 +1000,90 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                 ),
                                 pickings.isEmpty
                                     ? Expanded(
-                                        child: EmptyState(
-                                          title: 'No attachments found',
-                                          subtitle: (hasFilters || hasGroupBy || _searchController.text.isNotEmpty)
-                                              ? 'Try adjusting your filters or search term'
-                                              : 'There are no attachments available.',
-                                          actionLabel: (hasFilters || hasGroupBy || _searchController.text.isNotEmpty) ? 'Clear All Filters' : null,
-                                          onAction: (hasFilters || hasGroupBy || _searchController.text.isNotEmpty) ? () {
-                                            setState(() {
-                                              _selectedFilters.clear();
-                                              _selectedGroupBy = null;
-                                              hasFilters = false;
-                                              hasGroupBy = false;
-                                              _groupExpanded.clear();
-                                              _searchController.clear();
-                                            });
-                                            context.read<AttachDocumentsBloc>().add(
-                                              FetchDocumentStockPickings(
-                                                0,
-                                                context.read<AttachDocumentsBloc>().itemsPerPage,
-                                                searchQuery: '',
-                                                filters: const [],
-                                                groupBy: null,
-                                              ),
+                                        child: Builder(
+                                          builder: (ctx) {
+                                            final searchTerm =
+                                                _searchController.text.trim();
+                                            final hasSearch =
+                                                searchTerm.isNotEmpty;
+                                            final hasActiveFilters =
+                                                hasFilters || hasGroupBy;
+                                            final searchOnly = hasSearch &&
+                                                !hasActiveFilters;
+
+                                            String title;
+                                            String subtitle;
+                                            String? actionLabel;
+                                            VoidCallback? onAction;
+
+                                            if (searchOnly) {
+                                              title =
+                                                  'No results for "$searchTerm"';
+                                              subtitle =
+                                                  'Try a different search term.';
+                                              actionLabel = 'Clear Search';
+                                              onAction = () {
+                                                setState(() =>
+                                                    _searchController.clear());
+                                                context
+                                                    .read<AttachDocumentsBloc>()
+                                                    .add(
+                                                      FetchDocumentStockPickings(
+                                                        0,
+                                                        context
+                                                            .read<
+                                                                AttachDocumentsBloc>()
+                                                            .itemsPerPage,
+                                                        searchQuery: '',
+                                                        filters:
+                                                            _selectedFilters,
+                                                        groupBy:
+                                                            _selectedGroupBy,
+                                                      ),
+                                                    );
+                                              };
+                                            } else if (hasActiveFilters) {
+                                              title = 'No attachments found';
+                                              subtitle =
+                                                  'Try adjusting your filters or search term.';
+                                              actionLabel = 'Clear All Filters';
+                                              onAction = () {
+                                                setState(() {
+                                                  _selectedFilters.clear();
+                                                  _selectedGroupBy = null;
+                                                  hasFilters = false;
+                                                  hasGroupBy = false;
+                                                  _groupExpanded.clear();
+                                                  _searchController.clear();
+                                                });
+                                                context
+                                                    .read<AttachDocumentsBloc>()
+                                                    .add(
+                                                      FetchDocumentStockPickings(
+                                                        0,
+                                                        context
+                                                            .read<
+                                                                AttachDocumentsBloc>()
+                                                            .itemsPerPage,
+                                                        searchQuery: '',
+                                                        filters: const [],
+                                                        groupBy: null,
+                                                      ),
+                                                    );
+                                              };
+                                            } else {
+                                              title = 'No attachments found';
+                                              subtitle =
+                                                  'There are no attachments available.';
+                                            }
+
+                                            return EmptyState(
+                                              title: title,
+                                              subtitle: subtitle,
+                                              actionLabel: actionLabel,
+                                              onAction: onAction,
                                             );
-                                          } : null,
+                                          },
                                         ),
                                       )
                                     : hasGroupBy &&
@@ -1099,6 +1164,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                       horizontal: 16,
                                                     ),
                                                     child: Container(
+                                                      margin: const EdgeInsets.only(bottom: 12),
                                                       decoration: BoxDecoration(
                                                         color: isDark ? Colors.grey[850] : Colors.white,
                                                         borderRadius: BorderRadius.circular(12),
@@ -1114,8 +1180,11 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           ),
                                                         ],
                                                       ),
-                                                      margin: const EdgeInsets.only(bottom: 12),
-                                                      child: ListTile(
+                                                      child: Material(
+                                                        color: Colors.transparent,
+                                                        borderRadius: BorderRadius.circular(12),
+                                                        clipBehavior: Clip.antiAlias,
+                                                        child: ListTile(
                                                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                                                         title: Text(
                                                           picking['name'] ??
@@ -1173,6 +1242,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                             ),
                                                           );
                                                         },
+                                                      ),
                                                       ),
                                                     ),
                                                   );

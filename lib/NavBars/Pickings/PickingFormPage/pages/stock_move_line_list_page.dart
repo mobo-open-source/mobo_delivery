@@ -90,9 +90,10 @@ class StockMoveLineListPage extends StatelessWidget {
           child: SingleChildScrollView(
             controller: horizontalController,
             scrollDirection: Axis.horizontal,
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: borderColor, width: 1),
+            child: Material(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: borderColor, width: 1),
                 borderRadius: BorderRadius.circular(8),
               ),
               clipBehavior: Clip.antiAlias,

@@ -59,12 +59,12 @@ class OdooDropdownTile extends StatelessWidget {
       leading: icon is IconData
           ? Icon(
               icon,
-              color: isDark ? Colors.grey[400] : Colors.black,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
               size: 22,
             )
           : HugeIcon(
               icon: icon,
-              color: isDark ? Colors.grey[400]! : Colors.black,
+              color: isDark ? Colors.grey[400]! : Colors.grey[600]!,
               size: 22,
             ),
       title: Text(

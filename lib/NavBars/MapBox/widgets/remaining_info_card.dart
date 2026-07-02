@@ -9,7 +9,7 @@ import '../../../shared/utils/globals.dart';
 /// Displays remaining time + distance prominently, then a timeline-style
 /// list of upcoming stops with focus buttons.
 /// Uses a white/surface card style, no solid brand-color fill.
-class RemainingInfoCard extends StatelessWidget {
+class RemainingInfoCard extends StatefulWidget {
   final String remainingDistance;
   final String remainingDuration;
 
@@ -31,6 +31,24 @@ class RemainingInfoCard extends StatelessWidget {
   });
 
   @override
+  State<RemainingInfoCard> createState() => _RemainingInfoCardState();
+}
+
+class _RemainingInfoCardState extends State<RemainingInfoCard> {
+  bool _collapsed = false;
+
+  void _toggle() => setState(() => _collapsed = !_collapsed);
+
+  void _handleDragUpdate(DragUpdateDetails d) {
+    if (d.primaryDelta == null) return;
+    if (d.primaryDelta! > 6 && !_collapsed) {
+      setState(() => _collapsed = true);
+    } else if (d.primaryDelta! < -6 && _collapsed) {
+      setState(() => _collapsed = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1C1C2E) : Colors.white;
@@ -38,8 +56,18 @@ class RemainingInfoCard extends StatelessWidget {
     final secondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF70757A);
     final accent = AppStyle.primaryColor;
     final dividerColor = isDark ? Colors.white12 : const Color(0xFFE8E8E8);
+    final remainingDistance = widget.remainingDistance;
+    final remainingDuration = widget.remainingDuration;
+    final remainingLegInfo = widget.remainingLegInfo;
+    final isLoading = widget.isLoading;
+    final onFocusPressed = widget.onFocusPressed;
+    final onAddRoutePressed = widget.onAddRoutePressed;
 
-    return Container(
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      alignment: Alignment.topCenter,
+      child: Container(
       constraints: const BoxConstraints(maxHeight: 320),
       decoration: BoxDecoration(
         color: surface,
@@ -55,16 +83,26 @@ class RemainingInfoCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 10),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggle,
+            onVerticalDragUpdate: _handleDragUpdate,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 4),
+              child: Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
             ),
           ),
 
+          if (!_collapsed) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
             child: Row(
@@ -240,6 +278,7 @@ class RemainingInfoCard extends StatelessWidget {
               },
             ),
           ),
+          ],
 
           Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.of(context).padding.bottom + 12),
@@ -263,6 +302,7 @@ class RemainingInfoCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

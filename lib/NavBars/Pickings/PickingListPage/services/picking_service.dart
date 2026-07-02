@@ -30,6 +30,11 @@ class PickingService {
   Map<String, bool> hasNextPage = {};
   Map<String, int> totalPickingsCount = {};
 
+  /// Global picking count matching the current domain — computed via ONE
+  /// `search_count` on the full domain so it doesn't depend on all per-warehouse
+  /// fetches completing under the initial timeout.
+  int globalPickingCount = 0;
+
   final int pageSize = 40;
 
   /// Clears all pagination-related state (pages, offsets, hasMore flags)
@@ -37,6 +42,7 @@ class PickingService {
     currentPage.clear();
     hasNextPage.clear();
     totalPickingsCount.clear();
+    globalPickingCount = 0;
     warehouseOffsets.clear();
     hasMorePickings.clear();
   }
@@ -297,6 +303,23 @@ class PickingService {
         baseDomain.add(['picking_type_code', '=', type]);
       }
 
+      // Fetch the authoritative global total FIRST — this is a single fast
+      // RPC and Odoo's session serializes calls, so if we queue it after the
+      // per-warehouse chains it may not complete before the outer 15s
+      // timeout. Doing it first guarantees the badge shows the true count
+      // even if some warehouse fetches time out.
+      try {
+        final count = await CompanySessionManager.callKwWithCompany({
+          'model': 'stock.picking',
+          'method': 'search_count',
+          'args': [baseDomain],
+          'kwargs': {},
+        });
+        globalPickingCount = (count as int?) ?? 0;
+      } catch (_) {
+        // Leave the previous value in place on failure — better than 0.
+      }
+
       final warehouseTasks = <Future<void>>[];
       for (var warehouse in warehouseItems ?? []) {
         final String warehouseName = warehouse['name'];
@@ -304,11 +327,10 @@ class PickingService {
             ? warehouse['id']
             : int.parse(warehouse['id'].toString());
 
-        if (pageOverrides != null &&
-            !pageOverrides.containsKey(warehouseName)) {
-          continue;
-        }
-
+        // Always process every warehouse — otherwise a warehouse missed on
+        // the initial load never gets its `totalPickingsCount` populated,
+        // making the global total jump between pages as more warehouses'
+        // counts trickle in.
         final int page =
             pageOverrides?[warehouseName] ?? currentPage[warehouseName] ?? 0;
         final int offset = page * pageSize;

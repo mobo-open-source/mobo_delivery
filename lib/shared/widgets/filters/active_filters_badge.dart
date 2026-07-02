@@ -35,27 +35,28 @@ class ActiveFiltersBadge extends StatelessWidget {
       );
     }
 
+    final accent = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white70 : Colors.black,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent, width: 1.2),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const HugeIcon(
+          HugeIcon(
             icon: HugeIcons.strokeRoundedFilterHorizontal,
             size: 14,
-            color: Colors.white,
+            color: accent,
           ),
           const SizedBox(width: 4),
           Text(
             '$count active',
             style: TextStyle(
               fontSize: 12,
-
-              color: isDark ? Colors.black : Colors.white,
+              color: accent,
               fontWeight: FontWeight.w500,
             ),
           ),

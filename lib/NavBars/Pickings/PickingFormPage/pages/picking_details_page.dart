@@ -2459,7 +2459,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                       onPressed: _stockMoveLine,
                       tooltip: 'Detailed Operations',
                       icon: Icon(
-                        HugeIcons.strokeRoundedListView,
+                        HugeIcons.strokeRoundedPackageSearch,
                         color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),

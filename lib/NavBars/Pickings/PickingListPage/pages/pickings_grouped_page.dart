@@ -296,35 +296,60 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
 
 
   Future<void> _loadNextPage(String location) async {
-    final nextPage = (_service.currentPage[location] ?? 0) + 1;
-    await _fetchPageForLocation(location, nextPage);
+    // Pagination is global from the UI's perspective — the range shows total
+    // across all warehouses. Advance ALL warehouses to the same page so the
+    // displayed range and the actual list stay consistent.
+    final pageSize = _service.pageSize;
+    final totalGlobal = _service.totalPickingsCount.values
+        .fold<int>(0, (a, b) => a + b);
+    final maxPage = totalGlobal > 0 ? ((totalGlobal - 1) ~/ pageSize) : 0;
+    final currentPage = _service.currentPage[location] ?? 0;
+    if (currentPage >= maxPage) return;
+    await _fetchPageForAllLocations(currentPage + 1);
   }
 
   Future<void> _loadPrevPage(String location) async {
     final prevPage = (_service.currentPage[location] ?? 0) - 1;
     if (prevPage >= 0) {
-      await _fetchPageForLocation(location, prevPage);
+      await _fetchPageForAllLocations(prevPage);
     }
   }
 
-  Future<void> _fetchPageForLocation(String location, int page) async {
-    if (_isFetchingMore.contains(location)) return;
+  Future<void> _fetchPageForAllLocations(int page) async {
+    if (_isFetchingMore.isNotEmpty) return;
 
-    _isFetchingMore.add(location);
+    final overrides = <String, int>{};
+    for (final loc in _service.totalPickingsCount.keys) {
+      overrides[loc] = page;
+      _isFetchingMore.add(loc);
+    }
+    if (overrides.isEmpty) return;
     setState(() => isPageLoading = true);
 
     try {
-      await _service.fetchData(pageOverrides: {location: page});
-
-      _service.currentPage[location] = page;
-      final newPickings = _service.allPickingsByLocation[location] ?? [];
-      _service.previousPickingsByLocation[location] = newPickings;
+      // Pass the SAME filters/search/type used by the initial load —
+      // otherwise pagination fetches a different domain and the total flips
+      // (e.g. initial: outgoing only = 52; paginate: all types = 70).
+      await _service.fetchData(
+        scheduledDate: selectedScheduleDate,
+        deadlineDate: selectedDeadlineDate,
+        state: selectedStateValue,
+        type: selectedType,
+        searchTerm: _searchTerm,
+        filters: _selectedFilters,
+        pageOverrides: overrides,
+      );
+      for (final loc in overrides.keys) {
+        _service.currentPage[loc] = page;
+        final newPickings = _service.allPickingsByLocation[loc] ?? [];
+        _service.previousPickingsByLocation[loc] = newPickings;
+      }
       if (mounted) {
         setState(() {});
       }
     } catch (e) {
     } finally {
-      _isFetchingMore.remove(location);
+      _isFetchingMore.clear();
       if (mounted) {
         setState(() => isPageLoading = false);
       }
@@ -746,30 +771,61 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       );
     }
 
+    final accent = isDark ? Colors.white : Colors.black;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.9) : Colors.black,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent, width: 1.2),
       ),
       child: Text(
         '$count active',
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.black : Colors.white,
+          color: accent,
         ),
       ),
     );
   }
 
   Widget _buildEmptyState(bool isDark, bool hasFilters, BuildContext context) {
-    return EmptyState(
-      title: 'No Pickings Found',
-      subtitle: hasFilters ? 'Try adjusting your filters or search term' : 'There are no picking items available.',
-      lottieAsset: 'assets/lotties/empty_ghost.json',
-      actionLabel: hasFilters ? 'Clear All Filters' : null,
-      onAction: hasFilters ? () {
+    // Three distinct empty states:
+    // 1. Only a search term is active → "No results for <term>" + Clear Search
+    // 2. Filters/group-by active (with or without search) → filter-adjust msg
+    //    + Clear All Filters
+    // 3. Nothing active → simple "no items" state, no action button
+    final hasSearch = _searchTerm.isNotEmpty;
+    final hasActiveFilters = _selectedFilters.isNotEmpty ||
+        _selectedGroupBy != null ||
+        selectedStateValue != null ||
+        selectedScheduleDate != null ||
+        selectedDeadlineDate != null;
+    final bool searchOnly = hasSearch && !hasActiveFilters;
+
+    String title;
+    String subtitle;
+    String? actionLabel;
+    VoidCallback? onAction;
+
+    if (searchOnly) {
+      title = 'No results for "$_searchTerm"';
+      subtitle = 'Try a different search term.';
+      actionLabel = 'Clear Search';
+      onAction = () {
+        setState(() {
+          _searchTerm = '';
+          _searchController.clear();
+        });
+        _service.clearPaginationState();
+        _fetchData();
+      };
+    } else if (hasActiveFilters) {
+      title = 'No Pickings Found';
+      subtitle = 'Try adjusting your filters or search term.';
+      actionLabel = 'Clear All Filters';
+      onAction = () {
         setState(() {
           selectedStateValue = null;
           selectedType = '';
@@ -783,7 +839,18 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         });
         _service.clearPaginationState();
         _fetchData();
-      } : null,
+      };
+    } else {
+      title = 'No Pickings Found';
+      subtitle = 'There are no picking items available.';
+    }
+
+    return EmptyState(
+      title: title,
+      subtitle: subtitle,
+      lottieAsset: 'assets/lotties/empty_ghost.json',
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -829,17 +896,22 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
 
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-      body: Column(
-        children: [
-          BlocBuilder<DashboardBloc, DashboardState>(
-            buildWhen: (a, b) =>
-                a.userName != b.userName ||
-                a.profilePicBytes != b.profilePicBytes,
-            builder: (context, dashState) => GreetingHeader(
-              userName: dashState.userName,
-              imageBytes: dashState.profilePicBytes,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverToBoxAdapter(
+            child: BlocBuilder<DashboardBloc, DashboardState>(
+              buildWhen: (a, b) =>
+                  a.userName != b.userName ||
+                  a.profilePicBytes != b.profilePicBytes,
+              builder: (context, dashState) => GreetingHeader(
+                userName: dashState.userName,
+                imageBytes: dashState.profilePicBytes,
+              ),
             ),
           ),
+        ],
+        body: Column(
+        children: [
           ListSearchBar(
             controller: _searchController,
             hintText: 'Search by location or item...',
@@ -857,7 +929,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             },
           ),
 
-          if (isLoading)
+          if (isLoading || isPageLoading)
             const PaginationBarShimmer()
           else if (!catchError && filteredLocations.isNotEmpty)
           Padding(
@@ -873,18 +945,39 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                 if (_selectedGroupBy == null)
                   Consumer<CompanyProvider>(
                       builder: (context, companyProvider, _) {
-                    final totalGlobalCount = _service.totalPickingsCount.values
-                        .fold(0, (sum, count) => sum + count);
-                    
-                    final firstLoc = _service.allPickingsByLocation.keys.isNotEmpty 
-                        ? _service.allPickingsByLocation.keys.first 
+                    // Use the service's single-shot global search_count when
+                    // available — it doesn't depend on all per-warehouse
+                    // fetches completing under the initial timeout, so the
+                    // total stays stable across pagination.
+                    final liveGlobal = _service.globalPickingCount;
+                    final livePerWh = _service.totalPickingsCount.values
+                        .fold<int>(0, (sum, count) => sum + count);
+                    final totalGlobalCount =
+                        liveGlobal > 0 ? liveGlobal : livePerWh;
+                    final pageSize = _service.pageSize;
+
+                    final firstLoc = _service.allPickingsByLocation.keys.isNotEmpty
+                        ? _service.allPickingsByLocation.keys.first
                         : null;
-                    final currentPage = firstLoc != null ? (_service.currentPage[firstLoc] ?? 0) : 0;
-                    final hasNext = _service.hasNextPage.values.any((val) => val == true);
-                    
-                    final start = currentPage * _service.pageSize + 1;
-                    final end = (start + _service.pageSize - 1).clamp(0, totalGlobalCount);
-                    final rangeText = totalGlobalCount > 0 ? '$start-$end/$totalGlobalCount' : '0/0';
+                    final rawCurrentPage = firstLoc != null
+                        ? (_service.currentPage[firstLoc] ?? 0)
+                        : 0;
+                    // Clamp the displayed page to the last real page so the
+                    // range never renders values past totalGlobalCount.
+                    final maxPage = totalGlobalCount > 0
+                        ? ((totalGlobalCount - 1) ~/ pageSize)
+                        : 0;
+                    final currentPage = rawCurrentPage.clamp(0, maxPage);
+                    final hasNext = currentPage < maxPage;
+
+                    final start = totalGlobalCount == 0
+                        ? 0
+                        : currentPage * pageSize + 1;
+                    final end = ((currentPage + 1) * pageSize)
+                        .clamp(0, totalGlobalCount);
+                    final rangeText = totalGlobalCount > 0
+                        ? '$start-$end/$totalGlobalCount'
+                        : '0/0';
 
                     return Row(
                       mainAxisSize: MainAxisSize.min,
@@ -909,7 +1002,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             ),
                           ),
                         ),
-                        if (hasNext && firstLoc != null) ...[
+                        if (firstLoc != null && maxPage > 0) ...[
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -928,9 +1021,11 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                             icon: Icon(
                               HugeIcons.strokeRoundedArrowRight01,
                               size: 25,
-                              color: isDark ? Colors.white70 : Colors.black87,
+                              color: hasNext
+                                  ? (isDark ? Colors.white70 : Colors.black87)
+                                  : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
                             ),
-                            onPressed: () => _loadNextPage(firstLoc),
+                            onPressed: hasNext ? () => _loadNextPage(firstLoc) : null,
                           ),
                         ],
                       ],
@@ -942,7 +1037,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
           Expanded(
             child: Stack(
               children: [
-                if (isLoading)
+                if (isLoading || isPageLoading)
                   const PickingListShimmer(itemCount: 6)
                 else if (catchError)
                   Positioned.fill(
@@ -1051,7 +1146,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                       ),
                                   ],
                                 ),
-                                margin: const EdgeInsets.only(bottom: 24),
+                                margin: const EdgeInsets.only(bottom: 12),
                                 child: Column(
                                   children: [
                                     InkWell(
@@ -1060,6 +1155,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                           _groupExpanded[groupName] = !isExpanded;
                                         });
                                       },
+                                      borderRadius: BorderRadius.circular(12),
                                       child: Padding(
                                         padding: const EdgeInsets.all(16),
                                         child: Row(
@@ -1080,17 +1176,17 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                                           ? Colors.white
                                                           : Colors.black87,
                                                       fontWeight: FontWeight.w600,
-                                                      fontSize: 15,
+                                                      fontSize: 16,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Text(
                                                     '${groupPickings.length} Pickings',
                                                     style: TextStyle(
-                                                      fontSize: 13,
+                                                      fontSize: 14,
                                                       color: isDark
                                                           ? Colors.grey[400]
-                                                          : Colors.grey[700],
+                                                          : Colors.grey[600],
                                                     ),
                                                   ),
                                                 ],
@@ -1109,13 +1205,23 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                       ),
                                     ),
 
-                                    if (isExpanded)
+                                    if (isExpanded) ...[
+                                      const SizedBox(height: 4),
                                       ...groupPickings.map(
                                         (picking) => Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                          child: _buildPickingCard(picking, isDark),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          child: _buildPickingCard(
+                                            picking,
+                                            isDark,
+                                            insideGroup: true,
+                                          ),
                                         ),
                                       ),
+                                      const SizedBox(height: 8),
+                                    ],
                                   ],
                                 ),
                               );
@@ -1140,15 +1246,11 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     ),
                   ),
 
-                if (isPageLoading)
-                  const LoadingOverlay(
-                    message: 'Loading more...',
-                    isFullPage: false,
-                  ),
               ],
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'pickingsCreateFab',
@@ -1181,7 +1283,11 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   /// Builds individual picking card used in list/grouped view
-  Widget _buildPickingCard(Map<String, dynamic> picking, bool isDark) {
+  Widget _buildPickingCard(
+    Map<String, dynamic> picking,
+    bool isDark, {
+    bool insideGroup = false,
+  }) {
     final reference = cleanOdooValue(picking['item']);
     final state = picking['state'] ?? '';
     final origin = cleanOdooValue(picking['origin']);
@@ -1192,22 +1298,33 @@ return FadeTransition(opacity: animation, child: child);
         : cleanOdooValue(rawScheduled);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: insideGroup ? 0 : 12),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-        ),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: const Color(0xFF000000).withOpacity(0.06),
-              offset: const Offset(0, 6),
-              blurRadius: 16,
-              spreadRadius: 2,
-            ),
-        ],
+        // Border only in grouped view — the group container has no shadow of
+        // its own on the inner cards, so we need a hairline to separate
+        // stacked tiles. In the flat list the shadow already handles
+        // separation, so a border would look heavy.
+        border: insideGroup
+            ? Border.all(
+                color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                width: 1,
+              )
+            : null,
+        // Standalone (flat list): full sales-app shadow for depth.
+        // Inside a group: no shadow — the group container already supplies
+        // depth, and stacking a second shadow reads as dark clutter.
+        boxShadow: insideGroup
+            ? const []
+            : [
+                BoxShadow(
+                  color: const Color(0xFF000000).withOpacity(0.05),
+                  offset: const Offset(0, 6),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -1231,7 +1348,7 @@ return FadeTransition(opacity: animation, child: child);
             ).then((_) => reloadPickingList());
           },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

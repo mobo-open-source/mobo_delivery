@@ -26,29 +26,24 @@ class MoboToggle extends StatelessWidget {
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
           width: 56,
-          height: 32,
+          height: 30,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
             color: value
                 ? primaryColor
-                : (isDark ? Colors.transparent : Colors.white),
-            border: Border.all(
-              color: value
-                  ? primaryColor
-                  : (isDark ? Colors.grey[400]! : primaryColor),
-              width: 2,
-            ),
+                : (isDark ? Colors.grey[900] : Colors.white),
+            border: value
+                ? null
+                : Border.all(color: primaryColor, width: 1.5),
           ),
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
+            child: Container(
               width: 24,
               height: 24,
-              margin: const EdgeInsets.all(3),
+              margin: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: value ? Colors.white : primaryColor,

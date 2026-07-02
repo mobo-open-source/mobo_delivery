@@ -94,6 +94,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   String _routeDuration = '';
   String _routeDistance = '';
   List<Map<String, String>> _legInfo = [];
+  String? _routeError;
   String _selectedTravelMode = 'driving';
   StreamSubscription<LocationData>? _locationSubscription;
   final Location _location = Location();
@@ -118,7 +119,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   bool _isLoading = false;
   bool _infoCard = false;
   bool isOnline = true;
-  bool _showRemainingInfo = false;
 
   /// Mapbox public access token — loaded from .env at start, may be overridden by Odoo.
   // ignore: prefer_final_fields
@@ -363,11 +363,17 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
       if (response.statusCode != 200) {
         if (!mounted) return;
+        String friendly = 'We couldn\'t compute a route between these '
+            'locations. Please check your stops and try again.';
         try {
           final errJson = jsonDecode(response.body);
           final msg = errJson['detailedError']?['message']
               ?? errJson['message']
               ?? 'HTTP ${response.statusCode}';
+          if (travelMode == 'bicycle') {
+            friendly = 'Bike routing is unavailable for this trip. '
+                'Try a shorter distance or switch to Drive mode.';
+          }
           CustomSnackbar.showError(context,
               travelMode == 'bicycle'
                   ? 'Bike routing unavailable for this route. Try a shorter distance or Drive mode. ($msg)'
@@ -376,6 +382,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           CustomSnackbar.showError(
               context, 'Route request failed (HTTP ${response.statusCode}).');
         }
+        setState(() {
+          _polylines.clear();
+          _routeDistance = '--';
+          _routeDuration = '--';
+          _legInfo = [];
+          _routeError = friendly;
+        });
         return;
       }
 
@@ -453,6 +466,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           _remainingDistance = _routeDistance;
           _remainingDuration = _routeDuration;
           _legInfo = legInfo;
+          _routeError = null;
           _movingMarker = null;
           _markers = [
             if (_sourceLatLng != null)
@@ -486,6 +500,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             _routeDistance = '--';
             _routeDuration = '--';
             _legInfo = [];
+            _routeError = errorMsg.contains('ProductId')
+                ? 'The pickup and drop-off points aren\'t connected by any drivable road. Try different stops or use another travel mode.'
+                : errorMsg;
           });
         }
       }
@@ -493,6 +510,14 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       debugPrint('[TomTom] _getOptimizedRoute exception: $e\n$stack');
       if (mounted) {
         CustomSnackbar.showError(context, 'Failed to get route: $e');
+        setState(() {
+          _polylines.clear();
+          _routeDistance = '--';
+          _routeDuration = '--';
+          _legInfo = [];
+          _routeError = 'Something went wrong while computing the route. '
+              'Please check your connection and try again.';
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -545,11 +570,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// Marks visited stops (within 50 m) and plays the reach-stop sound.
   Future<void> _updateRemainingDistanceAndTime() async {
     if (!_isNavigationStarted || _currentLatLng == null || _polylines.isEmpty) {
-      setState(() {
-        _remainingDistance = '--';
-        _remainingDuration = '--';
-        _remainingLegInfo = [];
-      });
+      // Transient — keep the last-known values so the sheet doesn't flash
+      // "--" between GPS ticks or during a silent re-route.
       return;
     }
 
@@ -655,24 +677,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             _remainingLegInfo = remainingLegInfo;
           });
         }
-      } else {
-        if (mounted) {
-          setState(() {
-            _remainingDistance = '--';
-            _remainingDuration = '--';
-            _remainingLegInfo = [];
-          });
-        }
       }
+      // If `json['routes']` is empty (no route this tick), keep prior values.
     } catch (e) {
       debugPrint('[TomTom] _updateRemainingDistanceAndTime error: $e');
-      if (mounted) {
-        setState(() {
-          _remainingDistance = '--';
-          _remainingDuration = '--';
-          _remainingLegInfo = [];
-        });
-      }
+      // Transient error — keep the last-known distance/duration so the sheet
+      // doesn't blink to "--" on a single failed tick.
     }
   }
 
@@ -1222,10 +1232,25 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                             final Set<String>
                                                 uniqueDestinations = {};
                                             for (var picking in value) {
-                                              final dest = picking[
+                                              final raw = picking[
                                                           'destination_point']
                                                       as String? ??
                                                   '';
+                                              // Odoo emits Python `False`
+                                              // for missing address fields;
+                                              // it lands here as the literal
+                                              // token "false" (via JSON) and
+                                              // shows up as "false, false".
+                                              // Strip those tokens and only
+                                              // keep the meaningful parts.
+                                              final dest = raw
+                                                  .split(',')
+                                                  .map((s) => s.trim())
+                                                  .where((s) =>
+                                                      s.isNotEmpty &&
+                                                      s.toLowerCase() !=
+                                                          'false')
+                                                  .join(', ');
                                               if (dest.isNotEmpty &&
                                                   uniqueDestinations
                                                       .add(dest)) {
@@ -1943,10 +1968,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       routeDuration: _routeDuration,
                       routeDistance: _routeDistance,
                       legInfo: _legInfo,
-                      onStartPressed:
-                          (_sourceLatLng != null && _stops.isNotEmpty)
-                              ? _startNavigation
-                              : null,
+                      routeError: _routeError,
+                      onStartPressed: (_routeError == null &&
+                              _sourceLatLng != null &&
+                              _stops.isNotEmpty)
+                          ? _startNavigation
+                          : null,
                       onAddStopPressed: () {
                         setState(() => _showStopLocationFields = true);
                         _showEnterRootPopup(fromAddStop: true);
@@ -1964,17 +1991,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       onClose: _resetNavigation,
                     ),
                   ),
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    bottom: _showRemainingInfo ? 0 : -300,
+                  Positioned(
+                    bottom: 0,
                     left: 0,
                     right: 0,
                     child: RemainingInfoCard(
                       remainingDistance: _remainingDistance,
                       remainingDuration: _remainingDuration,
                       remainingLegInfo: _remainingLegInfo,
-                      isLoading: _isLoading,
+                      isLoading: false,
                       onFocusPressed: (latLng) {
                         if (latLng != null) {
                           _mapController.move(latLng, 15);
@@ -2010,7 +2035,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
       floatingActionButton: Padding(
         padding: EdgeInsets.only(
-          bottom: (_isNavigationStarted && _showRemainingInfo) ? 310 : 0,
+          bottom: _isNavigationStarted ? 310 : 0,
         ),
         child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2086,21 +2111,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               ],
             ),
           if (_isNavigationStarted) ...[
-            const SizedBox(height: 10),
-            FloatingActionButton(
-              heroTag: 'routeToggleRemainingInfo',
-              backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: AppStyle.primaryColor,
-              elevation: 4,
-              tooltip: _showRemainingInfo
-                  ? 'Hide Remaining Route'
-                  : 'Show Remaining Route',
-              onPressed: () =>
-                  setState(() => _showRemainingInfo = !_showRemainingInfo),
-              child: Icon(
-                _showRemainingInfo ? HugeIcons.strokeRoundedViewOff : HugeIcons.strokeRoundedView,
-              ),
-            ),
             if (_isMapManuallyMoved && _currentLatLng != null) ...[
               const SizedBox(height: 10),
               FloatingActionButton(
@@ -2209,10 +2219,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           ),
       ];
     });
-
-    // Auto-show the remaining-info card so the user immediately sees
-    // route progress data after starting navigation.
-    setState(() => _showRemainingInfo = true);
 
     _locationSubscription?.cancel();
     LatLng? lastPosition;
