@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-import '../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/dialogs/common_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -169,15 +168,143 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
       Navigator.pop(context);
       return;
     }
-    final shouldLeave = await DataLossWarningDialog.show(
+
+    // Custom dialog with Discard + Save. Save uploads pending docs and then
+    // pops the page. Save button shows a spinner while uploading so the user
+    // sees progress without a full-page overlay.
+    final navigator = Navigator.of(context);
+    final action = await showDialog<String>(
       context: context,
-      title: 'Discard Documents?',
-      message: 'You have unsaved documents that haven\'t been uploaded yet. They will be lost if you leave.',
-      confirmText: 'Discard',
-      cancelText: 'Keep Editing',
+      barrierDismissible: false,
+      builder: (ctx) {
+        bool saving = false;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppStyle.primaryColor.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          HugeIcons.strokeRoundedAlert02,
+                          color: AppStyle.primaryColor,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Unsaved Documents',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'You have unsaved documents that haven\'t been '
+                      'uploaded yet. Save them or discard the changes.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: saving
+                                ? null
+                                : () => Navigator.of(ctx).pop('discard'),
+                            style: OutlinedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                  color: AppStyle.primaryColor
+                                      .withValues(alpha: 0.5)),
+                              foregroundColor: AppStyle.primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Discard',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: saving
+                                ? null
+                                : () async {
+                                    setDialogState(() => saving = true);
+                                    await _saveAll();
+                                    if (!ctx.mounted) return;
+                                    Navigator.of(ctx).pop('saved');
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppStyle.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: saving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      valueColor: AlwaysStoppedAnimation(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : const Text(
+                                    'Save',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
-    if (shouldLeave == true && mounted) {
-      Navigator.pop(context);
+
+    if (!mounted) return;
+    if (action == 'discard' || action == 'saved') {
+      navigator.pop();
     }
   }
 
@@ -253,6 +380,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
           'Are you sure you want to delete "$name"? This action cannot be undone.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
+      centered: false,
     );
     if (confirmed != true || !mounted) return;
 
@@ -269,75 +397,22 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     if (mounted) setState(() => _busy = false);
   }
 
-  void _showPendingOptions({
-    required Map<String, dynamic> p,
-    required String fileName,
-    required bool isDark,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetCtx) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.black12,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                fileName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white54 : Colors.grey[500],
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Divider(height: 1),
-              const SizedBox(height: 4),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
-                ),
-                title: const Text(
-                  'Delete',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red),
-                ),
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  setState(() => _pendingUploads.remove(p));
-                },
-              ),
-              const SizedBox(height: 4),
-            ],
-          ),
-        ),
-      ),
+  Future<void> _confirmRemovePending(
+    Map<String, dynamic> p,
+    String fileName,
+  ) async {
+    final confirmed = await CommonDialog.confirm(
+      context,
+      title: 'Remove Document?',
+      message:
+          'Remove "$fileName" from the upload queue? It won\'t be attached '
+          'to this picking.',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      centered: false,
     );
+    if (confirmed != true || !mounted) return;
+    setState(() => _pendingUploads.remove(p));
   }
 
   @override
@@ -680,50 +755,50 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
       thumbnail = _iconBox(mimeType, fileName, isDark);
     }
 
-    return GestureDetector(
-      onLongPress: () => _showPendingOptions(p: p, fileName: fileName, isDark: isDark),
-      child: Material(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        elevation: 1.5,
-        shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.18),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              thumbnail,
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
+    return Material(
+      color: isDark ? Colors.grey[850] : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      elevation: 1.5,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.18),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            thumbnail,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => _showPendingOptions(p: p, fileName: fileName, isDark: isDark),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.more_vert_rounded,
-                    size: 20,
-                    color: isDark ? Colors.grey[500] : Colors.grey[400],
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            IconButton(
+              onPressed: () => _confirmRemovePending(p, fileName),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
+              splashRadius: 20,
+              icon: Icon(
+                HugeIcons.strokeRoundedDelete02,
+                size: 20,
+                color: isDark ? Colors.grey[400] : Colors.grey[700],
+              ),
+              tooltip: 'Remove from upload queue',
+            ),
+          ],
         ),
       ),
     );

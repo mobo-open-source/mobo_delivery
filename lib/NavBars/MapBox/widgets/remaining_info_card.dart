@@ -39,11 +39,11 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
 
   void _toggle() => setState(() => _collapsed = !_collapsed);
 
-  void _handleDragUpdate(DragUpdateDetails d) {
-    if (d.primaryDelta == null) return;
-    if (d.primaryDelta! > 6 && !_collapsed) {
+  void _handleDragEnd(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (v > 200 && !_collapsed) {
       setState(() => _collapsed = true);
-    } else if (d.primaryDelta! < -6 && _collapsed) {
+    } else if (v < -200 && _collapsed) {
       setState(() => _collapsed = false);
     }
   }
@@ -63,12 +63,9 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
     final onFocusPressed = widget.onFocusPressed;
     final onAddRoutePressed = widget.onAddRoutePressed;
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      alignment: Alignment.topCenter,
-      child: Container(
+    return Container(
       constraints: const BoxConstraints(maxHeight: 320),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -86,7 +83,7 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _toggle,
-            onVerticalDragUpdate: _handleDragUpdate,
+            onVerticalDragEnd: _handleDragEnd,
             child: Padding(
               padding: const EdgeInsets.only(top: 10, bottom: 4),
               child: Center(
@@ -102,7 +99,19 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
             ),
           ),
 
-          if (!_collapsed) ...[
+          AnimatedCrossFade(
+            crossFadeState: _collapsed
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
+            reverseDuration: const Duration(milliseconds: 300),
+            sizeCurve: Curves.easeInOutCubic,
+            firstCurve: Curves.easeInOut,
+            secondCurve: Curves.easeInOut,
+            secondChild: const SizedBox(width: double.infinity),
+            firstChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
             child: Row(
@@ -168,7 +177,11 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
           ),
           Divider(height: 1, color: dividerColor, indent: 20, endIndent: 20),
 
-          Flexible(
+          // Cap the leg list height so the whole card stays inside its 320px
+          // max — AnimatedCrossFade doesn't provide bounded constraints, so
+          // Flexible would let the children push past and overflow.
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 160),
             child: ListView.builder(
               shrinkWrap: true,
               padding:
@@ -278,7 +291,9 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
               },
             ),
           ),
-          ],
+              ],
+            ),
+          ),
 
           Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.of(context).padding.bottom + 12),
@@ -302,7 +317,6 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
             ),
           ),
         ],
-      ),
       ),
     );
   }

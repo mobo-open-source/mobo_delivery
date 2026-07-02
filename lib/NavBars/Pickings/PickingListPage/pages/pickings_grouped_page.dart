@@ -1308,8 +1308,8 @@ return FadeTransition(opacity: animation, child: child);
         // separation, so a border would look heavy.
         border: insideGroup
             ? Border.all(
-                color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                width: 1,
+                color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                width: 0.8,
               )
             : null,
         // Standalone (flat list): full sales-app shadow for depth.

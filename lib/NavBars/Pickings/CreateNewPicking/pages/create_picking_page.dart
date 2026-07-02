@@ -845,17 +845,19 @@ return FadeTransition(opacity: animation, child: child);
                                     return ListenableBuilder(
                                       listenable: tabController,
                                       builder: (context, _) {
-                                        return GestureDetector(
-                                          key: _tabItemKeys[index],
-                                          onTap: () {
-                                            tabController.animateTo(index);
-                                            _ensureTabVisible(index);
-                                          },
-                                          child: _buildPillTab(
-                                            label: labels[index],
-                                            isSelected:
-                                                tabController.index == index,
-                                            isDark: isDark,
+                                        return Center(
+                                          child: GestureDetector(
+                                            key: _tabItemKeys[index],
+                                            onTap: () {
+                                              tabController.animateTo(index);
+                                              _ensureTabVisible(index);
+                                            },
+                                            child: _buildPillTab(
+                                              label: labels[index],
+                                              isSelected:
+                                                  tabController.index == index,
+                                              isDark: isDark,
+                                            ),
                                           ),
                                         );
                                       },

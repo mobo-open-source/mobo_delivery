@@ -9,14 +9,17 @@ import 'package:flutter/material.dart';
 /// This class helps keep business/presentation logic clean by centralizing common
 /// transformations used across multiple screens (especially in lists and file handling).
 class Utils {
-  /// Formats a date string into a user-friendly relative label with appropriate color.
+  /// Formats a date string into a user-friendly relative label with an
+  /// urgency color for the VALUE only.
   ///
   /// Returns a map containing:
   ///   - 'label': String like "Today", "in 2 days", "3 days ago"
-  ///   - 'color': Suggested Color for text or badge (amber for today, red for overdue, black/grey otherwise)
+  ///   - 'color': Color for the label token — orange[700] for Today,
+  ///     red[400] for overdue, null for future (no special tint needed).
   ///
-  /// Handles parsing errors gracefully by returning the raw string with grey color.
-  /// Assumes input is in ISO 8601 format (as typically returned by Odoo/JSON APIs).
+  /// The neutral prefix ("Scheduled:" + icon) is coloured by the caller; only
+  /// the label token uses this color, so the row reads as: grey prefix + a
+  /// single coloured value when urgent.
   static Map<String, dynamic> getFormattedDateInfo(String dateStr) {
     try {
       final scheduled = DateTime.parse(dateStr).toLocal();
@@ -26,17 +29,20 @@ class Utils {
       final diff = scheduledDay.difference(today).inDays;
 
       if (diff == 0) {
-        return {'label': 'Today', 'color': Colors.amber[900]};
+        return {'label': 'Today', 'color': Colors.orange[700]};
       } else if (diff > 0) {
-        return {'label': 'in $diff day${diff > 1 ? 's' : ''}', 'color': Colors.black};
+        return {
+          'label': 'in $diff day${diff > 1 ? 's' : ''}',
+          'color': null,
+        };
       } else {
         return {
           'label': '${diff.abs()} day${diff.abs() > 1 ? 's' : ''} ago',
-          'color': Colors.red[300],
+          'color': Colors.red[400],
         };
       }
     } catch (_) {
-      return {'label': dateStr, 'color': Colors.grey};
+      return {'label': dateStr, 'color': null};
     }
   }
 

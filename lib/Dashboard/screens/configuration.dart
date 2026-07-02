@@ -503,6 +503,7 @@ class _ConfigurationState extends State<Configuration> {
           'Remove ${user['userName'] ?? 'this account'} from this device? You can add it back later by signing in again.',
       confirmText: 'Remove',
       cancelText: 'Cancel',
+      centered: false,
     );
     if (confirmed != true || !mounted) return;
 

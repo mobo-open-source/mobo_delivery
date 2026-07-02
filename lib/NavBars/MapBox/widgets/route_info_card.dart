@@ -42,12 +42,15 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
 
   void _toggle() => setState(() => _collapsed = !_collapsed);
 
-  void _handleDragUpdate(DragUpdateDetails d) {
-    // Only react to noticeable swipes so the handle doesn't flip on jitter.
-    if (d.primaryDelta == null) return;
-    if (d.primaryDelta! > 6 && !_collapsed) {
+  // Decide state on gesture END (velocity-based) instead of update (delta-
+  // based). Update-based flipping caused jitter mid-swipe. Velocity-based
+  // gives the standard bottom-sheet feel — user swipes, releases, sheet
+  // commits to the intended state.
+  void _handleDragEnd(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    if (v > 200 && !_collapsed) {
       setState(() => _collapsed = true);
-    } else if (d.primaryDelta! < -6 && _collapsed) {
+    } else if (v < -200 && _collapsed) {
       setState(() => _collapsed = false);
     }
   }
@@ -67,12 +70,9 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
     final onStartPressed = widget.onStartPressed;
     final onAddStopPressed = widget.onAddStopPressed;
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      alignment: Alignment.topCenter,
-      child: Container(
+    return Container(
       constraints: const BoxConstraints(maxHeight: 430),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -91,7 +91,7 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _toggle,
-            onVerticalDragUpdate: _handleDragUpdate,
+            onVerticalDragEnd: _handleDragEnd,
             child: Padding(
               padding: const EdgeInsets.only(top: 10, bottom: 14),
               child: Center(
@@ -107,9 +107,20 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
             ),
           ),
 
-          if (!_collapsed) ...[
-
-          if (routeError != null) ...[
+          AnimatedCrossFade(
+            crossFadeState: _collapsed
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
+            reverseDuration: const Duration(milliseconds: 300),
+            sizeCurve: Curves.easeInOutCubic,
+            firstCurve: Curves.easeInOut,
+            secondCurve: Curves.easeInOut,
+            secondChild: const SizedBox(width: double.infinity),
+            firstChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (routeError != null) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
               child: Row(
@@ -188,7 +199,8 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
           Divider(height: 1, color: dividerColor, indent: 20, endIndent: 20),
 
           if (legInfo.isNotEmpty)
-            Flexible(
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 260),
               child: ListView.separated(
                 shrinkWrap: true,
                 padding:
@@ -256,7 +268,9 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
               ),
             ),
           ],
-          ],
+              ],
+            ),
+          ),
 
           Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 12),
@@ -304,7 +318,6 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
             ),
           ),
         ],
-      ),
       ),
     );
   }

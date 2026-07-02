@@ -2543,9 +2543,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: isDark
-                                    ? Colors.white38
-                                    : Colors.black38,
+                                color: AppStyle.primaryColor.withValues(
+                                    alpha: isDark ? 0.55 : 0.5),
                                 width: 1,
                               ),
                               borderRadius: BorderRadius.circular(20),
@@ -2554,10 +2553,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                               'Return',
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? Colors.white70
-                                    : Colors.black54,
+                                fontWeight: FontWeight.w600,
+                                color: AppStyle.primaryColor,
                               ),
                             ),
                           ),
@@ -3185,18 +3182,21 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           return ListenableBuilder(
                                             listenable: tabController,
                                             builder: (context, _) {
-                                              return GestureDetector(
-                                                key: _tabItemKeys[index],
-                                                onTap: () {
-                                                  tabController.animateTo(index);
-                                                  _ensureTabVisible(index);
-                                                },
-                                                child: _buildPillTab(
-                                                  label: labels[index],
-                                                  isSelected:
-                                                      tabController.index ==
-                                                      index,
-                                                  isDark: isDark,
+                                              return Center(
+                                                child: GestureDetector(
+                                                  key: _tabItemKeys[index],
+                                                  onTap: () {
+                                                    tabController
+                                                        .animateTo(index);
+                                                    _ensureTabVisible(index);
+                                                  },
+                                                  child: _buildPillTab(
+                                                    label: labels[index],
+                                                    isSelected:
+                                                        tabController.index ==
+                                                            index,
+                                                    isDark: isDark,
+                                                  ),
                                                 ),
                                               );
                                             },
@@ -3449,7 +3449,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         _resetEditSelections();
       });
       _syncControllersFromPicking();
-      return true;
+      // Discard while editing = exit edit mode. Stay on the details page —
+      // don't pop back to the list view. Return false so the caller
+      // suppresses the Navigator.pop.
+      return false;
     }
     return true;
   }

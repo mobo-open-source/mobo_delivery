@@ -707,13 +707,47 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           picking['name'] ?? 'Unnamed Picking',
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+            fontSize: 15,
+            color: isDark ? Colors.white : AppStyle.primaryColor,
           ),
         ),
-        subtitle: Text(
-          'Scheduled: ${dateInfo['label']}',
-          style: TextStyle(color: isDark ? Colors.white54 : dateInfo['color']),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Row(
+            children: [
+              Icon(
+                HugeIcons.strokeRoundedCalendar03,
+                size: 13,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                    children: [
+                      const TextSpan(text: 'Scheduled: '),
+                      TextSpan(
+                        text: '${dateInfo['label']}',
+                        style: TextStyle(
+                          color: dateInfo['color'] as Color? ??
+                              (isDark ? Colors.grey[400] : Colors.grey[600]),
+                          fontWeight: dateInfo['color'] != null
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1191,18 +1225,57 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                               'Unnamed Picking',
                                                           style: TextStyle(
                                                             fontWeight: FontWeight.w600,
-                                                            fontSize: 14,
+                                                            fontSize: 15,
                                                             color: isDark
                                                                 ? Colors.white
-                                                                : const Color(0xFF1A1A1A),
+                                                                : AppStyle.primaryColor,
                                                           ),
                                                         ),
-                                                        subtitle: Text(
-                                                          'Scheduled: ${dateInfo['label']}',
-                                                          style: TextStyle(
-                                                            color: isDark
-                                                                ? Colors.white54
-                                                                : dateInfo['color'],
+                                                        subtitle: Padding(
+                                                          padding: const EdgeInsets.only(top: 2),
+                                                          child: Row(
+                                                            children: [
+                                                              Icon(
+                                                                HugeIcons.strokeRoundedCalendar03,
+                                                                size: 13,
+                                                                color: isDark
+                                                                    ? Colors.grey[400]
+                                                                    : Colors.grey[600],
+                                                              ),
+                                                              const SizedBox(width: 6),
+                                                              Expanded(
+                                                                child: Text.rich(
+                                                                  TextSpan(
+                                                                    style: TextStyle(
+                                                                      fontSize: 12,
+                                                                      color: isDark
+                                                                          ? Colors.grey[400]
+                                                                          : Colors.grey[600],
+                                                                    ),
+                                                                    children: [
+                                                                      const TextSpan(text: 'Scheduled: '),
+                                                                      TextSpan(
+                                                                        text: '${dateInfo['label']}',
+                                                                        style: TextStyle(
+                                                                          // Only the date value carries urgency
+                                                                          // colour; the "Scheduled:" prefix stays
+                                                                          // grey so the line reads clean.
+                                                                          color: dateInfo['color'] as Color? ??
+                                                                              (isDark
+                                                                                  ? Colors.grey[400]
+                                                                                  : Colors.grey[600]),
+                                                                          fontWeight: dateInfo['color'] != null
+                                                                              ? FontWeight.w600
+                                                                              : FontWeight.w400,
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ),
                                                         trailing: Container(

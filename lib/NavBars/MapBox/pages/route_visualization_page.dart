@@ -290,10 +290,29 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   Future<void> _getOptimizedRoute() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
+    // Helper: surface a friendly error in the RouteInfoCard AND toast, and
+    // clear any previously-computed route data so the map/sheet doesn't show
+    // a stale route beneath the error.
+    void surfaceError(String friendly, {String? toastOverride}) {
+      if (!mounted) return;
+      CustomSnackbar.showError(context, toastOverride ?? friendly);
+      setState(() {
+        _polylines.clear();
+        _routeDistance = '--';
+        _routeDuration = '--';
+        _legInfo = [];
+        _routeError = friendly;
+      });
+    }
+
     try {
       if (_apiKey.isEmpty) {
-        CustomSnackbar.showError(context,
-            'TomTom API key is missing. Check .env or Profile settings.');
+        surfaceError(
+          'Map service isn\'t configured. Please contact your administrator '
+          'or set the TomTom API key in Profile settings.',
+          toastOverride:
+              'TomTom API key is missing. Check .env or Profile settings.',
+        );
         return;
       }
 
@@ -310,9 +329,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       }
 
       if (_sourceLatLng == null) {
-        if (!mounted) return;
-        CustomSnackbar.showError(
-            context, 'Source location not set. Enable GPS or enter manually.');
+        final usingGps = sourceController.text == 'Your Location';
+        surfaceError(
+          usingGps
+              ? 'We couldn\'t get your current location. Please enable GPS '
+                  'and grant location permission, or type a source address.'
+              : 'We couldn\'t resolve the source address. Try selecting a '
+                  'suggestion or use "Your location" instead.',
+          toastOverride:
+              'Source location not set. Enable GPS or enter manually.',
+        );
         return;
       }
 
@@ -339,9 +365,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       }
 
       if (_stops.isEmpty) {
-        if (!mounted) return;
-        CustomSnackbar.showError(
-            context, 'Could not resolve any stop locations. Try selecting from suggestions.');
+        surfaceError(
+          'None of the stops could be located on the map. Try picking '
+          'suggestions from the search field or check the addresses.',
+          toastOverride:
+              'Could not resolve any stop locations. Try selecting from suggestions.',
+        );
         return;
       }
 
@@ -508,17 +537,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       }
     } catch (e, stack) {
       debugPrint('[TomTom] _getOptimizedRoute exception: $e\n$stack');
-      if (mounted) {
-        CustomSnackbar.showError(context, 'Failed to get route: $e');
-        setState(() {
-          _polylines.clear();
-          _routeDistance = '--';
-          _routeDuration = '--';
-          _legInfo = [];
-          _routeError = 'Something went wrong while computing the route. '
-              'Please check your connection and try again.';
-        });
-      }
+      // Network / timeout / unexpected — friendly error in the sheet plus
+      // a toast with the raw reason for debugging.
+      surfaceError(
+        'Something went wrong while computing the route. Please check your '
+        'connection and try again.',
+        toastOverride: 'Failed to get route: $e',
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -819,6 +844,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // Sheet has internal scroll view + fixed Cancel/Show Directions
+      // actions. Drag-to-dismiss doesn't work here in practice (scroll
+      // captures the gesture), so we disable it explicitly to match the
+      // removed drag handle — no misleading affordance.
+      enableDrag: false,
       backgroundColor: isDark ? Colors.grey[900] : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -871,15 +901,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white24 : Colors.black12,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 4),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -1332,10 +1354,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           ? AppStyle.primaryColor
                                           : Colors.transparent,
                                     ),
-                                    side: BorderSide(
-                                      color: isSelected
-                                          ? AppStyle.primaryColor
-                                          : Colors.grey.shade400,
+                                    side: const BorderSide(
+                                      color: AppStyle.primaryColor,
                                       width: 1.5,
                                     ),
                                     shape: RoundedRectangleBorder(
@@ -1383,7 +1403,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       else
                         Focus(
                         onFocusChange: (hasFocus) async {
-                          if (!hasFocus) {
+                          if (hasFocus) {
+                            // Show "Your Location" as an immediate option on
+                            // focus — no need for the user to type anything.
+                            sheetSetState(() {
+                              if (_sourceSuggestions.isEmpty) {
+                                _sourceSuggestions = ['Your Location'];
+                              }
+                            });
+                          } else {
                             await Future.delayed(
                                 const Duration(milliseconds: 150));
                             sheetSetState(() => _sourceSuggestions.clear());
@@ -1393,6 +1421,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           controller: sourceController,
                           hintText: 'Search location',
                           onChanged: (value) async {
+                            if (value.trim().isEmpty) {
+                              // Cleared field → show just the GPS option.
+                              sheetSetState(() =>
+                                  _sourceSuggestions = ['Your Location']);
+                              return;
+                            }
                             final suggestions = await mapService
                                 .fetchSuggestions(value, _apiKey,
                                     proximity: _currentLatLng);
@@ -1948,7 +1982,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     onRetry: _initializeServices,
                   ),
 
-                if (!_infoCard && _showLocationNames) ...[
+                if (!_infoCard && _showLocationNames && !_isNavigationStarted) ...[
                   Positioned(
                     top: 40,
                     left: 16,

@@ -305,15 +305,23 @@ class _InfoRowState extends State<InfoRow> {
           : GestureDetector(
               onTap: widget.onTap,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+                  // Fixed-width label column so the value wraps predictably and
+                  // stays top-aligned with the label instead of centering on
+                  // multi-line values.
+                  SizedBox(
+                    width: 130,
+                    child: Text(
+                      widget.label,
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       displayValue,
