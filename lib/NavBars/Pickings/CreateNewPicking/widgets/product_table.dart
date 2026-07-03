@@ -31,6 +31,8 @@ class ProductTable extends StatelessWidget {
           if (moveProducts.isEmpty)
             _buildEmptyState(isDark)
           else ...[
+            _buildListHeader(isDark),
+            const SizedBox(height: 8),
             ...moveProducts.asMap().entries.map(
               (e) => _buildProductCard(e.value, e.key, isDark),
             ),
@@ -39,6 +41,39 @@ class ProductTable extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildListHeader(bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          '${moveProducts.length} product${moveProducts.length == 1 ? '' : 's'}',
+          style: GoogleFonts.manrope(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white54 : Colors.grey[600],
+          ),
+        ),
+        TextButton.icon(
+          onPressed: onAddLine,
+          icon: const Icon(HugeIcons.strokeRoundedAdd01, size: 16),
+          label: Text(
+            'Add',
+            style: GoogleFonts.manrope(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: isDark ? Colors.white : Colors.black87,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
     );
   }
 
@@ -88,17 +123,13 @@ class ProductTable extends StatelessWidget {
             const SizedBox(width: 4),
             GestureDetector(
               onTap: () => onDelete(index),
-              child: Container(
+              child: SizedBox(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
                 child: Icon(
                   HugeIcons.strokeRoundedDelete02,
-                  size: 16,
-                  color: Colors.red.shade400,
+                  size: 18,
+                  color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
             ),

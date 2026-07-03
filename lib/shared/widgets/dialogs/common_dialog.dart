@@ -41,6 +41,40 @@ class CommonDialog extends StatelessWidget {
     return HugeIcon(icon: icon, color: color, size: size);
   }
 
+  Widget _buildActions() {
+    final primary = MoboButton.primary(
+      label: primaryLabel,
+      onPressed: onPrimary,
+    );
+    if (secondaryLabel == null || onSecondary == null) {
+      return primary;
+    }
+    final secondary = MoboButton.secondary(
+      label: secondaryLabel!,
+      onPressed: onSecondary,
+    );
+    // At half the dialog width each label needs to fit at natural size.
+    // Above ~12 chars either label starts getting scaled down by the button's
+    // FittedBox — stack vertically instead so both render at consistent size.
+    final stack = primaryLabel.length > 12 || secondaryLabel!.length > 12;
+    if (stack) {
+      return Column(
+        children: [
+          primary,
+          const SizedBox(height: 10),
+          secondary,
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: secondary),
+        const SizedBox(width: 12),
+        Expanded(child: primary),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -162,25 +196,7 @@ class CommonDialog extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 24),
-            Row(
-              children: [
-                if (secondaryLabel != null && onSecondary != null) ...[
-                  Expanded(
-                    child: MoboButton.secondary(
-                      label: secondaryLabel!,
-                      onPressed: onSecondary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: MoboButton.primary(
-                    label: primaryLabel,
-                    onPressed: onPrimary,
-                  ),
-                ),
-              ],
-            ),
+            _buildActions(),
           ],
         ),
       ),

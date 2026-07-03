@@ -854,6 +854,45 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     );
   }
 
+  /// Combined "Expand/Collapse All (N groups)" pill that replaces the old
+  /// two-row layout. Consolidated into the filter-indicator row when a
+  /// group-by is active — the count lives inside the button label so the
+  /// list gains a whole line of vertical space.
+  Widget _buildGroupToggle(bool isDark) {
+    final count = _groupedPickings.length;
+    // Derive from actual state so the label always reflects reality even if
+    // the user manually collapsed a single group.
+    final expanded = _groupedPickings.keys
+        .every((k) => _groupExpanded[k] ?? true);
+    return TextButton.icon(
+      onPressed: () {
+        setState(() {
+          final target = !expanded;
+          for (final key in _groupedPickings.keys) {
+            _groupExpanded[key] = target;
+          }
+          _allGroupsExpanded = target;
+        });
+      },
+      icon: Icon(
+        expanded
+            ? HugeIcons.strokeRoundedArrowUp01
+            : HugeIcons.strokeRoundedArrowDown01,
+        size: 16,
+      ),
+      label: Text(
+        '${expanded ? 'Collapse' : 'Expand'} All ($count)',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: isDark ? Colors.white : Colors.black87,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
   Widget _buildErrorState(bool isDark, BuildContext context) {
     return ErrorStateWidget(
       title: 'Something went wrong',
@@ -933,7 +972,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             const PaginationBarShimmer()
           else if (!catchError && filteredLocations.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -942,7 +981,10 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     _buildFilterIndicator(isDark, activeFilterCount),
                   ],
                 ),
-                if (_selectedGroupBy == null)
+                if (_selectedGroupBy != null &&
+                    _groupedPickings.isNotEmpty)
+                  _buildGroupToggle(isDark)
+                else if (_selectedGroupBy == null)
                   Consumer<CompanyProvider>(
                       builder: (context, companyProvider, _) {
                     // Use the service's single-shot global search_count when
@@ -1052,67 +1094,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     _groupedPickings.isNotEmpty)
                   Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${_groupedPickings.length} groups',
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                if (!_allGroupsExpanded && _groupedPickings.isNotEmpty)
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      setState(() {
-                                        for (final key in _groupedPickings.keys) {
-                                          _groupExpanded[key] = true;
-                                        }
-                                        _allGroupsExpanded = true;
-                                      });
-                                    },
-                                    icon: const Icon(HugeIcons.strokeRoundedArrowDown01, size: 18),
-                                    label: const Text('Expand All'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: isDark
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                if (_groupExpanded.values.any((expanded) => expanded))
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      setState(() {
-                                        for (final key in _groupedPickings.keys) {
-                                          _groupExpanded[key] = false;
-                                        }
-                                        _allGroupsExpanded = false;
-                                      });
-                                    },
-                                    icon: const Icon(HugeIcons.strokeRoundedArrowUp01, size: 18),
-                                    label: const Text('Collapse All'),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: isDark
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
                       Expanded(
                         child: RefreshIndicator(
                           onRefresh: () async => reloadPickingList(),

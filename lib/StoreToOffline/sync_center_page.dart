@@ -110,7 +110,7 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
     for (final PendingValidation v in results[3] as List<PendingValidation>) {
       rows.add(_PendingRow(
         group: 'Validations',
-        icon: HugeIcons.strokeRoundedCheckmarkCircle03,
+        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
         color: Colors.green,
         title: 'Picking #${v.pickingId}',
         subtitle: 'Validate transfer',

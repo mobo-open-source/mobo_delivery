@@ -2535,27 +2535,22 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         pickings[0].state == 'done' &&
                         isOnlineAvailability)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: _openCreateReturnSheet,
-                          child: Container(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: TextButton(
+                          onPressed: _openCreateReturnSheet,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppStyle.primaryColor,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: AppStyle.primaryColor.withValues(
-                                    alpha: isDark ? 0.55 : 0.5),
-                                width: 1,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Return',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppStyle.primaryColor,
-                              ),
+                            minimumSize: Size.zero,
+                            tapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Return',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -4572,6 +4567,39 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${moveProducts.length} product${moveProducts.length == 1 ? '' : 's'}',
+                style: GoogleFonts.manrope(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white54 : Colors.grey[600],
+                ),
+              ),
+              if (canEdit)
+                TextButton.icon(
+                  onPressed: _openAddLine,
+                  icon: const Icon(HugeIcons.strokeRoundedAdd01, size: 16),
+                  label: Text(
+                    'Add',
+                    style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white : Colors.black87,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Material(
@@ -4699,26 +4727,28 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     });
   }
 
+  void _openAddLine() {
+    setState(() {
+      _errorMessage = "";
+      selectedPicking = 0;
+      selectedPickingName = null;
+      selectedPickingUom = null;
+    });
+    final qtyController = TextEditingController(text: '1');
+    showDialog(
+      context: context,
+      builder: (context) => _addProductLine(context, qtyController),
+    ).whenComplete(() {
+      Future.delayed(
+        const Duration(milliseconds: 400),
+        qtyController.dispose,
+      );
+    });
+  }
+
   Widget _addLineButton(bool isDark) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _errorMessage = "";
-          selectedPicking = 0;
-          selectedPickingName = null;
-          selectedPickingUom = null;
-        });
-        final qtyController = TextEditingController(text: '1');
-        showDialog(
-          context: context,
-          builder: (context) => _addProductLine(context, qtyController),
-        ).whenComplete(() {
-          Future.delayed(
-            const Duration(milliseconds: 400),
-            qtyController.dispose,
-          );
-        });
-      },
+      onTap: _openAddLine,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
@@ -4844,12 +4874,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                             fontWeight: FontWeight.w400,
                             color: isDark ? Colors.white : Colors.black,
                           ),
-                          buttonStyleData: ButtonStyleData(
+                          buttonStyleData: const ButtonStyleData(
                             height: 44,
-                            padding: const EdgeInsets.only(left: 12, right: 4),
+                            padding: EdgeInsets.only(left: 12, right: 4),
                           ),
                           menuItemStyleData: const MenuItemStyleData(
-                            padding: EdgeInsets.zero,
+                            padding: EdgeInsets.symmetric(horizontal: 12),
                           ),
                           iconStyleData: IconStyleData(
                             icon: Icon(

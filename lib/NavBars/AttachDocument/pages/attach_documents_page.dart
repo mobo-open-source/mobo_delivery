@@ -59,6 +59,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   List<String> _selectedFilters = [];
   String? _selectedGroupBy;
   Map<String, bool> _groupExpanded = {};
+  bool _allGroupsExpanded = true;
   bool hasFilters = false;
   bool hasGroupBy = false;
 
@@ -130,6 +131,39 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Compact "Expand/Collapse All (N)" toggle shown in place of the range
+  /// badge when a group-by is active — matches pickings/returns lists.
+  Widget _buildGroupToggle(bool isDark, List<String> groupKeys) {
+    final expanded = groupKeys.every((k) => _groupExpanded[k] ?? true);
+    return TextButton.icon(
+      onPressed: () {
+        setState(() {
+          final target = !expanded;
+          for (final key in groupKeys) {
+            _groupExpanded[key] = target;
+          }
+          _allGroupsExpanded = target;
+        });
+      },
+      icon: Icon(
+        expanded
+            ? HugeIcons.strokeRoundedArrowUp01
+            : HugeIcons.strokeRoundedArrowDown01,
+        size: 16,
+      ),
+      label: Text(
+        '${expanded ? 'Collapse' : 'Expand'} All (${groupKeys.length})',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: isDark ? Colors.white : Colors.black87,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
   }
 
   Widget _buildFilterIndicator(bool isDark, int count) {
@@ -595,6 +629,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
       },
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         itemCount: state.groupedPickings.length,
         itemBuilder: (context, index) {
           final groupKey = state.groupedPickings.keys.elementAt(index);
@@ -602,7 +637,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           final isExpanded = _groupExpanded[groupKey] ?? true;
 
           return Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? Colors.grey[900] : Colors.white,
@@ -890,17 +925,34 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             ? state.totalCount
                             : 0;
 
+                        final groupedNow = hasGroupBy &&
+                            state is AttachDocumentsLoaded &&
+                            state.groupedPickings.isNotEmpty;
                         return Column(
                           children: [
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       _buildFilterIndicator(
                                         isDark,
-                                        _selectedFilters.length + ((_selectedGroupBy?.isNotEmpty ?? false) ? 1 : 0),
+                                        // Group-by is represented by the
+                                        // "Expand/Collapse All (N)" toggle
+                                        // on the right; don't count it as an
+                                        // active filter to avoid duplicating
+                                        // the signal.
+                                        _selectedFilters.length,
                                       ),
+                                      if (groupedNow)
+                                        _buildGroupToggle(
+                                          isDark,
+                                          (state as AttachDocumentsLoaded)
+                                              .groupedPickings
+                                              .keys
+                                              .toList(),
+                                        )
+                                      else
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [

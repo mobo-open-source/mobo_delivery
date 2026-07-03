@@ -50,6 +50,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   List<String> _selectedFilters = [];
   String? _selectedGroupBy;
   Map<String, bool> _groupExpanded = {};
+  bool _allGroupsExpanded = true;
 
   bool hasFilters = false;
   bool hasGroupBy = false;
@@ -898,6 +899,42 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   }
 
 
+  /// Compact toggle rendered in the filter-indicator row's right slot when
+  /// grouping is active — swaps the count text and the range badge for a
+  /// single "Expand/Collapse All (N)" pill matching the pickings list style.
+  Widget _buildGroupToggle(bool isDark, List<String> groupKeys) {
+    // Derive label from actual state so the button label always tells the
+    // truth (in case the user manually collapsed a single group).
+    final expanded = groupKeys.every((k) => _groupExpanded[k] ?? true);
+    return TextButton.icon(
+      onPressed: () {
+        setState(() {
+          final target = !expanded;
+          for (final key in groupKeys) {
+            _groupExpanded[key] = target;
+          }
+          _allGroupsExpanded = target;
+        });
+      },
+      icon: Icon(
+        expanded
+            ? HugeIcons.strokeRoundedArrowUp01
+            : HugeIcons.strokeRoundedArrowDown01,
+        size: 16,
+      ),
+      label: Text(
+        '${expanded ? 'Collapse' : 'Expand'} All (${groupKeys.length})',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: isDark ? Colors.white : Colors.black87,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+
   Widget _buildEmptyState(bool isDark, BuildContext context) {
     final searchTerm = _searchController.text.trim();
     final hasSearch = searchTerm.isNotEmpty;
@@ -1092,7 +1129,10 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     bool isDark,
     BuildContext context,
   ) {
-    final filterCount = _selectedFilters.length + (hasGroupBy ? 1 : 0);
+    // Group-by is surfaced via the "Expand/Collapse All (N)" toggle on the
+    // right; count only actual filters here so the pill doesn't say
+    // "1 active" when only a group-by is set.
+    final filterCount = _selectedFilters.length;
     final canGoPrev = state.currentPage > 0;
     final canGoNext =
         (state.currentPage + 1) * ReturnManagementState.itemsPerPage <
@@ -1103,14 +1143,19 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     final needsPageArrows =
         state.totalCount > ReturnManagementState.itemsPerPage;
 
+    final grouped =
+        hasGroupBy && state.groupedPickings.isNotEmpty;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildFilterIndicator(isDark, filterCount),
 
-          if (hasPagination)
+          if (grouped)
+            _buildGroupToggle(isDark, state.groupedPickings.keys.toList())
+          else if (hasPagination)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [

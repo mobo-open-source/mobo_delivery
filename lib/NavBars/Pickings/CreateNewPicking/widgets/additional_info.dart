@@ -66,7 +66,6 @@ class AdditionalInfo extends StatelessWidget {
                   : const Color(0xFFF2F4F6),
               border: Border.all(color: Colors.transparent, width: 1),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DropdownButton2<String>(
               value: selectedShippingPolicy,
               isExpanded: true,
@@ -75,6 +74,20 @@ class AdditionalInfo extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
                 color: itemColor,
+              ),
+              buttonStyleData: const ButtonStyleData(
+                height: 44,
+                padding: EdgeInsets.only(left: 12, right: 4),
+              ),
+              menuItemStyleData: const MenuItemStyleData(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+              ),
+              iconStyleData: IconStyleData(
+                icon: Icon(
+                  Icons.arrow_drop_down,
+                  color: isDark ? Colors.white54 : Colors.grey[600],
+                ),
+                iconSize: 24,
               ),
               items: [
                 DropdownMenuItem(
@@ -112,9 +125,6 @@ class AdditionalInfo extends StatelessWidget {
                   color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                 ),
                 offset: const Offset(0, -3),
-              ),
-              buttonStyleData: const ButtonStyleData(
-                padding: EdgeInsets.zero,
               ),
               underline: const SizedBox(),
             ),
