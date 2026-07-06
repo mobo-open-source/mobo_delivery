@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../theme/mobo_home_theme.dart';
+
 /// Extension to adjust color brightness using HSL color space.
 ///
 /// Allows increasing or decreasing lightness of a color safely
@@ -89,6 +91,7 @@ class AppTheme {
         borderSide: const BorderSide(color: primaryColor, width: 2),
       ),
     ),
+    extensions: <ThemeExtension<dynamic>>[MoboHomeTheme.light],
   );
 
   /// Dark mode theme configuration.
@@ -141,5 +144,6 @@ class AppTheme {
         borderSide: const BorderSide(color: primaryColor, width: 2),
       ),
     ),
+    extensions: <ThemeExtension<dynamic>>[MoboHomeTheme.dark],
   );
 }

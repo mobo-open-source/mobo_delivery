@@ -38,21 +38,18 @@ class ActionTile extends StatelessWidget {
         title,
         style: TextStyle(
           color: titleColor,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
+          fontWeight: destructive ? FontWeight.w600 : FontWeight.w500,
         ),
       ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 13,
-          color: isDark ? Colors.grey[400] : Colors.grey[600],
-        ),
-      ),
-      trailing: trailing ?? HugeIcon(
-        icon: HugeIcons.strokeRoundedArrowRight01,
-        color: isDark ? Colors.grey[600]! : Colors.grey[400]!,
-      ),
+      subtitle: subtitle.isNotEmpty
+          ? Text(
+              subtitle,
+              style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            )
+          : null,
+      trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );

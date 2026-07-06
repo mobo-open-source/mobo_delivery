@@ -11,13 +11,13 @@ import '../../../../Dashboard/screens/dashboard/bloc/dashboard_bloc.dart';
 import '../../../../Dashboard/screens/dashboard/bloc/dashboard_state.dart';
 import '../../../../Dashboard/infrastructure/profile_refresh_bus.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
+import '../services/pickings_filter_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/list_search_bar.dart';
-import '../../../../shared/widgets/greeting_header.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
@@ -71,6 +71,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
 
   StreamSubscription? _profileSub;
   late final StreamSubscription _companySub;
+  StreamSubscription<String?>? _homeFilterSub;
 
   List<String> _selectedFilters = [];
   String? _selectedGroupBy;
@@ -117,12 +118,27 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       if (!mounted) return;
       _onCompanyRefresh();
     });
+
+    // Listen for filter-chip requests from the Home screen. Home publishes a
+    // chip name (e.g. 'ready', 'late', 'donetoday') before switching to this
+    // tab; we apply it through the existing _selectedFilters flow and refetch.
+    _homeFilterSub = PickingsFilterBus.stream.listen((chip) async {
+      if (!mounted) return;
+      setState(() {
+        _selectedFilters = chip == null ? <String>[] : [chip];
+        _selectedGroupBy = null;
+        isFilterApplied = _selectedFilters.isNotEmpty;
+        _service.clearPaginationState();
+      });
+      await _fetchData();
+    });
   }
 
   @override
   void dispose() {
     _companySub.cancel();
     _profileSub?.cancel();
+    _homeFilterSub?.cancel();
     super.dispose();
   }
 
@@ -936,19 +952,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverToBoxAdapter(
-            child: BlocBuilder<DashboardBloc, DashboardState>(
-              buildWhen: (a, b) =>
-                  a.userName != b.userName ||
-                  a.profilePicBytes != b.profilePicBytes,
-              builder: (context, dashState) => GreetingHeader(
-                userName: dashState.userName,
-                imageBytes: dashState.profilePicBytes,
-              ),
-            ),
-          ),
-        ],
+        headerSliverBuilder: (context, innerBoxIsScrolled) => const [],
         body: Column(
         children: [
           ListSearchBar(
@@ -1458,21 +1462,26 @@ return FadeTransition(opacity: animation, child: child);
         label = capitalizeFirstLetter(stateMap[state] ?? state);
     }
 
+    // Sales-app `_buildStatusBadge` pattern: dark = neutral white-on-white
+    // tint (semantic color dropped from the pill); light = semantic color on
+    // tinted-semantic bg. Same shape and dimensions as Returns / Home for
+    // app-wide chip parity.
+    final backgroundColor = isDark
+        ? Colors.white.withValues(alpha: 0.15)
+        : color.withValues(alpha: 0.10);
+    final textColor = isDark ? Colors.white : color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.20 : 0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: isDark
-            ? Border.all(color: color.withValues(alpha: 0.35), width: 0.8)
-            : null,
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isDark ? color.withValues(alpha: 0.95) : color,
+          color: textColor,
           letterSpacing: 0.1,
         ),
       ),

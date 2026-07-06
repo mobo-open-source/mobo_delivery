@@ -3540,8 +3540,8 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                               ),
                               filled: true,
                               fillColor: isDark
-                                  ? Colors.grey[850]
-                                  : Colors.grey[100],
+                                  ? const Color(0xFF2A2A2A)
+                                  : const Color(0xffF8FAFB),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 12,
@@ -4042,8 +4042,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   : Colors.grey[500],
                             ),
                             filled: true,
-                            fillColor:
-                                isDark ? Colors.grey[850] : Colors.grey[100],
+                            fillColor: isDark
+                                ? const Color(0xFF2A2A2A)
+                                : const Color(0xffF8FAFB),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,

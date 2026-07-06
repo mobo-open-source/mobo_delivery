@@ -60,9 +60,9 @@ class CommonDialog extends StatelessWidget {
     if (stack) {
       return Column(
         children: [
-          primary,
-          const SizedBox(height: 10),
           secondary,
+          const SizedBox(height: 10),
+          primary,
         ],
       );
     }

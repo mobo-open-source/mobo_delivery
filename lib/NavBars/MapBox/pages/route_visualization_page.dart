@@ -14,6 +14,8 @@ import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../services/map_service.dart';
 import '../services/odoo_map_service.dart';
+import '../services/route_navigation_bus.dart';
+import '../services/route_plan_bus.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/error_state_widget.dart';
@@ -101,6 +103,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   double _lastBearing = 0.0;
   Widget? _navigationIcon;
   StreamSubscription? _gyroscopeSubscription;
+  StreamSubscription<void>? _planSub;
   bool _isPhoneRotated = false;
   LatLng? _currentLatLng;
   bool _showLayer = true;
@@ -132,6 +135,14 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     _setInitialLocation();
     _loadCustomMarker();
     _listenToGyroscope();
+
+    // Home's "Plan route" quick action publishes on this bus after switching
+    // to the Route tab. When we receive the signal, open the Enter Route
+    // sheet through the same private flow the on-page CTA uses.
+    _planSub = RoutePlanBus.stream.listen((_) {
+      if (!mounted) return;
+      _showEnterRootPopup();
+    });
   }
 
   /// Initializes Odoo client, checks connectivity, fetches pickings.
@@ -184,6 +195,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   void dispose() {
     _locationSubscription?.cancel();
     _gyroscopeSubscription?.cancel();
+    _planSub?.cancel();
     _distanceUpdateTimer?.cancel();
     sourceController.dispose();
     sourceSearchController.dispose();
@@ -853,6 +865,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      // Override Flutter's default 250ms linear enter/exit with a Material
+      // ease-out-cubic curve — snappier open, gentler close, no jarring
+      // linear pull at the end of the tween.
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 320),
+        reverseDuration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      ),
       builder: (BuildContext context) {
         bool isFetchingStops = false;
         bool didAddStopField = false;
@@ -881,8 +902,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
               child: SafeArea(
                 top: false,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  curve: Curves.easeInOut,
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
                   constraints: BoxConstraints(
                     minHeight: isDropdownActive
                         ? MediaQuery.of(context).size.height * 0.75
@@ -1802,6 +1823,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                         _infoCard = false;
                                         if (fromAddStop) {
                                           _isNavigationStarted = false;
+                                          RouteNavigationBus.set(false);
                                         }
                                         sourceSearchController.text = sourceController.text;
                                       });
@@ -1865,6 +1887,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           _isNavigationStarted = false;
           sourceSearchController.text = sourceController.text;
         });
+        RouteNavigationBus.set(false);
         _getOptimizedRoute();
       });
     });
@@ -2079,7 +2102,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             FloatingActionButton(
               heroTag: 'routeEnterRoot',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: AppStyle.primaryColor,
+              foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
               elevation: 4,
               onPressed: _showEnterRootPopup,
               child: const Icon(HugeIcons.strokeRoundedRoute03),
@@ -2088,7 +2111,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             FloatingActionButton(
               heroTag: 'routeRecenterInitial',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: AppStyle.primaryColor,
+              foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
               elevation: 4,
               onPressed: () {
                 if (_initialCameraPosition != null) {
@@ -2134,7 +2157,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                 FloatingActionButton(
                   backgroundColor:
                       isDark ? const Color(0xFF2C2C3E) : Colors.white,
-                  foregroundColor: AppStyle.primaryColor,
+                  foregroundColor:
+                      isDark ? Colors.white : AppStyle.primaryColor,
                   elevation: 4,
                   heroTag: 'mapTypeToggle',
                   tooltip: 'Change Map Style',
@@ -2238,6 +2262,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
 
     if (!mounted) return;
+    RouteNavigationBus.set(true);
     setState(() {
       _isNavigationStarted = true;
       _isMapManuallyMoved = false;
@@ -2336,6 +2361,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
   /// Resets all navigation state back to the idle map view.
   void _resetNavigation() {
+    RouteNavigationBus.set(false);
     setState(() {
       _isNavigationStarted = false;
       _infoCard = false;

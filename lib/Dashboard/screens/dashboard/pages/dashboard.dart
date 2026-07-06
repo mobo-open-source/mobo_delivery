@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
+import '../../../../NavBars/MapBox/services/route_navigation_bus.dart';
 import '../../../../StoreToOffline/pending_sync_service.dart';
 import '../../../../StoreToOffline/sync_center_page.dart';
 
@@ -105,9 +106,19 @@ class _DashboardState extends State<Dashboard> {
           }
 
           final currentPage = state.pages[state.currentIndex];
-          final showAppBar = currentPage['title'] != 'Route Visualization';
+          // Every tab uses the shared Dashboard AppBar (title + company
+          // selector + sync icon + avatar). Only exception: while live
+          // navigation is running on the Route tab, the map's own
+          // `NavigationHeader` overlay takes over the top slot, so we hide
+          // the shared AppBar to avoid two stacked top bars and reclaim
+          // the ~56px of map viewport.
 
-          return WillPopScope(
+          return ValueListenableBuilder<bool>(
+            valueListenable: RouteNavigationBus.isNavigating,
+            builder: (context, isNavigating, _) {
+              final hideAppBar =
+                  isNavigating && currentPage['title'] == 'Route';
+              return WillPopScope(
             onWillPop: () async {
               final bloc = context.read<DashboardBloc>();
               if (state.currentIndex != 0) {
@@ -119,8 +130,7 @@ class _DashboardState extends State<Dashboard> {
             },
             child: Scaffold(
               backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-              appBar: showAppBar
-                  ? AppBar(
+              appBar: hideAppBar ? null : AppBar(
                       forceMaterialTransparency: true,
                       title: Text(
                         currentPage['title'],
@@ -234,8 +244,7 @@ return FadeTransition(
                           ],
                         ),
                       ],
-                    )
-                  : null,
+                    ),
 
               body: Column(
                 children: [
@@ -265,6 +274,8 @@ return FadeTransition(
                 },
               ),
             ),
+          );
+            },
           );
         },
       ),

@@ -26,12 +26,6 @@ class ProfileHeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    double rs(double size) {
-      final w = MediaQuery.of(context).size.width;
-      final scale = (w / 390.0).clamp(0.85, 1.2);
-      return size * scale;
-    }
 
     final content = Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -115,7 +109,7 @@ class ProfileHeaderCard extends StatelessWidget {
                   name,
                   style: GoogleFonts.manrope(
                     color: Colors.white,
-                    fontSize: rs(15),
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                   ),
@@ -128,7 +122,7 @@ class ProfileHeaderCard extends StatelessWidget {
                     email,
                     style: GoogleFonts.manrope(
                       color: Colors.white.withOpacity(0.85),
-                      fontSize: rs(13),
+                      fontSize: 14,
                       fontWeight: FontWeight.w400,
                     ),
                     maxLines: 1,
@@ -146,7 +140,7 @@ class ProfileHeaderCard extends StatelessWidget {
                       jobFunction!,
                       style: GoogleFonts.manrope(
                         color: Colors.white,
-                        fontSize: rs(12),
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

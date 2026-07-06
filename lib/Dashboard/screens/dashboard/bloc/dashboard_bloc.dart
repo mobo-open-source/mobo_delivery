@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
+import '../../../../NavBars/Home/pages/home_page.dart';
 import '../../../../NavBars/MapBox/pages/route_visualization_page.dart';
 
 import '../../../../NavBars/Pickings/PickingListPage/pages/pickings_grouped_page.dart';
@@ -88,26 +89,32 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       currentIndex: event.initialIndex,
       pages: [
         {
-          'title': 'Pickings by Location',
+          'title': 'Home',
+          'label': 'Home',
+          'icon': HugeIcons.strokeRoundedHome01,
+          'route': const HomePage(),
+        },
+        {
+          'title': 'Pickings',
           'label': 'Pickings',
           'icon': HugeIcons.strokeRoundedShoppingBasket01,
           'route': const PickingsGroupedPage(),
         },
         {
-          'title': 'Route Visualization',
+          'title': 'Route',
           'label': 'Route',
           'icon': HugeIcons.strokeRoundedRoute02,
           'route': const RouteVisualizationPage(),
         },
         {
-          'title': 'Return Management',
+          'title': 'Returns',
           'label': 'Return',
           'icon': HugeIcons.strokeRoundedReturnRequest,
           'route': const ReturnManagementPage(),
         },
 
         {
-          'title': 'Attach Documents',
+          'title': 'Documents',
           'label': 'Documents',
           'icon': HugeIcons.strokeRoundedDocumentAttachment,
           'route': const AttachDocumentsPage(),

@@ -243,6 +243,19 @@ class PickingService {
         case 'warning':
           domain.add(['activity_exception_decoration', '!=', false]);
           break;
+
+        case 'donetoday':
+          final now = DateTime.now();
+          final startOfDay = DateTime.utc(now.year, now.month, now.day);
+          final endOfDay = startOfDay.add(const Duration(days: 1));
+          String odooTs(DateTime d) =>
+              d.toIso8601String().replaceFirst('T', ' ').split('.').first;
+          domain.addAll([
+            ['state', '=', 'done'],
+            ['date_done', '>=', odooTs(startOfDay)],
+            ['date_done', '<', odooTs(endOfDay)],
+          ]);
+          break;
       }
     }
 

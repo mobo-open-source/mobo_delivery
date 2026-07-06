@@ -292,7 +292,10 @@ class _ConfigurationState extends State<Configuration> {
         highlightColor: Colors.transparent,
       ),
       child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
         leading: Icon(HugeIcons.strokeRoundedUserSwitch, color: iconColor),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         title: Text(
           'Switch Accounts',
           style: TextStyle(
@@ -302,7 +305,7 @@ class _ConfigurationState extends State<Configuration> {
         ),
         subtitle: Text(
           'Manage and switch between accounts',
-          style: TextStyle(fontSize: 13, color: subtitleColor),
+          style: TextStyle(color: subtitleColor),
         ),
         children: [
           FutureBuilder<List<Map<String, dynamic>>>(

@@ -785,20 +785,21 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           ),
         ),
         trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: isDark ? 0.20 : 0.12),
-            borderRadius: BorderRadius.circular(18),
-            border: isDark
-                ? Border.all(color: statusColor.withValues(alpha: 0.35), width: 0.8)
-                : null,
+            // Sales-app `_buildStatusBadge` pattern — parity with Returns /
+            // Pickings / Home.
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.15)
+                : statusColor.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             readableState,
             style: TextStyle(
-              color: isDark ? statusColor.withValues(alpha: 0.95) : statusColor,
+              color: isDark ? Colors.white : statusColor,
               fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontSize: 11,
               letterSpacing: 0.1,
             ),
           ),
@@ -1333,25 +1334,25 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                         trailing: Container(
                                                           padding:
                                                               const EdgeInsets.symmetric(
-                                                                horizontal: 10,
+                                                                horizontal: 9,
                                                                 vertical: 4,
                                                               ),
                                                           decoration: BoxDecoration(
-                                                            color: statusColor
-                                                                .withValues(alpha: isDark ? 0.20 : 0.12),
+                                                            // Sales-app `_buildStatusBadge` pattern
+                                                            // — parity with Returns / Pickings / Home.
+                                                            color: isDark
+                                                                ? Colors.white.withValues(alpha: 0.15)
+                                                                : statusColor.withValues(alpha: 0.10),
                                                             borderRadius:
-                                                                BorderRadius.circular(18),
-                                                            border: isDark
-                                                                ? Border.all(color: statusColor.withValues(alpha: 0.35), width: 0.8)
-                                                                : null,
+                                                                BorderRadius.circular(12),
                                                           ),
                                                           child: Text(
                                                             readableState,
                                                             style: TextStyle(
                                                               fontWeight:
                                                                   FontWeight.w600,
-                                                              color: isDark ? statusColor.withValues(alpha: 0.95) : statusColor,
-                                                              fontSize: 12,
+                                                              color: isDark ? Colors.white : statusColor,
+                                                              fontSize: 11,
                                                               letterSpacing: 0.1,
                                                             ),
                                                           ),

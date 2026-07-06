@@ -70,7 +70,7 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
         ));
       }
 
-      add(const FetchDocumentStockPickings(0, 10));
+      add(FetchDocumentStockPickings(0, itemsPerPage));
     } catch (e) {
       int totalCount = await _hiveService.getTotalCount();
       final cachedPickings = await _hiveService.getPickings();
