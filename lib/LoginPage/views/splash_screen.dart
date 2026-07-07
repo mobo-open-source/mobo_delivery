@@ -62,10 +62,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _startAuthCheck() async {
     await Future.delayed(const Duration(seconds: 3));
 
-    // Offer a (non-blocking) update before entering the app. The page is only
-    // shown when the store reports a newer version; the user can tap "Maybe
-    // Later" to dismiss it and continue. Any lookup failure (offline,
-    // throttled, not-yet-published) silently continues to auth.
     await _maybeShowUpdatePage();
     if (!mounted) return;
 

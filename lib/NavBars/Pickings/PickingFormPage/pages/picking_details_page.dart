@@ -80,7 +80,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   List<User> userList = [];
   List<StockMove> moveProducts = [];
 
-  // Tab header scroll: keeps the selected pill visible when swiping the body.
   final ScrollController _tabHeaderScrollController = ScrollController();
   final List<GlobalKey> _tabItemKeys = List.generate(3, (_) => GlobalKey());
 
@@ -101,10 +100,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   bool get _isHeaderDirty =>
       _editBaseline != null &&
       (_buildHeaderUpdates()?.toString() ?? '') != _editBaseline;
-
-  // ── Staged product-line changes ───────────────────────────────────────────
-  // Product add/edit/delete in edit mode only stage locally; they are committed
-  // to the backend together with the header when the user taps "Save Delivery".
 
   /// Snapshot of [moveProducts] when edit mode was entered, used to revert on
   /// discard.
@@ -201,8 +196,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     _initializeHive();
     _fetchData();
 
-    // Watch the free-text editable header fields so the Save button reflects
-    // changes as the user types (dropdowns/date pickers already setState).
     for (final c in [
       scheduledDateController,
       deadlineController,
@@ -318,18 +311,18 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       try {
         await _loadOfflineData();
       } catch (e, st) {
-        // offline load failure is non-fatal — online path may still succeed
+
       }
 
       if (isOnline) {
         try {
           await _loadOnlineData();
         } catch (e, st) {
-          // online load failure is surfaced via the error message below
+
         }
       }
     } catch (e, st) {
-      // unexpected top-level failure — error message shown in finally
+
     } finally {
       if (mounted) {
         setState(() {
@@ -503,7 +496,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         if (freshOpTypes.isNotEmpty) operationTypesList = freshOpTypes;
       });
     } catch (e) {
-      // dropdown refresh failure is non-fatal; cached values remain usable
+
     }
   }
 
@@ -673,7 +666,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (candidate.isNotEmpty) return candidate;
     }
 
-    // Expose plain Exception messages so our own throws and network errors are visible.
     const exPrefix = 'Exception: ';
     if (raw.startsWith(exPrefix)) {
       final msg = raw.substring(exPrefix.length).trim();
@@ -1385,9 +1377,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     sourceDocController.text = p.origin ?? '';
     _noteController.text = (p.note ?? '').replaceAll(RegExp(r'<[^>]*>'), '');
 
-    // The form now mirrors the freshly-persisted picking (e.g. after a product
-    // line was added/edited, which reloads the record). Reset the dirty
-    // baseline so "Save Delivery" reflects changes made *from this point on*.
     if (_isEditing) {
       _editBaseline = _buildHeaderUpdates()?.toString() ?? '';
     }
@@ -1674,7 +1663,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             try {
               await service.checkAvailability(pickingId);
             } catch (e) {
-              // availability check after adding lines is best-effort
+
             }
           }
         }
@@ -1697,8 +1686,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
           CustomSnackbar.showSuccess(context, 'Delivery saved.');
         }
       } else {
-        // OFFLINE: queue header + product add/edit. (Line deletions have no
-        // offline queue, so they are applied only once back online.)
+
         if (_isHeaderDirty && headerUpdates.isNotEmpty) {
           await _hiveService.savePendingUpdates(pickingId, {
             'title': title,
@@ -2031,17 +2019,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     return ctx;
   }
 
-  // Resolves the wizard record ID from the action returned by button_validate.
-  // Odoo 16 pre-creates the wizard and returns res_id as an int; Odoo 17 returns
-  // res_id: false and expects the client to create the wizard using the action context.
   Future<int?> _resolveWizardId(
       String model, int pickingId, dynamic action) async {
     final rawId = action is Map ? action['res_id'] : null;
     if (rawId is int && rawId > 0) return rawId;
     if (rawId is double && rawId > 0) return rawId.toInt();
 
-    // Create the wizard; Odoo's default_get uses button_validate_picking_ids from
-    // context to populate the wizard's pick_ids field automatically.
     final ctx = _wizardContext(pickingId, action);
     final created = await CompanySessionManager.callKwWithCompany({
       'model': model,
@@ -2502,9 +2485,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         onPressed: () async {
                           setState(() {
                             _isEditing = true;
-                            // Baseline of the current header + product lines so
-                            // Save stays disabled until something changes, and
-                            // staged product edits can be reverted on discard.
+
                             _editBaseline =
                                 _buildHeaderUpdates()?.toString() ?? '';
                             _moveBaseline = List<StockMove>.from(moveProducts);
@@ -3202,9 +3183,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                     ),
                                       Container(
                                         width: double.infinity,
-                                        // Keep a consistent section height so short
-                                        // tabs (Note / Additional Info) don't shrink
-                                        // to a tiny box.
+
                                         constraints: const BoxConstraints(
                                           minHeight: 240,
                                         ),
@@ -3294,7 +3273,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         ? 'Not Available'
         : availability;
 
-    // View mode: label on left, coloured value on right (same as other display-mode rows)
     if (!isEditing) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -3323,7 +3301,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       );
     }
 
-    // Edit mode: label above, read-only container, default text colour
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -3437,16 +3414,14 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       if (!discard) return false;
       setState(() {
         _isEditing = false;
-        // Revert staged product-line changes back to the pre-edit snapshot.
+
         if (_moveBaseline != null) {
           moveProducts = List<StockMove>.from(_moveBaseline!);
         }
         _resetEditSelections();
       });
       _syncControllersFromPicking();
-      // Discard while editing = exit edit mode. Stay on the details page —
-      // don't pop back to the list view. Return false so the caller
-      // suppresses the Navigator.pop.
+
       return false;
     }
     return true;
@@ -3737,9 +3712,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                     icon: HugeIcons.strokeRoundedDelete02,
                     borderRadius: 8,
                     onPressed: () async {
-                      // In edit mode the deletion is only staged; it is applied
-                      // to the backend on "Save Delivery". Outside edit mode it
-                      // commits immediately (quick inline edit).
+
                       if (_isEditing) {
                         setState(() {
                           if (product.id < 0) {
@@ -4265,8 +4238,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                             return;
                           }
 
-                          // Edit mode → stage the new line locally; it is
-                          // created in the backend on "Save Delivery".
                           if (_isEditing) {
                             final newMove = StockMove(
                               id: _tempMoveIdSeq--,
@@ -4379,7 +4350,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   await odooPickingFormService
                                       .checkAvailability(pickingId);
                                 } catch (e) {
-                                  // availability check after adding a line is best-effort
+
                                 }
                               }
                               await _loadSavingData();
@@ -4490,10 +4461,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         pickings[0].state != 'cancel';
 
     if (moveProducts.isEmpty) {
-      // Only surface the "products couldn't be loaded from server" warning
-      // when we're viewing (not editing). In edit mode, an empty list means
-      // the user just deleted the last product locally — that's not a load
-      // failure, so show the neutral "No products added yet" state instead.
+
       final bool showWarn =
           !_isEditing &&
           ['assigned', 'confirmed', 'waiting'].contains(pickings[0].state) &&

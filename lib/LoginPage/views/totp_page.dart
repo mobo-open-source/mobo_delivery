@@ -380,19 +380,19 @@ class _TotpPageState extends State<TotpPage> {
       'input[name="totp_token"], input[autocomplete="one-time-code"], input[type="text"][maxlength="6"], input[type="number"][maxlength="6"]'
     );
     if (!input) return "totp_input_not_found";
-    
+
     input.focus();
     input.value = '$totp';
     ['input', 'change', 'keydown', 'keyup', 'keypress'].forEach(eventType => {
       input.dispatchEvent(new KeyboardEvent(eventType, {key: 'Enter', bubbles: true, cancelable: true}));
     });
-    
+
     const trustCheckbox = document.querySelector('input[name="trust_device"], input[type="checkbox"], [name="trust"]');
     if (trustCheckbox && !trustCheckbox.checked) {
       trustCheckbox.checked = true;
       trustCheckbox.dispatchEvent(new Event('change', {bubbles: true}));
     }
-    
+
     const form = input.closest('form') || document.querySelector('form[action*="/web/login"]');
     if (form) {
       const btn = form.querySelector('button[type="submit"], button.btn-primary, button[name="submit"], button.btn-block');

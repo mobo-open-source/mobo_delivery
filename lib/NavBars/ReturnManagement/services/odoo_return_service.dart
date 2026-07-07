@@ -311,7 +311,7 @@ class OdooReturnManagementService {
             }
           }
         } catch (_) {
-          // image fetch is best-effort; the line data is still usable without it
+
         }
       }
 

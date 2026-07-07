@@ -96,7 +96,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     super.dispose();
   }
 
-
   String _normalizeForEdit(dynamic value) {
     if (value == null) return '';
     if (value is bool) return value ? 'true' : '';
@@ -141,7 +140,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
     return parts.join(', ');
   }
-
 
   Future<void> _fetchUserProfile({bool forceRefresh = false}) async {
     if (!mounted) return;
@@ -236,7 +234,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-
   Future<void> _loadCountries() async {
     setState(() => _isLoadingCountries = true);
     try {
@@ -276,7 +273,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       if (mounted) setState(() => _isLoadingStates = false);
     }
   }
-
 
   void _showLoadingDialog(BuildContext context, String message) {
     if (_isShowingLoadingDialog || !mounted) return;
@@ -326,7 +322,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-
   Future<void> _saveAllChanges() async {
     if (!_formKey.currentState!.validate()) {
       CustomSnackbar.showError(context, 'Please fix the validation errors before saving');
@@ -371,7 +366,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         final encryptionService = EncryptionService();
         final encryptedToken = encryptionService.encryptText(newMapToken);
         final companyId = session.companyId ?? 1;
-        
+
         try {
           final modelResult = await CompanySessionManager.callKwWithCompany({
             'model': 'ir.model',
@@ -459,7 +454,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-
   Future<void> _pickImageFromSource(ImageSource source) async {
     try {
       final picked = await _picker.pickImage(source: source, imageQuality: 80, maxWidth: 600);
@@ -544,7 +538,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-
   void _cancelEdit() {
     _updateControllers();
     setState(() => _isEditMode = false);
@@ -576,7 +569,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
     if (mounted) Navigator.of(context).pop(_saveSuccess);
   }
-
 
   void _showEditAddressDialog() {
     if (_userData == null) return;
@@ -739,7 +731,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
-
   Future<void> _showRelatedCompanyPicker() async {
     if (_userData == null) return;
 
@@ -859,7 +850,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -1024,7 +1014,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       ),
     );
   }
-
 
   Widget _buildCustomTextField(
     BuildContext context,

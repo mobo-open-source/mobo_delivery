@@ -59,7 +59,6 @@ class PickingService {
     return '$start-$end';
   }
 
-
   /// Ensures Odoo session is active — call before any RPC
   Future<void> initializeOdooClient() async {
     final session = await CompanySessionManager.getCurrentSession();
@@ -87,7 +86,6 @@ class PickingService {
     }
     return false;
   }
-
 
   /// Primary method to load pickings — combines online + offline paths
   ///
@@ -117,7 +115,6 @@ class PickingService {
       pageOverrides: pageOverrides,
     );
   }
-
 
   void appendPage(String location, List<Map<String, dynamic>> newPickings) {
     final current = allPickingsByLocation[location] ?? [];
@@ -262,7 +259,6 @@ class PickingService {
     return domain;
   }
 
-
   /// Fetches paginated pickings from Odoo, grouped by warehouse
   ///
   /// • Builds domain from filters, search, state, type
@@ -316,11 +312,6 @@ class PickingService {
         baseDomain.add(['picking_type_code', '=', type]);
       }
 
-      // Fetch the authoritative global total FIRST — this is a single fast
-      // RPC and Odoo's session serializes calls, so if we queue it after the
-      // per-warehouse chains it may not complete before the outer 15s
-      // timeout. Doing it first guarantees the badge shows the true count
-      // even if some warehouse fetches time out.
       try {
         final count = await CompanySessionManager.callKwWithCompany({
           'model': 'stock.picking',
@@ -330,7 +321,7 @@ class PickingService {
         });
         globalPickingCount = (count as int?) ?? 0;
       } catch (_) {
-        // Leave the previous value in place on failure — better than 0.
+
       }
 
       final warehouseTasks = <Future<void>>[];
@@ -340,10 +331,6 @@ class PickingService {
             ? warehouse['id']
             : int.parse(warehouse['id'].toString());
 
-        // Always process every warehouse — otherwise a warehouse missed on
-        // the initial load never gets its `totalPickingsCount` populated,
-        // making the global total jump between pages as more warehouses'
-        // counts trickle in.
         final int page =
             pageOverrides?[warehouseName] ?? currentPage[warehouseName] ?? 0;
         final int offset = page * pageSize;
@@ -491,7 +478,6 @@ class PickingService {
       hasNextPage[warehouseName] = false;
     }
   }
-
 
   /// Loads and filters pickings from Hive when offline or as fast baseline
   ///

@@ -126,8 +126,6 @@ class VersionCheckService {
         .timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) return null;
 
-    // The Play listing embeds the current version inside its bootstrap JSON.
-    // Try the modern "Current Version"-style payload first, then a fallback.
     final body = res.body;
     final patterns = <RegExp>[
       RegExp(r'\[\[\["([0-9]+\.[0-9]+(?:\.[0-9]+)?)"\]\]'),
@@ -157,7 +155,7 @@ class VersionCheckService {
   }
 
   List<int> _segments(String version) {
-    // Strip a build suffix like "+10" and any pre-release tag.
+
     final core = version.split('+').first.split('-').first;
     return core
         .split('.')

@@ -244,8 +244,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                 ),
               );
             }
-            // Unknown / uninitialized state: instead of a blank screen, show a
-            // retryable error so the user is never left staring at nothing.
+
             return ErrorStateWidget(
               title: 'Something went wrong',
               message:

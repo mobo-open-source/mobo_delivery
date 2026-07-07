@@ -42,10 +42,6 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
 
   void _toggle() => setState(() => _collapsed = !_collapsed);
 
-  // Decide state on gesture END (velocity-based) instead of update (delta-
-  // based). Update-based flipping caused jitter mid-swipe. Velocity-based
-  // gives the standard bottom-sheet feel — user swipes, releases, sheet
-  // commits to the intended state.
   void _handleDragEnd(DragEndDetails d) {
     final v = d.primaryVelocity ?? 0;
     if (v > 200 && !_collapsed) {
@@ -87,7 +83,7 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag-handle area — tap to toggle, vertical drag to expand/collapse.
+
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _toggle,

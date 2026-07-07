@@ -39,11 +39,8 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
   bool _busy = false;
   List<Map<String, dynamic>> _attachments = [];
 
-  // Docs staged locally — not yet pushed to Odoo. Each entry:
-  // { 'mimeType': String, 'base64File': String, 'fileName': String }
   final List<Map<String, dynamic>> _pendingUploads = [];
 
-  // Lazy-loaded thumbnail bytes keyed by attachment id (saved items only).
   final Map<int, Uint8List?> _thumbnailCache = {};
 
   bool get _hasUnsavedChanges => _pendingUploads.isNotEmpty;
@@ -71,7 +68,6 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     });
   }
 
-  // ── Stage locally (shown in UI, not yet sent to Odoo) ─────────────────────
   void _stageDocument(String mimeType, String base64File, String fileName) {
     setState(() {
       _pendingUploads.add({
@@ -82,7 +78,6 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     });
   }
 
-  // ── Save: push all pending docs to Odoo (or Hive if offline) ──────────────
   Future<void> _saveAll() async {
     if (_pendingUploads.isEmpty) return;
     setState(() => _busy = true);
@@ -162,16 +157,12 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     }
   }
 
-  // ── Back guard: warn if there are staged (unsaved) docs ───────────────────
   Future<void> _handleBackPress() async {
     if (!_hasUnsavedChanges) {
       Navigator.pop(context);
       return;
     }
 
-    // Custom dialog with Discard + Save. Save uploads pending docs and then
-    // pops the page. Save button shows a spinner while uploading so the user
-    // sees progress without a full-page overlay.
     final navigator = Navigator.of(context);
     final action = await showDialog<String>(
       context: context,
@@ -909,7 +900,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     if (id == null || !_isImage(mimetype, name)) {
       return _iconBox(mimetype, name, isDark);
     }
-    // Already cached
+
     if (_thumbnailCache.containsKey(id)) {
       final bytes = _thumbnailCache[id];
       if (bytes != null) {
@@ -920,7 +911,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
       }
       return _iconBox(mimetype, name, isDark);
     }
-    // Trigger load (setState inside _loadThumbnail triggers rebuild with cached value)
+
     _loadThumbnail(id);
     return Container(
       width: 44,
@@ -983,7 +974,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
   String? _formatDate(dynamic raw) {
     final s = raw?.toString();
     if (s == null || s.isEmpty || s == 'false') return null;
-    // Odoo datetime "2026-05-27 11:40:47" → show the date part.
+
     return s.split(' ').first;
   }
 }

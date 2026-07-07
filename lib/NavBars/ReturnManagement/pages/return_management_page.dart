@@ -112,7 +112,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     setState(() {});
   }
 
-
   /// Opens bottom sheet for selecting filters and grouping options
   void openFilterGroupBySheet(BuildContext pageContext) {
     List<String> tempFilters = [];
@@ -431,7 +430,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-
   /// A removable "Active Filters" pill (mobo tint + border, with an ✕).
   Widget _buildActiveFilterChip(
     bool isDark,
@@ -633,7 +631,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       ),
     );
   }
-
 
   Widget _buildReturnTile(
     Map<String, dynamic> picking,
@@ -898,13 +895,11 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
-
   /// Compact toggle rendered in the filter-indicator row's right slot when
   /// grouping is active — swaps the count text and the range badge for a
   /// single "Expand/Collapse All (N)" pill matching the pickings list style.
   Widget _buildGroupToggle(bool isDark, List<String> groupKeys) {
-    // Derive label from actual state so the button label always tells the
-    // truth (in case the user manually collapsed a single group).
+
     final expanded = groupKeys.every((k) => _groupExpanded[k] ?? true);
     return TextButton.icon(
       onPressed: () {
@@ -1005,7 +1000,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       },
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -1123,23 +1117,19 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-
   Widget _buildPaginationBar(
     ReturnManagementState state,
     bool isDark,
     BuildContext context,
   ) {
-    // Group-by is surfaced via the "Expand/Collapse All (N)" toggle on the
-    // right; count only actual filters here so the pill doesn't say
-    // "1 active" when only a group-by is set.
+
     final filterCount = _selectedFilters.length;
     final canGoPrev = state.currentPage > 0;
     final canGoNext =
         (state.currentPage + 1) * ReturnManagementState.itemsPerPage <
         state.totalCount;
     final hasPagination = state.totalCount > 0;
-    // Show the prev/next arrows only when the data actually spans more than
-    // one page; a single-page list gets the range badge alone.
+
     final needsPageArrows =
         state.totalCount > ReturnManagementState.itemsPerPage;
 
@@ -1286,9 +1276,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       ),
     );
   }
-
-
-
 
   static const Map<String, String> stateLabels = {
     'draft': 'Draft',

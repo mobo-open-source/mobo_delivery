@@ -38,10 +38,6 @@ class StatTile extends StatelessWidget {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Sales-app pattern for prominent (Late) tile in dark mode: the red-tint
-    // background + white icon square already communicate urgency, so the
-    // value / label / PRIORITY badge switch to white for readable contrast.
-    // Light-mode prominent keeps the red-on-red-tint look (contrast is fine).
     final Color valueColor;
     final Color labelColor;
     final Color priorityColor;
@@ -58,7 +54,7 @@ class StatTile extends StatelessWidget {
     } else {
       valueColor = home.textPrimary;
       labelColor = home.textSecondary;
-      priorityColor = accentFg; // unused when !prominent
+      priorityColor = accentFg;
     }
 
     return MoboCard(
@@ -120,10 +116,7 @@ class _IconSquare extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Sales-app dashboard-card pattern: dark mode uses a **strong** 70% tint
-    // of the semantic color as the icon-square background, with a pure white
-    // icon on top — reads as a filled status pill. Light mode keeps the
-    // subtle tinted-bg + colored-icon look.
+
     final squareBg = isDark ? fg.withValues(alpha: 0.7) : bg;
     final iconColor = isDark ? Colors.white : fg;
     return Container(

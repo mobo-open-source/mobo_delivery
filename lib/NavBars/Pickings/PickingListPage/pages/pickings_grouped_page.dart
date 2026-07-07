@@ -119,9 +119,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       _onCompanyRefresh();
     });
 
-    // Listen for filter-chip requests from the Home screen. Home publishes a
-    // chip name (e.g. 'ready', 'late', 'donetoday') before switching to this
-    // tab; we apply it through the existing _selectedFilters flow and refetch.
     _homeFilterSub = PickingsFilterBus.stream.listen((chip) async {
       if (!mounted) return;
       setState(() {
@@ -151,7 +148,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     await _service.initializeOdooClient();
     await _fetchData();
   }
-
 
   /// Main data fetch method — calls service with current filters/search.
   ///
@@ -257,7 +253,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     await _fetchData();
   }
 
-
   Color getStateColor(String? state) {
     switch (state) {
       case 'draft':
@@ -310,11 +305,8 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     }
   }
 
-
   Future<void> _loadNextPage(String location) async {
-    // Pagination is global from the UI's perspective — the range shows total
-    // across all warehouses. Advance ALL warehouses to the same page so the
-    // displayed range and the actual list stay consistent.
+
     final pageSize = _service.pageSize;
     final totalGlobal = _service.totalPickingsCount.values
         .fold<int>(0, (a, b) => a + b);
@@ -343,9 +335,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     setState(() => isPageLoading = true);
 
     try {
-      // Pass the SAME filters/search/type used by the initial load —
-      // otherwise pagination fetches a different domain and the total flips
-      // (e.g. initial: outgoing only = 52; paginate: all types = 70).
+
       await _service.fetchData(
         scheduledDate: selectedScheduleDate,
         deadlineDate: selectedDeadlineDate,
@@ -371,7 +361,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       }
     }
   }
-
 
   /// Opens bottom sheet to select filters and grouping options
   void openFilterGroupBySheet(BuildContext context) {
@@ -680,7 +669,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     );
   }
 
-
   /// A removable "Active Filters" pill (mobo tint + border, with an ✕).
   Widget _buildActiveFilterChip(
     bool isDark,
@@ -807,11 +795,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   }
 
   Widget _buildEmptyState(bool isDark, bool hasFilters, BuildContext context) {
-    // Three distinct empty states:
-    // 1. Only a search term is active → "No results for <term>" + Clear Search
-    // 2. Filters/group-by active (with or without search) → filter-adjust msg
-    //    + Clear All Filters
-    // 3. Nothing active → simple "no items" state, no action button
+
     final hasSearch = _searchTerm.isNotEmpty;
     final hasActiveFilters = _selectedFilters.isNotEmpty ||
         _selectedGroupBy != null ||
@@ -876,8 +860,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   /// list gains a whole line of vertical space.
   Widget _buildGroupToggle(bool isDark) {
     final count = _groupedPickings.length;
-    // Derive from actual state so the label always reflects reality even if
-    // the user manually collapsed a single group.
+
     final expanded = _groupedPickings.keys
         .every((k) => _groupExpanded[k] ?? true);
     return TextButton.icon(
@@ -991,10 +974,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                 else if (_selectedGroupBy == null)
                   Consumer<CompanyProvider>(
                       builder: (context, companyProvider, _) {
-                    // Use the service's single-shot global search_count when
-                    // available — it doesn't depend on all per-warehouse
-                    // fetches completing under the initial timeout, so the
-                    // total stays stable across pagination.
+
                     final liveGlobal = _service.globalPickingCount;
                     final livePerWh = _service.totalPickingsCount.values
                         .fold<int>(0, (sum, count) => sum + count);
@@ -1008,8 +988,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                     final rawCurrentPage = firstLoc != null
                         ? (_service.currentPage[firstLoc] ?? 0)
                         : 0;
-                    // Clamp the displayed page to the last real page so the
-                    // range never renders values past totalGlobalCount.
+
                     final maxPage = totalGlobalCount > 0
                         ? ((totalGlobalCount - 1) ~/ pageSize)
                         : 0;
@@ -1287,19 +1266,14 @@ return FadeTransition(opacity: animation, child: child);
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        // Border only in grouped view — the group container has no shadow of
-        // its own on the inner cards, so we need a hairline to separate
-        // stacked tiles. In the flat list the shadow already handles
-        // separation, so a border would look heavy.
+
         border: insideGroup
             ? Border.all(
                 color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
                 width: 0.8,
               )
             : null,
-        // Standalone (flat list): full sales-app shadow for depth.
-        // Inside a group: no shadow — the group container already supplies
-        // depth, and stacking a second shadow reads as dark clutter.
+
         boxShadow: insideGroup
             ? const []
             : [
@@ -1357,7 +1331,7 @@ return FadeTransition(opacity: animation, child: child);
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 _buildCardDetailRow('Origin:', origin, isDark),
                 const SizedBox(height: 4),
                 _buildCardDetailRow('Partner:', partner, isDark),
@@ -1462,10 +1436,6 @@ return FadeTransition(opacity: animation, child: child);
         label = capitalizeFirstLetter(stateMap[state] ?? state);
     }
 
-    // Sales-app `_buildStatusBadge` pattern: dark = neutral white-on-white
-    // tint (semantic color dropped from the pill); light = semantic color on
-    // tinted-semantic bg. Same shape and dimensions as Returns / Home for
-    // app-wide chip parity.
     final backgroundColor = isDark
         ? Colors.white.withValues(alpha: 0.15)
         : color.withValues(alpha: 0.10);

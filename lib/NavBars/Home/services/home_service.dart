@@ -52,8 +52,6 @@ class HomeService {
       }
     }
 
-    // Late — reuse the same predicate the Pickings 'late' chip uses so
-    // Home and the filtered list stay consistent.
     final now = DateTime.now().toUtc();
     final nowTs = _odooTs(now);
     final lateDomain = <dynamic>[
@@ -73,7 +71,6 @@ class HomeService {
     });
     final late = (lateRaw as int?) ?? 0;
 
-    // Done today — same domain the Pickings 'donetoday' chip resolves to.
     final startOfDay = DateTime.utc(now.year, now.month, now.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
     final doneRaw = await CompanySessionManager.callKwWithCompany({
@@ -110,10 +107,6 @@ class HomeService {
       ['state', 'in', ['assigned', 'waiting', 'confirmed']],
     ];
 
-    // Odoo ordering: single field, ascending — `scheduled_date` is always
-    // populated on stock.picking, while `date_deadline` can be null and
-    // some Odoo builds handle compound-order-with-nulls inconsistently.
-    // We over-fetch and sort late-first client-side.
     final raw = await CompanySessionManager.callKwWithCompany({
       'model': 'stock.picking',
       'method': 'search_read',

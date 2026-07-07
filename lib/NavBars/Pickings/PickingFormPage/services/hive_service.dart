@@ -80,7 +80,6 @@ class HiveService {
 
   int getTotalCount() => _totalCountBox.get('total') ?? 0;
 
-
   /// Queues a picking validation to be executed when online
   Future<void> savePendingValidation(int pickingId, Map<String, dynamic> pickingData) async {
     final box = Hive.box<PendingValidation>(_pendingValidationsBox);
@@ -110,7 +109,6 @@ class HiveService {
     await box.clear();
   }
 
-
   Future<void> savePendingCancellation(int pickingId, Map<String, dynamic> pickingData) async {
     final box = Hive.box<PendingValidation>(_pendingCancellationsBox);
     final pendingCancellation = PendingValidation(pickingId: pickingId, pickingData: pickingData);
@@ -135,7 +133,6 @@ class HiveService {
     final box = Hive.box<PendingValidation>(_pendingCancellationsBox);
     await box.clear();
   }
-
 
   Future<void> savePendingUpdates(int pickingId, Map<String, dynamic> pickingData) async {
     final box = Hive.box<PendingUpdates>(_pendingUpdatesBox);
@@ -163,7 +160,6 @@ class HiveService {
     final box = Hive.box<PendingUpdates>(_pendingUpdatesBox);
     await box.clear();
   }
-
 
   static const String _pendingCreatesCounterBox = 'pending_creates_counter';
 
@@ -210,7 +206,6 @@ class HiveService {
     final box = Hive.box<PendingCreates>(_pendingCreatesBox);
     await box.clear();
   }
-
 
   Future<void> savePendingProductUpdates(int localId, Map<String, dynamic> productData, String PickingName) async {
     final box = await Hive.openBox<ProductUpdates>(_productUpdatesBox);
@@ -294,7 +289,6 @@ class HiveService {
     await box.clear();
   }
 
-
   /// Replaces entire picking cache with new list
   Future<void> savePickings(List<Map<String, dynamic>> pickings) async {
     final box = Hive.box<PickingForm>(_pickingBoxName);
@@ -313,7 +307,6 @@ class HiveService {
     final box = Hive.box<PickingForm>(_pickingBoxName);
     return box.get('picking_$id');
   }
-
 
   Future<void> savePartnerDetails(PartnerDetails details) async {
     final box = await _getBox<PartnerDetails>(_partnerDetailsBoxName);
@@ -337,7 +330,6 @@ class HiveService {
     final box = Hive.box<PickingForm>(_pickingReturnBoxName);
     return box.values.toList();
   }
-
 
   Future<void> saveProducts(List<Map<String, dynamic>> products) async {
     final box = Hive.box<Product>(_productBoxName);
@@ -391,7 +383,6 @@ class HiveService {
     return box.values.toList();
   }
 
-
   Future<void> saveStockMoves(List<Map<String, dynamic>> moves) async {
     final box = Hive.box<StockMove>(_moveBoxName);
     await box.clear();
@@ -409,7 +400,6 @@ class HiveService {
     }
     return box.values.toList();
   }
-
 
   Future<Box<T>> _getBox<T>(String boxName) async {
     if (!Hive.isBoxOpen(boxName)) {

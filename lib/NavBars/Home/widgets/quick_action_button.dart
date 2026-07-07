@@ -23,8 +23,7 @@ class QuickActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // In dark mode the icon goes plain white for high contrast on the
-    // grey-850 card; in light mode it stays brand primary.
+
     final iconColor = isDark ? Colors.white : home.qaFg;
     return Expanded(
       child: MoboCard(

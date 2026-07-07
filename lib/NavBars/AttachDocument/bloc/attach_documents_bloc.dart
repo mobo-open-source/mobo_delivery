@@ -149,8 +149,7 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
     searchQuery = event.searchQuery;
 
     try {
-      // Any page fetch (initial, pull-to-refresh, or pagination) shows the
-      // full shimmer skeleton so the transition is consistent across loads.
+
       emit(AttachDocumentsLoading());
 
       final totalCount = await _odooService.StockCount(

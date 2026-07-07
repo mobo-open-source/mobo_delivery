@@ -42,8 +42,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   /// 4. Emit [ProfileLoaded] or [ProfileError]
   Future<void> _onLoadProfile(LoadProfile event,
       Emitter<ProfileState> emit) async {
-    // Cache-first: emit whatever Hive has immediately so the user never
-    // stares at a shimmer when we already have a profile locally.
+
     Profile? cached;
     try {
       cached = await HiveProfileService().getProfile();
@@ -62,8 +61,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final bool isOnline = await odooService.checkNetworkConnectivity();
 
       if (!isOnline) {
-        // Offline: cache is already emitted above; if there's nothing cached,
-        // surface the error so the user gets a retry button.
+
         if (cached == null) {
           emit(const ProfileError(
               "You're offline and no cached profile is available."));
@@ -122,9 +120,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await HiveProfileService().saveProfile(profile);
       emit(ProfileLoaded(profile));
     } catch (e) {
-      // Fetch failed. If we already emitted cached data, keep it visible —
-      // don't blank the screen with an error. Only surface the error state
-      // when we have nothing at all to show.
+
       if (cached == null) {
         emit(ProfileError("Failed to load profile: $e"));
       }

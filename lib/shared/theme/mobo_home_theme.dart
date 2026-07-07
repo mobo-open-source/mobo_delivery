@@ -75,7 +75,7 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     required this.cardShadow,
   });
 
-  static const _primary = AppStyle.primaryColor; // #C03355 — the app's brand.
+  static const _primary = AppStyle.primaryColor;
 
   /// Light variant. Maroon slots use the app's canonical primary (#C03355);
   /// remaining values follow the Mobo Home design tokens.
@@ -100,18 +100,15 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     doneBg: const Color(0xFFE5F3EC),
     banner: _primary,
     avatarBg: const Color(0xFF7C1638),
-    chipBg: const Color(0x26FFFFFF), // white @ 15%
-    chipBorder: const Color(0x4DFFFFFF), // white @ 30%
+    chipBg: const Color(0x26FFFFFF),
+    chipBorder: const Color(0x4DFFFFFF),
     qaFg: _primary,
     syncOfflineBg: const Color(0xFFFDF6E7),
     syncOfflineBorder: const Color(0xFFEDD9A8),
-    // Match the sales-app dashboard tile shadow exactly — tight blur, small
-    // downward offset, 5% black. Applied via the theme extension so every
-    // Home card (stat tile, quick action, attention row, empty state) uses
-    // the same values from one source.
+
     cardShadow: const [
       BoxShadow(
-        color: Color(0x0D000000), // black @ 5%
+        color: Color(0x0D000000),
         offset: Offset(0, 2),
         blurRadius: 4,
         spreadRadius: 2,
@@ -124,39 +121,36 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
   /// convention so cards read as elevated surfaces on the dark bg without
   /// needing a border.
   static final MoboHomeTheme dark = MoboHomeTheme(
-    screen: const Color(0xFF212121), // Colors.grey[900] — matches Dashboard scaffold
-    surface: const Color(0xFF303030), // Colors.grey[850] — cards lift off screen
-    border: const Color(0xFF424242), // Colors.grey[800] — one step above surface
+    screen: const Color(0xFF212121),
+    surface: const Color(0xFF303030),
+    border: const Color(0xFF424242),
     textPrimary: const Color(0xFFF4F4F2),
     textSecondary: const Color(0xFFA6A6A1),
     textMuted: const Color(0xFF6C6C67),
     skeletonBase: const Color(0xFF242428),
     skeletonHighlight: const Color(0xFF2E2E33),
-    // Ready + quick-action foregrounds use the actual app primary so nothing
-    // reads as a lightened-pink derivative. Late foreground uses the app's
-    // status red (#EF4444) rather than a pink-tinted red.
+
     readyFg: _primary,
-    readyBg: const Color(0x33C03355), // primary @ 20%
+    readyBg: const Color(0x33C03355),
     waitFg: const Color(0xFFE4B75A),
-    waitBg: const Color(0x2EC58B17), // amber @ 18%
-    lateFg: const Color(0xFFEF4444), // matches list-tile statusRed
-    lateBg: const Color(0x38EF4444), // late-fg @ 22%
-    lateTileBg: const Color(0x1AEF4444), // late-fg @ 10%
-    lateBorder: const Color(0x59EF4444), // late-fg @ 35%
+    waitBg: const Color(0x2EC58B17),
+    lateFg: const Color(0xFFEF4444),
+    lateBg: const Color(0x38EF4444),
+    lateTileBg: const Color(0x1AEF4444),
+    lateBorder: const Color(0x59EF4444),
     doneFg: const Color(0xFF6FCB9F),
-    doneBg: const Color(0x2E2E8B57), // green @ 18%
-    banner: _primary, // same primary as light — no darkened maroon variant
+    doneBg: const Color(0x2E2E8B57),
+    banner: _primary,
     avatarBg: const Color(0xFF661230),
-    chipBg: const Color(0x21FFFFFF), // white @ 13%
-    chipBorder: const Color(0x38FFFFFF), // white @ 22%
+    chipBg: const Color(0x21FFFFFF),
+    chipBorder: const Color(0x38FFFFFF),
     qaFg: _primary,
-    syncOfflineBg: const Color(0x21C58B17), // amber @ 13%
-    syncOfflineBorder: const Color(0x66C58B17), // amber @ 40%
-    // Dark equivalent of the sales-app dashboard tile shadow (30% black
-    // instead of 5% since it needs to register against a dark surface).
+    syncOfflineBg: const Color(0x21C58B17),
+    syncOfflineBorder: const Color(0x66C58B17),
+
     cardShadow: const [
       BoxShadow(
-        color: Color(0x4D000000), // black @ 30%
+        color: Color(0x4D000000),
         offset: Offset(0, 2),
         blurRadius: 4,
         spreadRadius: 2,

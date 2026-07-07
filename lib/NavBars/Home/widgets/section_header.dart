@@ -21,8 +21,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Trailing "View all →" link — white in dark mode for high contrast,
-    // brand primary in light mode.
+
     final linkColor = isDark ? Colors.white : home.qaFg;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

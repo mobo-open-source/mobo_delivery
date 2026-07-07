@@ -58,7 +58,7 @@ class SearchInputs extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Timeline indicator column
+
             SizedBox(
               width: 22,
               child: Column(
@@ -105,7 +105,6 @@ class SearchInputs extends StatelessWidget {
             ),
             const SizedBox(width: 10),
 
-            // Address fields
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -137,7 +136,6 @@ class SearchInputs extends StatelessWidget {
               ),
             ),
 
-            // Close button — inside the card, aligned to the top
             if (onClose != null) ...[
               const SizedBox(width: 4),
               Align(

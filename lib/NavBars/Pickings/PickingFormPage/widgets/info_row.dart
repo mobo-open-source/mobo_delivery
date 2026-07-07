@@ -308,9 +308,7 @@ class _InfoRowState extends State<InfoRow> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Fixed-width label column so the value wraps predictably and
-                  // stays top-aligned with the label instead of centering on
-                  // multi-line values.
+
                   SizedBox(
                     width: 130,
                     child: Text(

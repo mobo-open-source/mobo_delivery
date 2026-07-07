@@ -106,12 +106,6 @@ class _DashboardState extends State<Dashboard> {
           }
 
           final currentPage = state.pages[state.currentIndex];
-          // Every tab uses the shared Dashboard AppBar (title + company
-          // selector + sync icon + avatar). Only exception: while live
-          // navigation is running on the Route tab, the map's own
-          // `NavigationHeader` overlay takes over the top slot, so we hide
-          // the shared AppBar to avoid two stacked top bars and reclaim
-          // the ~56px of map viewport.
 
           return ValueListenableBuilder<bool>(
             valueListenable: RouteNavigationBus.isNavigating,

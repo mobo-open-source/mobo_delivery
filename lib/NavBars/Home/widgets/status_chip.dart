@@ -23,10 +23,6 @@ class StatusChip extends StatelessWidget {
       StatusChipKind.done => (home.doneFg, home.doneBg),
     };
 
-    // Dark-mode uses the sales-app pattern: semantic color is dropped from
-    // the chip entirely — white text on a neutral translucent-white bg. The
-    // label itself communicates state ("Late", "Waiting", etc.). Font goes
-    // bold in dark to compensate for lost color-coding.
     final chipBg = isDark ? Colors.white.withValues(alpha: 0.15) : bg;
     final labelColor = isDark ? Colors.white : fg;
     final labelWeight = isDark ? FontWeight.bold : FontWeight.w700;

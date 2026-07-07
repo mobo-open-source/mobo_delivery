@@ -787,8 +787,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
-            // Sales-app `_buildStatusBadge` pattern — parity with Returns /
-            // Pickings / Home.
+
             color: isDark
                 ? Colors.white.withValues(alpha: 0.15)
                 : statusColor.withValues(alpha: 0.10),
@@ -808,7 +807,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -938,11 +936,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                     children: [
                                       _buildFilterIndicator(
                                         isDark,
-                                        // Group-by is represented by the
-                                        // "Expand/Collapse All (N)" toggle
-                                        // on the right; don't count it as an
-                                        // active filter to avoid duplicating
-                                        // the signal.
+
                                         _selectedFilters.length,
                                       ),
                                       if (groupedNow)
@@ -1310,9 +1304,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                                       TextSpan(
                                                                         text: '${dateInfo['label']}',
                                                                         style: TextStyle(
-                                                                          // Only the date value carries urgency
-                                                                          // colour; the "Scheduled:" prefix stays
-                                                                          // grey so the line reads clean.
+
                                                                           color: dateInfo['color'] as Color? ??
                                                                               (isDark
                                                                                   ? Colors.grey[400]
@@ -1338,8 +1330,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                                 vertical: 4,
                                                               ),
                                                           decoration: BoxDecoration(
-                                                            // Sales-app `_buildStatusBadge` pattern
-                                                            // — parity with Returns / Pickings / Home.
+
                                                             color: isDark
                                                                 ? Colors.white.withValues(alpha: 0.15)
                                                                 : statusColor.withValues(alpha: 0.10),

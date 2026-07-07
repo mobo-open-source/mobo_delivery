@@ -793,7 +793,6 @@ return FadeTransition(
     );
   }
 
-
   /// Dropdown showing list of databases returned by the server.
   Widget _buildDropdown() {
     _databases = _databases.toSet().toList();

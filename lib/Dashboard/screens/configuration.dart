@@ -347,7 +347,7 @@ class _ConfigurationState extends State<Configuration> {
   }
 
   Widget _buildEmptyAccountState(bool isDark) {
-    // Matches the sales app: a simple text-only empty state (no illustration).
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(

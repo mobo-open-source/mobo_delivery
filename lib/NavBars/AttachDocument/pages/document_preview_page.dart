@@ -69,7 +69,7 @@ class _DocumentPreviewPageState extends State<DocumentPreviewPage> {
     }
     try {
       final bytes = base64Decode(base64);
-      // Native preview only for images / PDFs; hand everything else to the OS.
+
       if (!_isImage && !_isPdf) {
         await _openExternally(bytes);
         if (!mounted) return;
@@ -176,7 +176,7 @@ class _DocumentPreviewPageState extends State<DocumentPreviewPage> {
         sourceName: widget.name,
       );
     }
-    // Image.
+
     return InteractiveViewer(
       minScale: 0.5,
       maxScale: 5,

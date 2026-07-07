@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
-// ---------------------------------------------------------------------------
-// Shared helpers
-// ---------------------------------------------------------------------------
-
 Color _base(bool isDark) =>
     isDark ? const Color(0xFF2A2A2A) : Colors.grey[300]!;
 Color _highlight(bool isDark) =>
@@ -26,10 +22,6 @@ Widget _box({
         borderRadius: BorderRadius.circular(radius),
       ),
     );
-
-// ---------------------------------------------------------------------------
-// Picking List Shimmer  (mirrors _buildPickingCard)
-// ---------------------------------------------------------------------------
 
 class PickingCardShimmer extends StatelessWidget {
   const PickingCardShimmer({super.key, required this.isDark});
@@ -54,7 +46,7 @@ class PickingCardShimmer extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // reference + status badge
+
               Row(
                 children: [
                   Expanded(child: _box(isDark: isDark, height: 14, width: 160)),
@@ -63,21 +55,21 @@ class PickingCardShimmer extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              // Origin row
+
               Row(children: [
                 _box(isDark: isDark, height: 12, width: 52),
                 const SizedBox(width: 12),
                 Expanded(child: _box(isDark: isDark, height: 12, width: 180)),
               ]),
               const SizedBox(height: 6),
-              // Partner row
+
               Row(children: [
                 _box(isDark: isDark, height: 12, width: 52),
                 const SizedBox(width: 12),
                 Expanded(child: _box(isDark: isDark, height: 12, width: 140)),
               ]),
               const SizedBox(height: 6),
-              // Scheduled date row (icon + text)
+
               Row(children: [
                 _box(isDark: isDark, height: 14, width: 14, radius: 3),
                 const SizedBox(width: 6),
@@ -107,10 +99,6 @@ class PickingListShimmer extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Pagination Bar Shimmer  (mirrors the range-pill + chevron row above lists)
-// ---------------------------------------------------------------------------
-
 class PaginationBarShimmer extends StatelessWidget {
   const PaginationBarShimmer({super.key});
 
@@ -125,15 +113,15 @@ class PaginationBarShimmer extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // filter chip placeholder
+
             _box(isDark: isDark, height: 28, width: 80, radius: 14),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // range pill placeholder
+
                 _box(isDark: isDark, height: 28, width: 80, radius: 20),
                 const SizedBox(width: 4),
-                // prev / next icon placeholders
+
                 _box(isDark: isDark, height: 24, width: 24, radius: 12),
                 const SizedBox(width: 4),
                 _box(isDark: isDark, height: 24, width: 24, radius: 12),
@@ -145,10 +133,6 @@ class PaginationBarShimmer extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Return Management Shimmer  (mirrors _buildReturnTile)
-// ---------------------------------------------------------------------------
 
 class ReturnCardShimmer extends StatelessWidget {
   const ReturnCardShimmer({super.key, required this.isDark});
@@ -174,7 +158,7 @@ class ReturnCardShimmer extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // reference + optional "Return" badge + status badge
+
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -190,21 +174,21 @@ class ReturnCardShimmer extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              // Return of
+
               Row(children: [
                 _box(isDark: isDark, height: 12, width: 66),
                 const SizedBox(width: 12),
                 Expanded(child: _box(isDark: isDark, height: 12, width: 160)),
               ]),
               const SizedBox(height: 6),
-              // Scheduled
+
               Row(children: [
                 _box(isDark: isDark, height: 12, width: 66),
                 const SizedBox(width: 12),
                 Expanded(child: _box(isDark: isDark, height: 12, width: 110)),
               ]),
               const SizedBox(height: 6),
-              // Partner
+
               Row(children: [
                 _box(isDark: isDark, height: 12, width: 66),
                 const SizedBox(width: 12),
@@ -233,10 +217,6 @@ class ReturnListShimmer extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Attach Documents List Shimmer  (mirrors _buildAttachmentTile — ListTile)
-// ---------------------------------------------------------------------------
 
 class AttachmentPickingCardShimmer extends StatelessWidget {
   const AttachmentPickingCardShimmer({super.key, required this.isDark});
@@ -295,11 +275,6 @@ class AttachmentPickingListShimmer extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Picking Documents Page Shimmer
-// (mirrors summary card + _attachmentCard items)
-// ---------------------------------------------------------------------------
 
 class PickingDocumentPageShimmer extends StatelessWidget {
   const PickingDocumentPageShimmer({super.key, required this.isDark});
@@ -369,7 +344,7 @@ class PickingDocumentPageShimmer extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              // file type icon placeholder
+
               Container(
                 width: 44,
                 height: 44,
@@ -418,10 +393,6 @@ class PickingDocumentPageShimmer extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Picking Detail Page Shimmer  (mirrors header card + delivery details + tabs + product rows)
-// ---------------------------------------------------------------------------
-
 class PickingDetailShimmer extends StatelessWidget {
   const PickingDetailShimmer({super.key, required this.isDark});
   final bool isDark;
@@ -451,7 +422,6 @@ class PickingDetailShimmer extends StatelessWidget {
     );
   }
 
-  // Mirrors InfoRow view mode: Padding(vertical:8) > Row(label | Spacer | value)
   Widget _infoRow(double labelWidth, double valueWidth) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -473,7 +443,7 @@ class PickingDetailShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header card: reference (20sp bold) + status badge, partner, address, date row
+
           _card(children: [
             Row(children: [
               Expanded(child: _box(isDark: isDark, height: 20, width: 180)),
@@ -481,35 +451,35 @@ class PickingDetailShimmer extends StatelessWidget {
               _box(isDark: isDark, height: 26, width: 72, radius: 13),
             ]),
             const SizedBox(height: 10),
-            _box(isDark: isDark, height: 14, width: 200), // partner name 15sp
+            _box(isDark: isDark, height: 14, width: 200),
             const SizedBox(height: 4),
-            _box(isDark: isDark, height: 12, width: 160), // address 13sp
+            _box(isDark: isDark, height: 12, width: 160),
             const SizedBox(height: 10),
             Row(children: [
-              _box(isDark: isDark, height: 13, width: 13, radius: 3), // calendar icon
+              _box(isDark: isDark, height: 13, width: 13, radius: 3),
               const SizedBox(width: 6),
-              _box(isDark: isDark, height: 12, width: 110), // scheduled date 13sp
+              _box(isDark: isDark, height: 12, width: 110),
             ]),
           ]),
           const SizedBox(height: 16),
-          // Delivery Details card: title + InfoRow-style text rows (no grey containers)
+
           _card(children: [
-            _box(isDark: isDark, height: 18, width: 140), // "Delivery Details" 18sp
+            _box(isDark: isDark, height: 18, width: 140),
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.all(8),
               child: Column(
                 children: [
-                  _infoRow(110, 140), // Delivery Address
-                  _infoRow(100, 100), // Operation Type
-                  _infoRow(100, 110), // Scheduled Date
-                  _infoRow(110, 120), // Source Document
+                  _infoRow(110, 140),
+                  _infoRow(100, 100),
+                  _infoRow(100, 110),
+                  _infoRow(110, 120),
                 ],
               ),
             ),
           ]),
           const SizedBox(height: 16),
-          // Tab pills row (height:40, 3 pills: Operations / Additional Info / Note)
+
           Shimmer.fromColors(
             baseColor: _base(isDark),
             highlightColor: _highlight(isDark),
@@ -527,7 +497,7 @@ class PickingDetailShimmer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // Tab content container (radius:16, minHeight:240) — 3 product rows
+
           _card(children: [
             for (int i = 0; i < 3; i++) ...[
               Row(children: [
@@ -553,10 +523,6 @@ class PickingDetailShimmer extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Dashboard Shimmer (mirrors the app scaffold: AppBar + content + BottomNav)
-// ---------------------------------------------------------------------------
-
 class DashboardShimmer extends StatelessWidget {
   const DashboardShimmer({super.key});
 
@@ -568,7 +534,7 @@ class DashboardShimmer extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // AppBar placeholder
+
             Shimmer.fromColors(
               baseColor: _base(isDark),
               highlightColor: _highlight(isDark),
@@ -583,7 +549,7 @@ class DashboardShimmer extends StatelessWidget {
                 ]),
               ),
             ),
-            // Search / filter bar placeholder
+
             Shimmer.fromColors(
               baseColor: _base(isDark),
               highlightColor: _highlight(isDark),
@@ -592,7 +558,7 @@ class DashboardShimmer extends StatelessWidget {
                 child: _box(isDark: isDark, height: 44, radius: 12),
               ),
             ),
-            // List of card placeholders
+
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

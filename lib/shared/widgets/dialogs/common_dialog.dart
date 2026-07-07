@@ -53,9 +53,7 @@ class CommonDialog extends StatelessWidget {
       label: secondaryLabel!,
       onPressed: onSecondary,
     );
-    // At half the dialog width each label needs to fit at natural size.
-    // Above ~12 chars either label starts getting scaled down by the button's
-    // FittedBox — stack vertically instead so both render at consistent size.
+
     final stack = primaryLabel.length > 12 || secondaryLabel!.length > 12;
     if (stack) {
       return Column(

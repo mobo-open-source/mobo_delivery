@@ -12,9 +12,6 @@ import 'package:shimmer/shimmer.dart';
 class ProfileDetailShimmer extends StatelessWidget {
   const ProfileDetailShimmer({super.key});
 
-  // Label widths approximating each real field's label:
-  // Full Name, Email, Phone, Mobile, Website, Job Title, Company,
-  // Related Company, Google Maps API Key, Address.
   static const List<double> _labelWidths = [
     80, 50, 50, 55, 65, 65, 75, 130, 155, 65,
   ];
@@ -36,7 +33,7 @@ class ProfileDetailShimmer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile image section (matches _buildProfileImageSection)
+
             Center(
               child: Column(
                 children: [
@@ -53,7 +50,7 @@ class ProfileDetailShimmer extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // Name placeholder under avatar
+
                   Container(
                     height: 15,
                     width: 130,
@@ -66,7 +63,7 @@ class ProfileDetailShimmer extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            // "Personal Information" section header
+
             Container(
               height: 16,
               width: 170,
@@ -76,7 +73,7 @@ class ProfileDetailShimmer extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            // 10 field rows, each with its real label width
+
             for (int i = 0; i < _labelWidths.length; i++)
               _fieldRow(i, _labelWidths[i], placeholderColor, fieldBg),
           ],
@@ -91,7 +88,7 @@ class ProfileDetailShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Label (fontSize 14, w500 — approximated by a 12h box)
+
           Container(
             height: 12,
             width: labelWidth,
@@ -101,7 +98,7 @@ class ProfileDetailShimmer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // Field container — same radius/padding/bg as _buildDisplayField
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
@@ -110,7 +107,7 @@ class ProfileDetailShimmer extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Leading icon slot (20×20 to match real icon size)
+
                 Container(
                   width: 20,
                   height: 20,

@@ -180,7 +180,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       ),
                     ),
                   ),
-                  // Custom item builder: image + clean name (no SKU prefix)
+
                   itemBuilder: (context, product, isSelected) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(

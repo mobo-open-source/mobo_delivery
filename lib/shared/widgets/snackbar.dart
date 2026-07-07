@@ -48,9 +48,6 @@ class CustomSnackbar {
     try {
       ScaffoldMessengerState? messenger;
 
-      // Prefer context-based messenger so Flutter correctly anchors the
-      // snackbar above the active scaffold's bottomNavigationBar. Fall back
-      // to the global key for callers that have no live context (e.g. services).
       try {
         if (context.mounted) {
           messenger = ScaffoldMessenger.of(context);
@@ -158,8 +155,7 @@ class CustomSnackbar {
             elevation: 8,
           ),
         );
-        // Force a frame so the snackbar animation starts immediately even
-        // when nothing else is marking the tree dirty.
+
         WidgetsBinding.instance.scheduleFrame();
       } catch (e) {}
     } catch (e) {}

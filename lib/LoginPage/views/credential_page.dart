@@ -662,9 +662,7 @@ return FadeTransition(opacity: animation, child: child);
                           MediaQuery.of(context).viewPadding.top,
                     ),
                     child: Column(
-                      // Heading + form scroll together so the keyboard pushes
-                      // the whole block up on small devices instead of pinning
-                      // the "mobo delivery" header.
+
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Padding(

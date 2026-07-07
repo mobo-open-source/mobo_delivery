@@ -177,9 +177,6 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
           ),
           Divider(height: 1, color: dividerColor, indent: 20, endIndent: 20),
 
-          // Cap the leg list height so the whole card stays inside its 320px
-          // max — AnimatedCrossFade doesn't provide bounded constraints, so
-          // Flexible would let the children push past and overflow.
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 160),
             child: ListView.builder(

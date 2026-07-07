@@ -67,7 +67,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       ConnectivityChanged event, Emitter<HomeState> emit) {
     if (state.online == event.online) return;
     emit(state.copyWith(online: event.online));
-    // Coming back online → refresh data.
+
     if (event.online) add(const LoadHome(forceRefresh: true));
   }
 

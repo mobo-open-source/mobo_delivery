@@ -58,7 +58,7 @@ class HeaderBanner extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.1,
-                        color: Color(0xADFFFFFF), // white @ 68%
+                        color: Color(0xADFFFFFF),
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -81,7 +81,7 @@ class HeaderBanner extends StatelessWidget {
                           : 'Working offline — cached data',
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Color(0xD1FFFFFF), // white @ 82%
+                        color: Color(0xD1FFFFFF),
                       ),
                     ),
                   ],

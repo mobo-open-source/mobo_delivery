@@ -67,9 +67,7 @@ class _ListSearchBarState extends State<ListSearchBar> {
                       child: Container(
                         width: 52,
                         alignment: Alignment.center,
-                        // Keep the filter button black (white in dark mode)
-                        // regardless of active filters — it must not switch to
-                        // the primary color when a filter/search is applied.
+
                         color: isDark ? Colors.white : Colors.black,
                         child: SvgPicture.asset(
                           'assets/icons/filter.svg',

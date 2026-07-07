@@ -4,7 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/utils/globals.dart';
 
 /// A premium bottom navigation bar using SnakeNavigationBar.
-/// 
+///
 /// Modeled after the mobo_inv_app navigation bar.
 class DashboardBottomNavBar extends StatelessWidget {
   final int currentIndex;

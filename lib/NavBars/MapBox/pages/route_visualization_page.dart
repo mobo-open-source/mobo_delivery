@@ -136,9 +136,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     _loadCustomMarker();
     _listenToGyroscope();
 
-    // Home's "Plan route" quick action publishes on this bus after switching
-    // to the Route tab. When we receive the signal, open the Enter Route
-    // sheet through the same private flow the on-page CTA uses.
     _planSub = RoutePlanBus.stream.listen((_) {
       if (!mounted) return;
       _showEnterRootPopup();
@@ -302,9 +299,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   Future<void> _getOptimizedRoute() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    // Helper: surface a friendly error in the RouteInfoCard AND toast, and
-    // clear any previously-computed route data so the map/sheet doesn't show
-    // a stale route beneath the error.
+
     void surfaceError(String friendly, {String? toastOverride}) {
       if (!mounted) return;
       CustomSnackbar.showError(context, toastOverride ?? friendly);
@@ -549,8 +544,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       }
     } catch (e, stack) {
       debugPrint('[TomTom] _getOptimizedRoute exception: $e\n$stack');
-      // Network / timeout / unexpected — friendly error in the sheet plus
-      // a toast with the raw reason for debugging.
+
       surfaceError(
         'Something went wrong while computing the route. Please check your '
         'connection and try again.',
@@ -607,8 +601,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// Marks visited stops (within 50 m) and plays the reach-stop sound.
   Future<void> _updateRemainingDistanceAndTime() async {
     if (!_isNavigationStarted || _currentLatLng == null || _polylines.isEmpty) {
-      // Transient — keep the last-known values so the sheet doesn't flash
-      // "--" between GPS ticks or during a silent re-route.
+
       return;
     }
 
@@ -715,11 +708,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           });
         }
       }
-      // If `json['routes']` is empty (no route this tick), keep prior values.
+
     } catch (e) {
       debugPrint('[TomTom] _updateRemainingDistanceAndTime error: $e');
-      // Transient error — keep the last-known distance/duration so the sheet
-      // doesn't blink to "--" on a single failed tick.
+
     }
   }
 
@@ -856,18 +848,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      // Sheet has internal scroll view + fixed Cancel/Show Directions
-      // actions. Drag-to-dismiss doesn't work here in practice (scroll
-      // captures the gesture), so we disable it explicitly to match the
-      // removed drag handle — no misleading affordance.
+
       enableDrag: false,
       backgroundColor: isDark ? Colors.grey[900] : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      // Override Flutter's default 250ms linear enter/exit with a Material
-      // ease-out-cubic curve — snappier open, gentler close, no jarring
-      // linear pull at the end of the tween.
+
       sheetAnimationStyle: AnimationStyle(
         duration: const Duration(milliseconds: 320),
         reverseDuration: const Duration(milliseconds: 260),
@@ -975,7 +962,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 .toList();
                           });
                         },
-                        // Field: chips (max 2) + overflow badge, or placeholder
+
                         dropdownBuilder: (context, selectedItems) {
                           const int maxVisible = 2;
                           final visibleItems =
@@ -1230,7 +1217,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      // Clear button
+
                                       GestureDetector(
                                         onTap: () {
                                           pickingsDropdownKey.currentState
@@ -1251,7 +1238,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           ),
                                         ),
                                       ),
-                                      // Done button
+
                                       GestureDetector(
                                         onTap: () async {
                                           pickingsSearchCtrl.clear();
@@ -1279,13 +1266,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                           'destination_point']
                                                       as String? ??
                                                   '';
-                                              // Odoo emits Python `False`
-                                              // for missing address fields;
-                                              // it lands here as the literal
-                                              // token "false" (via JSON) and
-                                              // shows up as "false, false".
-                                              // Strip those tokens and only
-                                              // keep the meaningful parts.
+
                                               final dest = raw
                                                   .split(',')
                                                   .map((s) => s.trim())
@@ -1390,7 +1371,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           },
                         ),
                       ),
-                      ), // closes Container
+                      ),
 
                       if (shouldValidate) ...[
                         const SizedBox(height: 8),
@@ -1425,8 +1406,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         Focus(
                         onFocusChange: (hasFocus) async {
                           if (hasFocus) {
-                            // Show "Your Location" as an immediate option on
-                            // focus — no need for the user to type anything.
+
                             sheetSetState(() {
                               if (_sourceSuggestions.isEmpty) {
                                 _sourceSuggestions = ['Your Location'];
@@ -1443,7 +1423,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           hintText: 'Search location',
                           onChanged: (value) async {
                             if (value.trim().isEmpty) {
-                              // Cleared field → show just the GPS option.
+
                               sheetSetState(() =>
                                   _sourceSuggestions = ['Your Location']);
                               return;
@@ -2226,9 +2206,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       }
     }
 
-    // Warn if the user's current GPS position is significantly far from the
-    // route's starting point — this typically means the route was planned for
-    // a different region and live navigation will re-route immediately.
     if (_currentLatLng != null && _sourceLatLng != null) {
       final distanceToStart =
           mapService.distanceBetweenPoints(_currentLatLng!, _sourceLatLng!);
@@ -2485,9 +2462,7 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
       ),
       child: Row(
         children: [
-          // Pulsing GPS icon badge — clipped to its 38×38 slot so the
-          // animated ring can't overflow into the label or outside the
-          // field's rounded rectangle.
+
           ClipOval(
             child: SizedBox(
               width: 54,
@@ -2495,7 +2470,7 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Animated pulse ring
+
                   AnimatedBuilder(
                     animation: _controller,
                     builder: (_, __) => Opacity(
@@ -2513,7 +2488,7 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
                       ),
                     ),
                   ),
-                // Icon badge
+
                 Container(
                   width: 30,
                   height: 30,

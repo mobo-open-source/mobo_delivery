@@ -299,7 +299,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
             break;
           }
         } catch (error) {
-          if (error.toString().contains('Odoo Server returned an error') || 
+          if (error.toString().contains('Odoo Server returned an error') ||
               (error is Map && error.containsKey('data'))) {
             if (mounted) {
               setState(() {

@@ -59,8 +59,7 @@ class _HomeView extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      // Match the Dashboard scaffold background exactly so the Home tab
-      // doesn't visually diverge from Pickings / Return / Documents.
+
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       body: SafeArea(
         bottom: false,
@@ -70,7 +69,7 @@ class _HomeView extends StatelessWidget {
             return RefreshIndicator(
               onRefresh: () async {
                 context.read<HomeBloc>().add(const LoadHome(forceRefresh: true));
-                // Give the RefreshIndicator time to complete its arc.
+
                 await Future.delayed(const Duration(milliseconds: 400));
               },
               child: SingleChildScrollView(
@@ -125,8 +124,7 @@ class _HomeView extends StatelessWidget {
   }
 
   void _openPickings(BuildContext context, String? chip) {
-    // Publish the filter BEFORE switching tabs so the Pickings page's stream
-    // listener applies it and refetches; `null` clears any Home-driven filter.
+
     PickingsFilterBus.request(chip);
     context.read<DashboardBloc>().add(const ChangeTab(_kPickingsTabIndex));
   }
@@ -248,10 +246,7 @@ class _QuickActions extends StatelessWidget {
           icon: HugeIcons.strokeRoundedRoute02,
           label: 'Plan route',
           onTap: () {
-            // Switch to the Route tab first, then — once the tab-switch
-            // rebuild has completed — signal the Route page to open its
-            // Enter Route sheet. Deferring by one frame avoids the sheet
-            // opening before Route is on-screen.
+
             context.read<DashboardBloc>().add(const ChangeTab(2));
             WidgetsBinding.instance
                 .addPostFrameCallback((_) => RoutePlanBus.request());
@@ -269,12 +264,10 @@ class _QuickActions extends StatelessWidget {
   }
 
   Future<void> _newPicking(BuildContext context) async {
-    // CreatePickingPage requires the Odoo URL — same path the Pickings FAB uses.
+
     final service = PickingService();
     await service.initializeOdooClient();
-    // The URL is populated as a side-effect of `checkNetworkConnectivity`,
-    // which reads it from SharedPreferences. Call it once so the constructor
-    // arg is non-empty in the offline case too.
+
     await service.checkNetworkConnectivity();
     if (!context.mounted) return;
     await Navigator.push(

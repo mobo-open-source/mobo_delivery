@@ -28,4 +28,3 @@ class ProductUpdates extends HiveObject {
     required this.pickingName,
   });
 }
-

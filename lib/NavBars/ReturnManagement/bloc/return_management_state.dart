@@ -30,7 +30,6 @@ class ReturnManagementState extends Equatable {
   final String? searchText;
   static const int itemsPerPage = 40;
 
-
   const ReturnManagementState({
     this.isLoading = true,
     this.isFetchingMore = false,

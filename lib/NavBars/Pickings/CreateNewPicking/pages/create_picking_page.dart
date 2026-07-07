@@ -147,7 +147,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
             return <OperationTypeModel>[];
           }),
         ]);
-        
+
         final freshProducts = (results[0] as List?)?.cast<ProductModel>() ?? <ProductModel>[];
         final freshPartners = (results[1] as List?)?.cast<PartnerModel>() ?? <PartnerModel>[];
         final freshUsers = (results[2] as List?)?.cast<UserModel>() ?? <UserModel>[];
@@ -481,8 +481,7 @@ return FadeTransition(opacity: animation, child: child);
 
   void _showEditProductDialog(int index) {
     final move = moveProducts[index];
-    // Find the full ProductModel (with image) from the loaded list, fall back
-    // to a minimal one built from the stored move data.
+
     final existing = products.cast<ProductModel?>().firstWhere(
       (p) => p?.id == move.productId,
       orElse: () => null,

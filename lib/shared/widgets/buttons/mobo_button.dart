@@ -166,7 +166,7 @@ class MoboButton extends StatelessWidget {
         foregroundColor: fg,
         disabledBackgroundColor: bg,
         disabledForegroundColor: fg,
-        // Flat design across all variants — no colored drop shadow on press.
+
         elevation: 0,
         shadowColor: Colors.transparent,
         minimumSize: Size(0, height),

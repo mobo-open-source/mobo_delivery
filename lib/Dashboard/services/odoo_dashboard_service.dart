@@ -128,7 +128,6 @@ class OdooDashboardService {
     }
   }
 
-
   /// Fetches single company record (mainly for custom fields like x_map_key_encrypted).
   Future<Map<String, dynamic>?> getCompanyDetails(int companyId) async {
     try {

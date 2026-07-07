@@ -90,7 +90,7 @@ class GreetingHeader extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              // White ring + soft shadow around the avatar (sales-app style).
+
               Container(
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
@@ -116,7 +116,7 @@ class GreetingHeader extends StatelessWidget {
                   iconColor: AppStyle.primaryColor,
                 ),
               ),
-              // Online status dot.
+
               Positioned(
                 right: 0,
                 bottom: 1,

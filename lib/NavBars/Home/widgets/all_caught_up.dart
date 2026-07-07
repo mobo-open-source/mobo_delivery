@@ -15,8 +15,7 @@ class AllCaughtUp extends StatelessWidget {
   Widget build(BuildContext context) {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Same sales-app icon-square pattern: dark = strong 70% tint + white
-    // icon; light = subtle tint + colored icon.
+
     final circleBg = isDark ? home.doneFg.withValues(alpha: 0.7) : home.doneBg;
     final iconColor = isDark ? Colors.white : home.doneFg;
     return MoboCard(
