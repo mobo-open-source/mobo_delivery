@@ -940,7 +940,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         children: [
           ListSearchBar(
             controller: _searchController,
-            hintText: 'Search by location or item...',
+            hintText: 'Search pickings...',
             hasActiveFilters: hasFilters || hasGroupBy,
             onFilterTap: () => openFilterGroupBySheet(context),
             onChanged: (value) {
@@ -1396,12 +1396,11 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Widget _buildStatusBadge(String state, bool isDark) {
-    const Color statusGreen  = Color(0xFF00A63E);
-    const Color statusBlue   = Color(0xFF3B82F6);
-    const Color statusOrange = Color(0xFFF97316);
-    const Color statusRed    = Color(0xFFEF4444);
-    const Color statusTeal   = Color(0xFF14B8A6);
-    const Color statusGrey   = Color(0xFF6B7280);
+    const Color statusGreen  = Colors.green;
+    const Color statusBlue   = Colors.blue;
+    const Color statusOrange = Colors.orange;
+    const Color statusRed    = Colors.red;
+    const Color statusGrey   = Colors.grey;
 
     Color color;
     String label;

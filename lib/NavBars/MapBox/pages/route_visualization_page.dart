@@ -1275,6 +1275,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                       s.toLowerCase() !=
                                                           'false')
                                                   .join(', ');
+
                                               if (dest.isNotEmpty &&
                                                   uniqueDestinations
                                                       .add(dest)) {

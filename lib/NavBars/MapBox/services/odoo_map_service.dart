@@ -366,8 +366,19 @@ class OdooMapService {
           item['city'],
           item['state_id'] is List && item['state_id'].length > 1 ? item['state_id'][1] : null,
           item['country_id'] is List && item['country_id'].length > 1 ? item['country_id'][1] : null,
-        ].where((part) => part != null && part.toString().trim().isNotEmpty).join(', ');
-        map[id] = addressParts;
+        ]
+            .where((part) =>
+                part != null &&
+                part != false &&
+                part.toString().trim().isNotEmpty &&
+                part.toString().trim().toLowerCase() != 'false')
+            .join(', ');
+        // Only record records that actually resolved to an address. Storing
+        // an empty string here would make `containsKey` true downstream and
+        // short-circuit the company → partner fallback chain.
+        if (addressParts.trim().isNotEmpty) {
+          map[id] = addressParts;
+        }
       }
     }
     return map;
@@ -387,13 +398,15 @@ class OdooMapService {
       Map<int, String> partnerAddresses,
       ) {
     if (locationId != null && locationToCompany.containsKey(locationId)) {
-      int companyId = locationToCompany[locationId]!;
-      if (companyAddresses.containsKey(companyId)) {
-        return companyAddresses[companyId]!;
+      final companyId = locationToCompany[locationId]!;
+      final companyAddress = companyAddresses[companyId];
+      if (companyAddress != null && companyAddress.trim().isNotEmpty) {
+        return companyAddress;
       }
     }
-    if (partnerId != null && partnerAddresses.containsKey(partnerId)) {
-      return partnerAddresses[partnerId]!;
+    final partnerAddress = partnerId != null ? partnerAddresses[partnerId] : null;
+    if (partnerAddress != null && partnerAddress.trim().isNotEmpty) {
+      return partnerAddress;
     }
     return '';
   }

@@ -850,18 +850,18 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   Color _getStatusColor(String state) {
     switch (state) {
       case 'done':
-        return const Color(0xFF00A63E);
+        return Colors.green;
       case 'assigned':
-        return const Color(0xFF3B82F6);
+        return Colors.blue;
       case 'waiting':
       case 'confirmed':
-        return const Color(0xFFF97316);
+        return Colors.orange;
       case 'cancel':
-        return const Color(0xFFEF4444);
+        return Colors.red;
       case 'draft':
-        return const Color(0xFF6B7280);
+        return Colors.grey;
       default:
-        return const Color(0xFF6B7280);
+        return Colors.grey;
     }
   }
 
@@ -1040,7 +1040,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                     children: [
                       ListSearchBar(
                         controller: _searchController,
-                        hintText: 'Search by location or item...',
+                        hintText: 'Search returns...',
                         hasActiveFilters: hasFilters || hasGroupBy,
                         onFilterTap: () => openFilterGroupBySheet(context),
                         onChanged: (value) {

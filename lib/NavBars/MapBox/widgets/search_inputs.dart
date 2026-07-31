@@ -73,10 +73,14 @@ class SearchInputs extends StatelessWidget {
                       height: 12,
                       margin: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: isLast
-                            ? const Color(0xFFE74C3C)
-                            : isSource
-                                ? const Color(0xFF4285F4)
+                        // Source is always the blue GPS dot — it is never the
+                        // destination, even when it is the only row (no stops
+                        // resolved yet). Checking `isLast` first would paint a
+                        // lone source dot red.
+                        color: isSource
+                            ? const Color(0xFF4285F4)
+                            : isLast
+                                ? const Color(0xFFE74C3C)
                                 : const Color(0xFFF39C12),
                         shape: isSource ? BoxShape.circle : BoxShape.rectangle,
                         borderRadius:
@@ -110,7 +114,7 @@ class SearchInputs extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   sourceController.text == 'Your Location'
-                      ? _buildYourLocationRow(primary)
+                      ? _buildYourLocationRow()
                       : _buildField(
                           controller: sourceController,
                           hint: 'My location',
@@ -182,47 +186,24 @@ class SearchInputs extends StatelessWidget {
     );
   }
 
-  Widget _buildYourLocationRow(Color primary) {
-    const gpsDot = Color(0xFF4285F4);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: gpsDot.withValues(alpha: 0.22),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: gpsDot,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ),
+  /// "Your location" label for the source row.
+  ///
+  /// Deliberately has no dot of its own — the timeline indicator column on the
+  /// left already renders the blue source dot, so drawing another here would
+  /// show two dots side by side.
+  Widget _buildYourLocationRow() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 10),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Your location',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF4285F4),
           ),
-          const SizedBox(width: 6),
-          const Text(
-            'Your location',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF4285F4),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

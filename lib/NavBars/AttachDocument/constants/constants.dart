@@ -17,12 +17,12 @@ class AppConstants {
   /// These colors are used in status badges, chips, indicators, and tiles
   /// to visually communicate the current status of stock operations.
   static const Map<String, Color> stateColors = {
-    'draft': Color(0xFF6B7280),
-    'confirmed': Color(0xFFF97316),
-    'assigned': Color(0xFF3B82F6),
-    'done': Color(0xFF00A63E),
-    'waiting': Color(0xFFF97316),
-    'cancel': Color(0xFFEF4444),
+    'draft': Colors.grey,
+    'confirmed': Colors.orange,
+    'assigned': Colors.blue,
+    'done': Colors.green,
+    'waiting': Colors.orange,
+    'cancel': Colors.red,
   };
 
   /// Maps internal state keys to user-friendly, readable labels.

@@ -835,7 +835,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                 children: [
                   ListSearchBar(
                     controller: _searchController,
-                    hintText: 'Search by location or item...',
+                    hintText: 'Search documents...',
                     hasActiveFilters:
                         _selectedFilters.isNotEmpty ||
                         (_selectedGroupBy?.isNotEmpty ?? false),

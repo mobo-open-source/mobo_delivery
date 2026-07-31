@@ -64,19 +64,18 @@ class _ReturnListPageState extends State<ReturnListPage> {
   Color _getStateColor(String state) {
     switch (state) {
       case 'draft':
-        return Colors.blue;
+        return Colors.grey;
       case 'done':
         return Colors.green;
       case 'cancel':
         return Colors.red;
       case 'waiting':
+      case 'confirmed':
         return Colors.orange;
       case 'assigned':
-        return Colors.purple;
-      case 'confirmed':
-        return Colors.teal;
+        return Colors.blue;
       default:
-        return Colors.black;
+        return Colors.grey;
     }
   }
 

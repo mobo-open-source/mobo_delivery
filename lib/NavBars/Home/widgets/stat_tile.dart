@@ -86,7 +86,7 @@ class StatTile extends StatelessWidget {
             '$value',
             style: GoogleFonts.manrope(
               fontSize: 28,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               height: 1,
               letterSpacing: -0.5,
               color: valueColor,
