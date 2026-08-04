@@ -86,48 +86,65 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  /// Turns the biometric app lock on or off, reporting each outcome distinctly.
   Future<void> _toggleBiometric(bool value) async {
     final prefs = await SharedPreferences.getInstance();
-    if (value) {
-      bool canCheck = await _auth.canCheckBiometrics;
-      bool isSupported = await _auth.isDeviceSupported();
-      if (canCheck || isSupported) {
-        bool authenticated = await _auth.authenticate(
-          localizedReason: 'Enable biometric authentication',
-          options: const AuthenticationOptions(
-            biometricOnly: true,
-            stickyAuth: true,
-          ),
-        );
-        if (authenticated) {
-          setState(() => _biometricEnabled = true);
-          await prefs.setBool('biometricEnabled', true);
-        }
-      } else {
-        if (mounted) {
-          CustomSnackbar.showError(
-            context,
-            'Biometric authentication not supported on this device.',
-          );
-        }
-        setState(() => _biometricEnabled = false);
-        await prefs.setBool('biometricEnabled', false);
-      }
-    } else {
+
+    if (!value) {
       setState(() => _biometricEnabled = false);
       await prefs.setBool('biometricEnabled', false);
+      if (mounted) {
+        CustomSnackbar.showSuccess(
+          context,
+          'App lock turned off.',
+        );
+      }
+      return;
     }
 
+    final canCheck = await _auth.canCheckBiometrics;
+    final isSupported = await _auth.isDeviceSupported();
+
+    if (!canCheck && !isSupported) {
+      setState(() => _biometricEnabled = false);
+      await prefs.setBool('biometricEnabled', false);
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Biometric authentication not supported on this device.',
+        );
+      }
+      return;
+    }
+
+    final authenticated = await _auth.authenticate(
+      localizedReason: 'Enable biometric authentication',
+      options: const AuthenticationOptions(
+        biometricOnly: true,
+        stickyAuth: true,
+      ),
+    );
+
+    if (!authenticated) {
+
+      setState(() => _biometricEnabled = false);
+      await prefs.setBool('biometricEnabled', false);
+      if (mounted) {
+        CustomSnackbar.showInfo(
+          context,
+          'App lock not enabled — verification was cancelled.',
+        );
+      }
+      return;
+    }
+
+    setState(() => _biometricEnabled = true);
+    await prefs.setBool('biometricEnabled', true);
     if (mounted) {
-      _biometricEnabled
-          ? CustomSnackbar.showSuccess(
-              context,
-              'Biometric authentication enabled.',
-            )
-          : CustomSnackbar.showError(
-              context,
-              'Biometric authentication disabled.',
-            );
+      CustomSnackbar.showSuccess(
+        context,
+        'App lock turned on.',
+      );
     }
   }
 
@@ -228,6 +245,14 @@ class _SettingsPageState extends State<SettingsPage> {
           onChanged: (value) {
             context.read<SettingsBloc>().add(ToggleDarkModeEvent(value));
             themeProvider.toggleTheme();
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!context.mounted) return;
+              CustomSnackbar.showSuccess(
+                context,
+                value ? 'Dark theme turned on.' : 'Light theme turned on.',
+              );
+            });
           },
         ),
       ],
@@ -255,7 +280,7 @@ class _SettingsPageState extends State<SettingsPage> {
     SettingsState state,
     List<Map<String, dynamic>> uniqueCurrencyItems,
   ) {
-    String? localLanguageCode = state.languages.isNotEmpty
+    final String? localLanguageCode = state.languages.isNotEmpty
         ? state.languages.firstWhere(
             (lang) => lang['name'] == state.language,
             orElse: () => {'code': 'en_US'},
@@ -268,27 +293,15 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         OdooDropdownTile(
           title: 'Language',
-          subtitle: 'Select your preferred language',
+          subtitle: 'Your account language',
           icon: HugeIcons.strokeRoundedTranslate,
           selectedValue: state.language,
           options: state.languages,
           isLoading: state.isLanguageLoading,
           displayKey: 'name',
           valueKey: 'name',
-          onChanged: (selectedName) {
-            if (selectedName != null) {
-              final selectedLang = state.languages.firstWhere(
-                (lang) => lang['name'] == selectedName,
-                orElse: () => {},
-              );
-              if (selectedLang.isNotEmpty) {
-                localLanguageCode = selectedLang['code'];
-                context.read<SettingsBloc>().add(
-                  UpdateLanguageEvent(selectedName, selectedLang['code']),
-                );
-              }
-            }
-          },
+
+          readOnly: true,
         ),
         OdooDropdownTile(
           title: 'Currency',

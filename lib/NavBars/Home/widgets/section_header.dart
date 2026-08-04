@@ -22,7 +22,7 @@ class SectionHeader extends StatelessWidget {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final linkColor = isDark ? Colors.white : home.qaFg;
+    final linkColor = isDark ? Colors.white : home.accent;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,

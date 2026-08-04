@@ -101,7 +101,7 @@ class FilterBottomSheet extends StatelessWidget {
                               Text(
                                 'Clear',
                                 style: TextStyle(
-                                  color: isDark ? Colors.white: AppStyle.primaryColor,
+                                  color: AppStyle.accentOf(context),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),

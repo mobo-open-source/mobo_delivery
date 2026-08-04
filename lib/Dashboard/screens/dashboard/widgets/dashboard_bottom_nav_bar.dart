@@ -27,7 +27,7 @@ class DashboardBottomNavBar extends StatelessWidget {
       snakeShape: SnakeShape.indicator,
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-      selectedItemColor: isDark ? Colors.white : AppStyle.primaryColor,
+      selectedItemColor: AppStyle.accentOf(context),
       unselectedItemColor: isDark ? Colors.grey[400] : Colors.black54,
       showSelectedLabels: true,
       showUnselectedLabels: true,
@@ -43,7 +43,7 @@ class DashboardBottomNavBar extends StatelessWidget {
       selectedLabelStyle: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: isDark ? Colors.white : AppStyle.primaryColor,
+        color: AppStyle.accentOf(context),
       ),
       shadowColor: isDark ? Colors.black26 : Colors.grey[200]!,
       elevation: 8,
@@ -60,7 +60,6 @@ class DashboardBottomNavBar extends StatelessWidget {
         icon: page['icon'],
         label: page['label'],
         isDark: isDark,
-        primaryColor: AppStyle.primaryColor,
       );
     }).toList();
   }
@@ -69,7 +68,6 @@ class DashboardBottomNavBar extends StatelessWidget {
     required dynamic icon,
     required String label,
     required bool isDark,
-    required Color primaryColor,
   }) {
     Widget buildIconWidget(Color? color) {
       if (icon is IconData) {
@@ -90,7 +88,9 @@ class DashboardBottomNavBar extends StatelessWidget {
       label: label,
       activeIcon: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5.0),
-        child: buildIconWidget(isDark ? Colors.white : primaryColor),
+        child: buildIconWidget(
+          AppStyle.accentOn(isDark ? Brightness.dark : Brightness.light),
+        ),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../utils/globals.dart';
+
 /// A standard, themed text input field used consistently across the application's forms.
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;

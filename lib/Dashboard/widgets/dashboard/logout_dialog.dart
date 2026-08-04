@@ -134,7 +134,7 @@ class _LogoutDialogState extends State<LogoutDialog> {
                   width: 40,
                   height: 40,
                   child: CircularProgressIndicator(
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
+                    color: AppStyle.accentOf(context),
                     strokeWidth: 3,
                   ),
                 ),

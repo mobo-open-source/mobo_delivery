@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../models/stock_move.dart';
 
 class ProductTable extends StatelessWidget {
@@ -23,19 +24,22 @@ class ProductTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final isEmpty = moveProducts.isEmpty;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildListHeader(isDark),
-          const SizedBox(height: 8),
-          if (moveProducts.isEmpty)
-            _buildEmptyState(isDark)
-          else
+
+          if (!isEmpty) ...[
+            _buildListHeader(isDark),
+            const SizedBox(height: 8),
             ...moveProducts.asMap().entries.map(
               (e) => _buildProductCard(e.value, e.key, isDark),
             ),
+          ] else
+            _buildEmptyState(isDark),
         ],
       ),
     );
@@ -220,31 +224,36 @@ class ProductTable extends StatelessWidget {
   String _fmtQty(double value) =>
       value.truncateToDouble() == value ? value.toStringAsFixed(0) : '$value';
 
+  /// Empty state for the Operations tab, with its own "Add product" button.
   Widget _buildEmptyState(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[800] : Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+          color: isDark ? Colors.grey[600]! : Colors.grey[350]!,
+          width: 1,
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             HugeIcons.strokeRoundedPackage,
-            size: 48,
+            size: 40,
             color: isDark ? Colors.grey[600] : Colors.grey[400],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
             'No products added yet',
+            textAlign: TextAlign.center,
             style: GoogleFonts.manrope(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.grey[300] : Colors.grey[700],
             ),
           ),
           const SizedBox(height: 4),
@@ -254,8 +263,17 @@ class ProductTable extends StatelessWidget {
             style: GoogleFonts.manrope(
               fontSize: 13,
               fontWeight: FontWeight.w400,
-              color: isDark ? Colors.grey[600] : Colors.grey[500],
+              color: isDark ? Colors.grey[500] : Colors.grey[500],
             ),
+          ),
+          const SizedBox(height: 18),
+          MoboButton.primary(
+            label: 'Add product',
+            icon: HugeIcons.strokeRoundedAdd01,
+            height: 42,
+            borderRadius: 10,
+            fullWidth: false,
+            onPressed: onAddLine,
           ),
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:hugeicons/hugeicons.dart';
 ///
 /// Shows a loading spinner while options are being fetched,
 /// and displays a "last updated" timestamp below the subtitle.
+/// Set [readOnly] to show the value as plain text instead of a dropdown.
 class OdooDropdownTile extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -12,10 +13,15 @@ class OdooDropdownTile extends StatelessWidget {
   final String? selectedValue;
   final List<Map<String, dynamic>> options;
   final bool isLoading;
-  final Function(String?) onChanged;
+
+  /// Ignored when [readOnly] is true.
+  final Function(String?)? onChanged;
   final String displayKey;
   final String valueKey;
   final DateTime? lastUpdated;
+
+  /// Renders the value as static text rather than a dropdown.
+  final bool readOnly;
 
   const OdooDropdownTile({
     super.key,
@@ -25,11 +31,22 @@ class OdooDropdownTile extends StatelessWidget {
     required this.selectedValue,
     required this.options,
     required this.isLoading,
-    required this.onChanged,
+    this.onChanged,
     required this.displayKey,
     required this.valueKey,
     this.lastUpdated,
+    this.readOnly = false,
   });
+
+  /// Display label for [selectedValue], resolved through [options].
+  String get _selectedLabel {
+    for (final option in options) {
+      if (option[valueKey] == selectedValue) {
+        return (option[displayKey] ?? option[valueKey] ?? '').toString();
+      }
+    }
+    return selectedValue ?? '—';
+  }
 
   String _formatLastUpdated(DateTime? dt) {
     if (dt == null) return '';
@@ -108,6 +125,23 @@ class OdooDropdownTile extends StatelessWidget {
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          : readOnly
+          ? SizedBox(
+              width: MediaQuery.of(context).size.width * .35,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  _selectedLabel,
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
               ),
             )

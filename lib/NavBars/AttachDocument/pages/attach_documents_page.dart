@@ -679,6 +679,10 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                           : HugeIcons.strokeRoundedArrowDown01,
                       color: isDark ? Colors.white70 : Colors.black54,
                     ),
+
+                    splashColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                    focusColor: Colors.transparent,
                     onTap: () {
                       setState(() {
                         _groupExpanded[groupKey] = !isExpanded;
@@ -743,7 +747,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 15,
-            color: isDark ? Colors.white : AppStyle.primaryColor,
+            color: AppStyle.accentOf(context),
           ),
         ),
         subtitle: Padding(

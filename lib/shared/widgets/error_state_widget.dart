@@ -117,9 +117,9 @@ class ErrorStateWidget extends StatelessWidget {
                         vertical: 14,
                       ),
                       foregroundColor:
-                          isDark ? Colors.white : AppStyle.primaryColor,
+                          AppStyle.accentOf(context),
                       side: BorderSide(
-                        color: isDark ? Colors.white : AppStyle.primaryColor,
+                        color: AppStyle.accentOf(context),
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),

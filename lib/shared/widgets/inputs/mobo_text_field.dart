@@ -194,9 +194,6 @@ class MoboTextField extends StatelessWidget {
 }
 
 /// A field label that optionally appends a red `*` to mark a mandatory field.
-///
-/// Use this anywhere a field caption is built manually (outside [MoboTextField])
-/// so the mandatory-star treatment stays consistent across the app.
 class RequiredLabel extends StatelessWidget {
   final String label;
   final bool isRequired;

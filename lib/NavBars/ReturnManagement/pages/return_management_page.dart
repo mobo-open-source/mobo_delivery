@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/list_search_bar.dart';
 import '../../../shared/widgets/error_state_widget.dart';
@@ -735,7 +736,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : primaryColor,
+                        color: AppStyle.accentOf(context),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),

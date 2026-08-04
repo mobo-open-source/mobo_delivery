@@ -6,8 +6,8 @@ import '../../../shared/widgets/loaders/shimmer_skeleton.dart';
 import 'mobo_card.dart';
 
 /// One of the 2×2 stat tiles on the Home screen (Ready, Waiting, Late, Done
-/// today). `prominent` styles the Late variant — heavier border, tinted
-/// background, red-accent value + label, PRIORITY flag.
+/// today). `prominent` styles the Late variant with a red-accent value and a
+/// filled PRIORITY pill.
 class StatTile extends StatelessWidget {
   final IconData icon;
   final int value;
@@ -36,30 +36,12 @@ class StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final Color valueColor;
-    final Color labelColor;
-    final Color priorityColor;
-    if (prominent) {
-      if (isDark) {
-        valueColor = Colors.white;
-        labelColor = Colors.white.withValues(alpha: 0.75);
-        priorityColor = Colors.white;
-      } else {
-        valueColor = accentFg;
-        labelColor = accentFg.withValues(alpha: 0.85);
-        priorityColor = accentFg;
-      }
-    } else {
-      valueColor = home.textPrimary;
-      labelColor = home.textSecondary;
-      priorityColor = accentFg;
-    }
+    final valueColor = prominent ? accentFg : home.textPrimary;
+    final labelColor = home.textSecondary;
 
     return MoboCard(
       onTap: onTap,
-      background: prominent ? home.lateTileBg : home.surface,
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,16 +51,7 @@ class StatTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _IconSquare(icon: icon, fg: accentFg, bg: accentBg),
-              if (prominent)
-                Text(
-                  'PRIORITY',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: priorityColor,
-                  ),
-                ),
+              if (prominent) _PriorityPill(accentFg: accentFg),
             ],
           ),
           const SizedBox(height: 10),
@@ -102,6 +75,35 @@ class StatTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Filled "PRIORITY" pill shown on the Late tile.
+class _PriorityPill extends StatelessWidget {
+  final Color accentFg;
+  const _PriorityPill({required this.accentFg});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: accentFg.withValues(alpha: isDark ? 0.7 : 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'PRIORITY',
+        style: TextStyle(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          height: 1.1,
+          color: isDark ? Colors.white : accentFg,
+        ),
       ),
     );
   }

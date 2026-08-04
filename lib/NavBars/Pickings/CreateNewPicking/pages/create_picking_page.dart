@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
+import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/utils/date_picker_utils.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
@@ -83,6 +84,20 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
 
   final ScrollController _tabHeaderScrollController = ScrollController();
   final List<GlobalKey> _tabItemKeys = List.generate(3, (_) => GlobalKey());
+
+  /// True while [_createPicking] is persisting, to suppress the unsaved-changes guard.
+  bool _isSubmitting = false;
+
+  /// Whether the operator has changed any field from its initial state.
+  bool get _hasUnsavedChanges =>
+      _selectedPartnerId != null ||
+      _selectedOperationTypeId != null ||
+      _selectedUserId != null ||
+      _selectedShippingPolicy != 'direct' ||
+      scheduledDateController.text.trim().isNotEmpty ||
+      sourceDocController.text.trim().isNotEmpty ||
+      _noteController.text.trim().isNotEmpty ||
+      moveProducts.isNotEmpty;
 
   @override
   void initState() {
@@ -285,6 +300,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
     }
     setState(() {
       isLoading = true;
+      _isSubmitting = true;
     });
 
     final pickingService = OdooCreatePickingService(widget.url);
@@ -409,6 +425,7 @@ return FadeTransition(opacity: animation, child: child);
         } else {
           setState(() {
             isLoading = false;
+            _isSubmitting = false;
             _errorMessage = "Failed to fetch newly created picking details.";
           });
         }
@@ -453,6 +470,7 @@ return FadeTransition(opacity: animation, child: child);
     } catch (e) {
       setState(() {
         isLoading = false;
+        _isSubmitting = false;
         _errorMessage = "Failed to create picking: $e";
       });
     }
@@ -522,11 +540,49 @@ return FadeTransition(opacity: animation, child: child);
     setState(() => moveProducts.removeAt(index));
   }
 
+  /// Asks the operator whether to discard the form.
+  Future<bool> _showUnsavedChangesDialog() async {
+    final result = await DataLossWarningDialog.show(
+      context: context,
+      title: 'Discard Changes?',
+      message: 'You have unsaved changes. Do you want to discard them?',
+      confirmText: 'Discard',
+      cancelText: 'Keep Editing',
+    );
+    return result ?? false;
+  }
+
+  /// Returns whether the screen may close, prompting first if there are edits.
+  Future<bool> _handleBackNavigation() async {
+    if (_isSubmitting) return true;
+    if (!_hasUnsavedChanges) return true;
+    return _showUnsavedChangesDialog();
+  }
+
+  /// AppBar back handler — routes through the guard since `Navigator.pop` bypasses [PopScope].
+  Future<void> _onBackPressed() async {
+    if (!await _handleBackNavigation()) return;
+    if (mounted) Navigator.pop(context);
+  }
+
+  /// Wraps a screen body in the unsaved-changes guard for system back/swipe.
+  Widget _guarded(Widget child) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (!await _handleBackNavigation()) return;
+        if (mounted && context.mounted) Navigator.of(context).pop();
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (isLoading) {
-      return Scaffold(
+      return _guarded(Scaffold(
         backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
 
         appBar: AppBar(
@@ -546,14 +602,14 @@ return FadeTransition(opacity: animation, child: child);
               color: isDark ? Colors.white : Colors.black,
               size: 28,
             ),
-            onPressed: () => Navigator.pop(context),
+            onPressed: _onBackPressed,
           ),
         ),
         body: _buildShimmerLoading(),
-      );
+      ));
     }
 
-    return Scaffold(
+    return _guarded(Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       appBar: AppBar(
         forceMaterialTransparency: true,
@@ -572,7 +628,7 @@ return FadeTransition(opacity: animation, child: child);
             color: isDark ? Colors.white : Colors.black,
             size: 28,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _onBackPressed,
         ),
       ),
       bottomNavigationBar: Container(
@@ -962,7 +1018,7 @@ return FadeTransition(opacity: animation, child: child);
         ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildPillTab({

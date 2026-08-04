@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../shared/utils/globals.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../providers/company_provider.dart';
 import 'mobo_checkbox.dart';
@@ -364,7 +365,6 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).primaryColor;
 
     return ListenableBuilder(
       listenable: widget.provider,
@@ -437,10 +437,11 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       child: Material(
+
                         color: isActive
-                            ? (isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : primaryColor.withValues(alpha: 0.1))
+                            ? AppStyle.accentOn(
+                                isDark ? Brightness.dark : Brightness.light,
+                              ).withValues(alpha: isDark ? 0.22 : 0.1)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         child: InkWell(
@@ -469,9 +470,16 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                       fontWeight: isActive
                                           ? FontWeight.w600
                                           : FontWeight.normal,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black87,
+
+                                      color: isActive
+                                          ? AppStyle.accentOn(
+                                              isDark
+                                                  ? Brightness.dark
+                                                  : Brightness.light,
+                                            )
+                                          : (isDark
+                                              ? Colors.white70
+                                              : Colors.black87),
                                     ),
                                   ),
                                 ),

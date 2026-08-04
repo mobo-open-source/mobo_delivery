@@ -44,8 +44,42 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   static final AttachmentAndNotesToOffline attachmentAndNotes =
   AttachmentAndNotesToOffline();
 
+  /// Bottom-nav tabs — static so they render before the session finishes loading.
+  static const List<Map<String, dynamic>> navPages = [
+    {
+      'title': 'Home',
+      'label': 'Home',
+      'icon': HugeIcons.strokeRoundedHome01,
+      'route': HomePage(),
+    },
+    {
+      'title': 'Pickings',
+      'label': 'Pickings',
+      'icon': HugeIcons.strokeRoundedShoppingBasket01,
+      'route': PickingsGroupedPage(),
+    },
+    {
+      'title': 'Route',
+      'label': 'Route',
+      'icon': HugeIcons.strokeRoundedRoute02,
+      'route': RouteVisualizationPage(),
+    },
+    {
+      'title': 'Returns',
+      'label': 'Return',
+      'icon': HugeIcons.strokeRoundedReturnRequest,
+      'route': ReturnManagementPage(),
+    },
+    {
+      'title': 'Documents',
+      'label': 'Documents',
+      'icon': HugeIcons.strokeRoundedDocumentAttachment,
+      'route': AttachDocumentsPage(),
+    },
+  ];
+
   DashboardBloc(this.storageService, this.serviceFactory)
-      : super(const DashboardState(isLoading: true)) {
+      : super(const DashboardState(isLoading: true, pages: navPages)) {
     on<InitializeDashboard>(_onInitializeDashboard);
     on<ChangeTab>(_onChangeTab);
     on<LoadUserProfile>(_onLoadUserProfile);
@@ -87,39 +121,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     emit(state.copyWith(
       isLoading: false,
       currentIndex: event.initialIndex,
-      pages: [
-        {
-          'title': 'Home',
-          'label': 'Home',
-          'icon': HugeIcons.strokeRoundedHome01,
-          'route': const HomePage(),
-        },
-        {
-          'title': 'Pickings',
-          'label': 'Pickings',
-          'icon': HugeIcons.strokeRoundedShoppingBasket01,
-          'route': const PickingsGroupedPage(),
-        },
-        {
-          'title': 'Route',
-          'label': 'Route',
-          'icon': HugeIcons.strokeRoundedRoute02,
-          'route': const RouteVisualizationPage(),
-        },
-        {
-          'title': 'Returns',
-          'label': 'Return',
-          'icon': HugeIcons.strokeRoundedReturnRequest,
-          'route': const ReturnManagementPage(),
-        },
-
-        {
-          'title': 'Documents',
-          'label': 'Documents',
-          'icon': HugeIcons.strokeRoundedDocumentAttachment,
-          'route': const AttachDocumentsPage(),
-        },
-      ],
+      pages: navPages,
     ));
 
     add(LoadUserProfile());

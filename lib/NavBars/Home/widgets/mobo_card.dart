@@ -7,9 +7,7 @@ import '../../../shared/theme/mobo_home_theme.dart';
 /// resting shadow — **no hairline border** — so it reads as a sibling of the
 /// Pickings / Return / Documents list tiles.
 ///
-/// Callers that need a "Late" style pass `background` (e.g. `home.lateTileBg`);
-/// the accent-strip variant used by attention rows lives in [PickingRow]'s
-/// `_TileShell` because the two aren't visually identical anymore.
+/// Callers that need a tinted variant pass `background`.
 class MoboCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;

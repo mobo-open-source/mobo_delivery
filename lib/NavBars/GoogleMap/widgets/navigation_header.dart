@@ -65,7 +65,7 @@ class NavigationHeader extends StatelessWidget {
               child: IconButton(
                 icon: Icon(
                   HugeIcons.strokeRoundedCancel01,
-                  color: isDark ? Colors.white : AppStyle.primaryColor,
+                  color: AppStyle.accentOf(context),
                   size: 20,
                 ),
                 onPressed: onClose,

@@ -1320,7 +1320,7 @@ return FadeTransition(opacity: animation, child: child);
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : AppStyle.primaryColor,
+                          color: AppStyle.accentOf(context),
                           letterSpacing: -0.1,
                         ),
                         maxLines: 1,

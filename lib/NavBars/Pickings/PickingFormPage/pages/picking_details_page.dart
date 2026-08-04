@@ -1297,7 +1297,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : AppStyle.primaryColor,
+                          color: AppStyle.accentOf(context),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -4735,13 +4735,13 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
             Icon(
               HugeIcons.strokeRoundedPackageAdd,
               size: 18,
-              color: isDark ? Colors.white : AppStyle.primaryColor,
+              color: AppStyle.accentOf(context),
             ),
             const SizedBox(width: 6),
             Text(
               'Add a product',
               style: TextStyle(
-                color: isDark ? Colors.white : AppStyle.primaryColor,
+                color: AppStyle.accentOf(context),
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
               ),

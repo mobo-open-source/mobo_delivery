@@ -12,6 +12,17 @@ class AppStyle {
   /// • Active states
   /// • Key UI elements
   static const primaryColor = Color(0xFFC03355);
+
+  /// Lightened brand color for text/icons/outlines on dark surfaces.
+  static const primaryColorDark = Color(0xFFE8637F);
+
+  /// The brand accent for foreground use — [primaryColor] on light, [primaryColorDark] on dark.
+  static Color accentOn(Brightness brightness) =>
+      brightness == Brightness.dark ? primaryColorDark : primaryColor;
+
+  /// [accentOn] resolved from the ambient theme.
+  static Color accentOf(BuildContext context) =>
+      accentOn(Theme.of(context).brightness);
 }
 
 /// Normalises a raw Odoo RPC value for UI display. Collapses Odoo's

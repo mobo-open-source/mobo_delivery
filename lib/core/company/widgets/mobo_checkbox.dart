@@ -64,7 +64,7 @@ class _MoboCheckboxState extends State<MoboCheckbox> {
 
             /// Border adapts to theme
             border: Border.all(
-              color: isDark ? Colors.white : primary,
+              color: isDark ? AppStyle.primaryColorDark : primary,
               width: 2,
             ),
 
@@ -73,9 +73,11 @@ class _MoboCheckboxState extends State<MoboCheckbox> {
             /// • Hover → light fill preview
             /// • Default → transparent
             color: widget.value
-                ? (isDark ? Colors.white : primary)
+                ? (isDark ? AppStyle.primaryColorDark : primary)
                 : (_hovering
-                      ? (isDark ? Colors.white : primary.withOpacity(0.10))
+                      ? (isDark
+                            ? AppStyle.primaryColorDark.withValues(alpha: 0.25)
+                            : primary.withOpacity(0.10))
                       : Colors.transparent),
           ),
 

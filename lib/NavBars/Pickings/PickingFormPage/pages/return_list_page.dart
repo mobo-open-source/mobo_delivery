@@ -213,7 +213,7 @@ return FadeTransition(opacity: animation, child: child);
                           ),
                           headingTextStyle: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : AppStyle.primaryColor,
+                            color: AppStyle.accentOf(context),
                           ),
                           columnSpacing: 28,
                           dataRowHeight: 56,

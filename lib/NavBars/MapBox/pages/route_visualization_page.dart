@@ -910,16 +910,35 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                       const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Enter Route',
-                          style: GoogleFonts.manrope(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : Colors.black87,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Enter Route',
+                              style: GoogleFonts.manrope(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
                           ),
-                        ),
+
+                          IconButton(
+                            tooltip: 'Close',
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(
+                              HugeIcons.strokeRoundedCancel01,
+                              size: 22,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 
@@ -1875,7 +1894,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   }
 
   /// Left-aligned static heading shown above an input box in the bottom sheet.
-  /// When [isRequired] is true a red `*` marks the field as mandatory.
+  /// When [isRequired] is true a red `*` marks the field.
   Widget _fieldHeading(String text, bool isDark, {bool isRequired = false}) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -2083,7 +2102,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             FloatingActionButton(
               heroTag: 'routeEnterRoot',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
+              foregroundColor: AppStyle.accentOf(context),
               elevation: 4,
               onPressed: _showEnterRootPopup,
               child: const Icon(HugeIcons.strokeRoundedRoute03),
@@ -2092,7 +2111,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             FloatingActionButton(
               heroTag: 'routeRecenterInitial',
               backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: isDark ? Colors.white : AppStyle.primaryColor,
+              foregroundColor: AppStyle.accentOf(context),
               elevation: 4,
               onPressed: () {
                 if (_initialCameraPosition != null) {
@@ -2139,7 +2158,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   backgroundColor:
                       isDark ? const Color(0xFF2C2C3E) : Colors.white,
                   foregroundColor:
-                      isDark ? Colors.white : AppStyle.primaryColor,
+                      AppStyle.accentOf(context),
                   elevation: 4,
                   heroTag: 'mapTypeToggle',
                   tooltip: 'Change Map Style',

@@ -4,7 +4,7 @@ import '../utils/globals.dart';
 
 /// Theme tokens for the Home screen.
 ///
-/// One source of truth for surface / text / status-accent / banner / sync-strip
+/// One source of truth for surface / text / status-accent / sync-strip
 /// colors, light and dark siblings. Read via
 /// `Theme.of(context).extension<MoboHomeTheme>()!` inside Home widgets so no
 /// hex values leak into individual widgets. Registered on `AppTheme.lightTheme`
@@ -27,19 +27,15 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
   final Color waitBg;
   final Color lateFg;
   final Color lateBg;
-  final Color lateTileBg;
   final Color lateBorder;
   final Color doneFg;
   final Color doneBg;
 
-  final Color banner;
-  final Color avatarBg;
   final Color chipBg;
   final Color chipBorder;
 
-  /// Foreground for quick-action icons. The tile itself now uses the standard
-  /// [MoboCard] surface + border, so no dedicated qaBg/qaBorder tokens.
-  final Color qaFg;
+  /// Interactive-accent foreground for section links and retry actions.
+  final Color accent;
 
   final Color syncOfflineBg;
   final Color syncOfflineBorder;
@@ -61,15 +57,12 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     required this.waitBg,
     required this.lateFg,
     required this.lateBg,
-    required this.lateTileBg,
     required this.lateBorder,
     required this.doneFg,
     required this.doneBg,
-    required this.banner,
-    required this.avatarBg,
     required this.chipBg,
     required this.chipBorder,
-    required this.qaFg,
+    required this.accent,
     required this.syncOfflineBg,
     required this.syncOfflineBorder,
     required this.cardShadow,
@@ -94,15 +87,12 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     waitBg: const Color(0xFFFBEFD5),
     lateFg: const Color(0xFFC73E3E),
     lateBg: const Color(0xFFFBE7E7),
-    lateTileBg: const Color(0xFFFEF5F5),
     lateBorder: const Color(0xFFF1C4C4),
     doneFg: const Color(0xFF1F6840),
     doneBg: const Color(0xFFE5F3EC),
-    banner: _primary,
-    avatarBg: const Color(0xFF7C1638),
     chipBg: const Color(0x26FFFFFF),
     chipBorder: const Color(0x4DFFFFFF),
-    qaFg: _primary,
+    accent: _primary,
     syncOfflineBg: const Color(0xFFFDF6E7),
     syncOfflineBorder: const Color(0xFFEDD9A8),
 
@@ -136,15 +126,12 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     waitBg: const Color(0x2EC58B17),
     lateFg: const Color(0xFFEF4444),
     lateBg: const Color(0x38EF4444),
-    lateTileBg: const Color(0x1AEF4444),
     lateBorder: const Color(0x59EF4444),
     doneFg: const Color(0xFF6FCB9F),
     doneBg: const Color(0x2E2E8B57),
-    banner: _primary,
-    avatarBg: const Color(0xFF661230),
     chipBg: const Color(0x21FFFFFF),
     chipBorder: const Color(0x38FFFFFF),
-    qaFg: _primary,
+    accent: _primary,
     syncOfflineBg: const Color(0x21C58B17),
     syncOfflineBorder: const Color(0x66C58B17),
 
@@ -174,15 +161,12 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     Color? waitBg,
     Color? lateFg,
     Color? lateBg,
-    Color? lateTileBg,
     Color? lateBorder,
     Color? doneFg,
     Color? doneBg,
-    Color? banner,
-    Color? avatarBg,
     Color? chipBg,
     Color? chipBorder,
-    Color? qaFg,
+    Color? accent,
     Color? syncOfflineBg,
     Color? syncOfflineBorder,
     List<BoxShadow>? cardShadow,
@@ -202,15 +186,12 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
       waitBg: waitBg ?? this.waitBg,
       lateFg: lateFg ?? this.lateFg,
       lateBg: lateBg ?? this.lateBg,
-      lateTileBg: lateTileBg ?? this.lateTileBg,
       lateBorder: lateBorder ?? this.lateBorder,
       doneFg: doneFg ?? this.doneFg,
       doneBg: doneBg ?? this.doneBg,
-      banner: banner ?? this.banner,
-      avatarBg: avatarBg ?? this.avatarBg,
       chipBg: chipBg ?? this.chipBg,
       chipBorder: chipBorder ?? this.chipBorder,
-      qaFg: qaFg ?? this.qaFg,
+      accent: accent ?? this.accent,
       syncOfflineBg: syncOfflineBg ?? this.syncOfflineBg,
       syncOfflineBorder: syncOfflineBorder ?? this.syncOfflineBorder,
       cardShadow: cardShadow ?? this.cardShadow,
@@ -236,15 +217,12 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
       waitBg: Color.lerp(waitBg, other.waitBg, t)!,
       lateFg: Color.lerp(lateFg, other.lateFg, t)!,
       lateBg: Color.lerp(lateBg, other.lateBg, t)!,
-      lateTileBg: Color.lerp(lateTileBg, other.lateTileBg, t)!,
       lateBorder: Color.lerp(lateBorder, other.lateBorder, t)!,
       doneFg: Color.lerp(doneFg, other.doneFg, t)!,
       doneBg: Color.lerp(doneBg, other.doneBg, t)!,
-      banner: Color.lerp(banner, other.banner, t)!,
-      avatarBg: Color.lerp(avatarBg, other.avatarBg, t)!,
       chipBg: Color.lerp(chipBg, other.chipBg, t)!,
       chipBorder: Color.lerp(chipBorder, other.chipBorder, t)!,
-      qaFg: Color.lerp(qaFg, other.qaFg, t)!,
+      accent: Color.lerp(accent, other.accent, t)!,
       syncOfflineBg: Color.lerp(syncOfflineBg, other.syncOfflineBg, t)!,
       syncOfflineBorder:
           Color.lerp(syncOfflineBorder, other.syncOfflineBorder, t)!,

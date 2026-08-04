@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../../NavBars/MapBox/services/route_navigation_bus.dart';
 import '../../../../StoreToOffline/pending_sync_service.dart';
 import '../../../../StoreToOffline/sync_center_page.dart';
@@ -100,10 +99,6 @@ class _DashboardState extends State<Dashboard> {
         child: BlocBuilder<DashboardBloc, DashboardState>(
           builder: (context, state) {
             final bloc = context.read<DashboardBloc>();
-
-          if (state.isLoading) {
-            return const DashboardShimmer();
-          }
 
           final currentPage = state.pages[state.currentIndex];
 
@@ -247,15 +242,18 @@ return FadeTransition(
                       onRetry: () => bloc.add(RefreshUserProfile()),
                     ),
                   Expanded(
-                    child: IndexedStack(
-                      index: state.currentIndex,
-                      children: state.pages
-                          .map<Widget>(
-                            (p) => p['route'] as Widget? ??
-                                const SizedBox.shrink(),
-                          )
-                          .toList(),
-                    ),
+
+                    child: state.isLoading
+                        ? const SizedBox.expand()
+                        : IndexedStack(
+                            index: state.currentIndex,
+                            children: state.pages
+                                .map<Widget>(
+                                  (p) => p['route'] as Widget? ??
+                                      const SizedBox.shrink(),
+                                )
+                                .toList(),
+                          ),
                   ),
                 ],
               ),

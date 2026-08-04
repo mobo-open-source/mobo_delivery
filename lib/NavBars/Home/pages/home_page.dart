@@ -7,21 +7,21 @@ import '../../../Dashboard/screens/dashboard/bloc/dashboard_event.dart';
 import '../../../Dashboard/screens/dashboard/bloc/dashboard_state.dart';
 import '../../../Dashboard/screens/configuration.dart';
 import '../../../shared/theme/mobo_home_theme.dart';
-import '../../MapBox/services/route_plan_bus.dart';
-import '../../Pickings/CreateNewPicking/pages/create_picking_page.dart';
+import '../../../shared/widgets/greeting_header.dart';
 import '../../Pickings/PickingFormPage/pages/picking_details_page.dart';
 import '../../Pickings/PickingFormPage/services/odoo_picking_form_service.dart';
-import '../../Pickings/PickingListPage/services/picking_service.dart';
 import '../../Pickings/PickingListPage/services/pickings_filter_bus.dart';
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
 import '../bloc/home_state.dart';
 import '../widgets/all_caught_up.dart';
-import '../widgets/header_banner.dart';
+import '../widgets/home_speed_dial.dart';
 import '../widgets/picking_row.dart';
-import '../widgets/quick_action_button.dart';
 import '../widgets/section_header.dart';
 import '../widgets/stat_tile.dart';
+
+/// Bottom inset so the [HomeSpeedDial] never covers the last attention row.
+const double _kFabScrollInset = 88;
 
 /// Bottom-nav index of the Pickings tab after Home is prepended.
 /// Kept as a named constant so the Home screen and any future deep-link
@@ -31,12 +31,12 @@ const int _kPickingsTabIndex = 1;
 /// Home — first tab of the dashboard.
 ///
 /// Composition:
-///   1. Maroon greeting header (embeds the existing `CompanySelectorWidget`)
-///   2. Sync-status strip (online/offline, pending count, "Sync now")
-///   3. 2×2 stat tiles → open Pickings tab pre-filtered via `PickingsFilterBus`
-///   4. Quick-action row (New picking, Plan route, Attach doc — 3 tiles;
-///      Scan barcode is intentionally omitted — no scanner in the app.)
-///   5. "Needs attention" section → picking rows or empty / skeleton state.
+///   1. Maroon `GreetingHeader` — the shared sales-app greeting card; its
+///      subtitle doubles as the online/offline indicator
+///   2. "Overview" section → 2×2 stat tiles, each opening the Pickings tab
+///      pre-filtered via `PickingsFilterBus`
+///   3. "Needs attention" section → picking rows or empty / skeleton state.
+///   4. Corner [HomeSpeedDial] — New picking, Plan route, Attach doc.
 ///
 /// All navigation routes into existing screens; nothing new is created here.
 class HomePage extends StatelessWidget {
@@ -74,20 +74,25 @@ class _HomeView extends StatelessWidget {
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+                padding:
+                    const EdgeInsets.fromLTRB(16, 16, 16, _kFabScrollInset),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    HeaderBanner(
-                      name: dashState.userName ?? 'User',
-                      avatarBytes: dashState.profilePicBytes,
-                      online: state.online,
+                    GreetingHeader(
+                      userName: dashState.userName,
+                      imageBytes: dashState.profilePicBytes,
+                      isOffline: !state.online,
+                      isLoading: state.status == HomeStatus.loading,
+                      subtitle: state.online
+                          ? "Let's clear today's deliveries"
+                          : 'Working offline — cached data',
                       onAvatarTap: () => _openConfiguration(context, dashState),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+                    const SectionHeader(title: 'Overview'),
+                    const SizedBox(height: 10),
                     _StatGrid(state: state),
-                    const SizedBox(height: 11),
-                    _QuickActions(),
                     const SizedBox(height: 20),
                     SectionHeader(
                       title: 'Needs attention',
@@ -103,6 +108,7 @@ class _HomeView extends StatelessWidget {
           },
         ),
       ),
+      floatingActionButton: const HomeSpeedDial(),
     );
   }
 
@@ -230,55 +236,6 @@ class _Grid extends StatelessWidget {
   }
 }
 
-class _QuickActions extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        QuickActionButton(
-          icon: HugeIcons.strokeRoundedPackageAdd,
-          label: 'New picking',
-          onTap: () => _newPicking(context),
-        ),
-        const SizedBox(width: 9),
-        QuickActionButton(
-          icon: HugeIcons.strokeRoundedRoute02,
-          label: 'Plan route',
-          onTap: () {
-
-            context.read<DashboardBloc>().add(const ChangeTab(2));
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => RoutePlanBus.request());
-          },
-        ),
-        const SizedBox(width: 9),
-        QuickActionButton(
-          icon: HugeIcons.strokeRoundedDocumentAttachment,
-          label: 'Attach doc',
-          onTap: () =>
-              context.read<DashboardBloc>().add(const ChangeTab(4)),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _newPicking(BuildContext context) async {
-
-    final service = PickingService();
-    await service.initializeOdooClient();
-
-    await service.checkNetworkConnectivity();
-    if (!context.mounted) return;
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => CreatePickingPage(url: service.url)),
-    );
-    if (!context.mounted) return;
-    context.read<HomeBloc>().add(const LoadHome(forceRefresh: true));
-  }
-}
-
 class _AttentionList extends StatelessWidget {
   final HomeState state;
   const _AttentionList({required this.state});
@@ -380,7 +337,7 @@ class _ErrorCard extends StatelessWidget {
           TextButton(
             onPressed: onRetry,
             style: TextButton.styleFrom(
-              foregroundColor: home.qaFg,
+              foregroundColor: home.accent,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

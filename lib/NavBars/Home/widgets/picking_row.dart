@@ -45,7 +45,7 @@ class PickingRow extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.1,
-                    color: isDark ? Colors.white : AppStyle.primaryColor,
+                    color: AppStyle.accentOf(context),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

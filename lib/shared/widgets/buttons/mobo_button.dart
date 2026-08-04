@@ -17,12 +17,11 @@ enum MoboButtonVariant { primary, secondary, danger }
 /// The single source of truth for buttons across the app.
 ///
 /// Centralizes the mobo button design so every call site stays consistent:
-///   • primary  → mobo fill  (`AppStyle.primaryColor`, white in dark mode)
-///   • secondary→ mobo border
+///   • primary  → mobo fill (`AppStyle.primaryColor`) with white label
+///   • secondary→ mobo border + label
 ///   • disabled → grey (when [onPressed] is null or [isLoading] is true)
 ///
-/// In dark mode the brand color flips to white-on-black to preserve contrast,
-/// matching the convention already used throughout the app.
+/// The brand color holds in dark mode rather than flipping to white.
 ///
 /// Example:
 /// ```dart
@@ -130,13 +129,17 @@ class MoboButton extends StatelessWidget {
     late final Color enabledBorder;
     switch (variant) {
       case MoboButtonVariant.primary:
-        enabledBg = isDark ? Colors.white : AppStyle.primaryColor;
-        enabledFg = isDark ? Colors.black : Colors.white;
+
+        enabledBg = AppStyle.primaryColor;
+        enabledFg = Colors.white;
         enabledBorder = Colors.transparent;
         break;
       case MoboButtonVariant.secondary:
         enabledBg = Colors.transparent;
-        enabledFg = isDark ? Colors.white : AppStyle.primaryColor;
+
+        enabledFg = AppStyle.accentOn(
+          isDark ? Brightness.dark : Brightness.light,
+        );
         enabledBorder = enabledFg;
         break;
       case MoboButtonVariant.danger:

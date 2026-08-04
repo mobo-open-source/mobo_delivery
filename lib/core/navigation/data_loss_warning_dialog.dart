@@ -38,7 +38,8 @@ class DataLossWarningDialog extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     /// Primary color adapts for dark mode contrast
-    final primaryColor = isDark ? Colors.white : AppStyle.primaryColor;
+    final primaryColor = AppStyle.accentOn(
+        isDark ? Brightness.dark : Brightness.light);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

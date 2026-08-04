@@ -92,7 +92,7 @@ class DatePickerUtils {
     );
   }
 
-  /// Displays a themed Material time picker.
+  /// Displays a themed Material time picker, always in 12-hour AM/PM mode.
   static Future<TimeOfDay?> showStandardTimePicker({
     required BuildContext context,
     TimeOfDay? initialTime,
@@ -109,6 +109,7 @@ class DatePickerUtils {
       helpText: helpText,
       cancelText: cancelText,
       confirmText: confirmText,
+      errorInvalidText: 'Hour 1–12, minute 0–59',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -128,15 +129,29 @@ class DatePickerUtils {
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
+
+            textSelectionTheme: TextSelectionThemeData(
+              cursorColor: primaryColor,
+              selectionColor: primaryColor.withValues(alpha: 0.25),
+              selectionHandleColor: primaryColor,
+            ),
             timePickerTheme: TimePickerThemeData(
               backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+
               hourMinuteTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.focused)) {
+                  return isDark ? Colors.white : Colors.black;
+                }
                 if (states.contains(WidgetState.selected)) {
                   return Colors.white;
                 }
                 return isDark ? Colors.white : Colors.black;
               }),
+
               hourMinuteColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.focused)) {
+                  return isDark ? Colors.grey[800]! : Colors.grey[100]!;
+                }
                 if (states.contains(WidgetState.selected)) {
                   return primaryColor;
                 }
@@ -177,7 +192,11 @@ class DatePickerUtils {
               backgroundColor: isDark ? Colors.grey[850] : Colors.white,
             ),
           ),
-          child: child!,
+
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+            child: child!,
+          ),
         );
       },
     );
