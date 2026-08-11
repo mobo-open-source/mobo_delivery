@@ -25,16 +25,17 @@ class Utils {
       final scheduled = DateTime.parse(dateStr).toLocal();
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final scheduledDay = DateTime(scheduled.year, scheduled.month, scheduled.day);
+      final scheduledDay = DateTime(
+        scheduled.year,
+        scheduled.month,
+        scheduled.day,
+      );
       final diff = scheduledDay.difference(today).inDays;
 
       if (diff == 0) {
         return {'label': 'Today', 'color': Colors.orange[700]};
       } else if (diff > 0) {
-        return {
-          'label': 'in $diff day${diff > 1 ? 's' : ''}',
-          'color': null,
-        };
+        return {'label': 'in $diff day${diff > 1 ? 's' : ''}', 'color': null};
       } else {
         return {
           'label': '${diff.abs()} day${diff.abs() > 1 ? 's' : ''} ago',

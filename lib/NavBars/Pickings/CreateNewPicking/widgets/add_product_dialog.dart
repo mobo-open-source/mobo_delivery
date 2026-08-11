@@ -5,7 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
-import '../../../../shared/widgets/inputs/mobo_text_field.dart' show MoboTextField, RequiredLabel;
+import '../../../../shared/widgets/inputs/mobo_text_field.dart'
+    show MoboTextField, RequiredLabel;
 import '../models/product.dart';
 
 class AddProductDialog extends StatefulWidget {
@@ -121,9 +122,13 @@ class _AddProductDialogState extends State<AddProductDialog> {
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8FAFB),
+                color: isDark
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFFF8FAFB),
                 border: Border.all(
-                  color: _isDropdownOpen ? AppStyle.primaryColor : Colors.transparent,
+                  color: _isDropdownOpen
+                      ? AppStyle.primaryColor
+                      : Colors.transparent,
                   width: 1.5,
                 ),
               ),
@@ -337,8 +342,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
                         final enteredQty =
                             double.tryParse(qtyController.text.trim()) ?? 0.0;
                         if (enteredQty <= 0) {
-                          setState(() => _errorMessage =
-                              'Quantity must be greater than zero.');
+                          setState(
+                            () => _errorMessage =
+                                'Quantity must be greater than zero.',
+                          );
                         } else {
                           widget.onAdd(selectedProduct, enteredQty);
                           Navigator.of(context).pop();

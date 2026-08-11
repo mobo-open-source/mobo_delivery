@@ -25,14 +25,15 @@ class FetchStockPickings extends ReturnManagementEvent {
   final String? groupBy;
 
   const FetchStockPickings(
-      this.currentPage, {
-        this.searchText,
-        this.filters,
-        this.groupBy,
-      });
+    this.currentPage, {
+    this.searchText,
+    this.filters,
+    this.groupBy,
+  });
 
   @override
-  List<Object?> get props => [currentPage, searchText, filters, groupBy];}
+  List<Object?> get props => [currentPage, searchText, filters, groupBy];
+}
 
 /// Apply search query (triggers fetch)
 class SearchPickings extends ReturnManagementEvent {

@@ -29,7 +29,6 @@ extension ColorBrightness on Color {
 /// • Dark theme configuration
 /// • Common component theming (AppBar, Buttons, Inputs)
 class AppTheme {
-
   /// Main brand color used across the app.
   static const Color primaryColor = Color(0xFFC03355);
 

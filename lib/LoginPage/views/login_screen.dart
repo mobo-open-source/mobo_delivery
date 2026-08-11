@@ -26,8 +26,8 @@ import 'credential_page.dart';
 class LoginScreen extends StatefulWidget {
   final NetworkService networkService;
   LoginScreen({Key? key, NetworkService? networkService})
-      : networkService = networkService ?? NetworkService(),
-        super(key: key);
+    : networkService = networkService ?? NetworkService(),
+      super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -151,7 +151,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       String rawUrl = _urlController.text.trim();
 
-      final match = RegExp(r'^(https?://)', caseSensitive: false).firstMatch(rawUrl);
+      final match = RegExp(
+        r'^(https?://)',
+        caseSensitive: false,
+      ).firstMatch(rawUrl);
 
       final String host = match != null
           ? rawUrl.substring(match.group(0)!.length)
@@ -164,8 +167,9 @@ class _LoginScreenState extends State<LoginScreen> {
       for (String protocol in protocolsToTry) {
         try {
           log("protocol : $protocol");
-          final dbList =
-          await widget.networkService.fetchDatabaseList('$protocol$host');
+          final dbList = await widget.networkService.fetchDatabaseList(
+            '$protocol$host',
+          );
 
           log("dbList  : $dbList");
           if (dbList.isNotEmpty) {
@@ -237,13 +241,17 @@ class _LoginScreenState extends State<LoginScreen> {
   /// and generic network failures.
   String _formatLoginError(dynamic error) {
     final errorStr = error.toString().toLowerCase();
-    if (errorStr.contains('html instead of json') || errorStr.contains('formatexception')) {
+    if (errorStr.contains('html instead of json') ||
+        errorStr.contains('formatexception')) {
       return 'Server configuration issue. This may not be an Odoo server or the URL is incorrect.';
-    } else if (errorStr.contains('invalid login') || errorStr.contains('wrong credentials')) {
+    } else if (errorStr.contains('invalid login') ||
+        errorStr.contains('wrong credentials')) {
       return 'Incorrect email or password. Please check your login credentials.';
-    } else if (errorStr.contains('user not found') || errorStr.contains('no such user')) {
+    } else if (errorStr.contains('user not found') ||
+        errorStr.contains('no such user')) {
       return 'User account not found. Please check your email address or contact your administrator.';
-    } else if (errorStr.contains('database') && errorStr.contains('not found')) {
+    } else if (errorStr.contains('database') &&
+        errorStr.contains('not found')) {
       return 'Selected database is not available. Please choose a different database.';
     } else if (errorStr.contains('network') || errorStr.contains('socket')) {
       return 'Network connection failed. Please check your internet connection.';
@@ -352,142 +360,138 @@ class _LoginScreenState extends State<LoginScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                        Text(
-                          'Sign In',
-                          style: GoogleFonts.manrope(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            fontSize: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Enter your credentials to continue',
-                          style: GoogleFonts.manrope(
-                            color: Colors.white70,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        _buildInputField(
-                          controller: _urlController,
-                          label: 'Server address',
-                        ),
-                        const SizedBox(height: 16),
-                        if (_showManualDbInput) _buildManualDbInput(),
-                        if (!_showManualDbInput && _databases.isNotEmpty) _buildDropdown(),
-                        if (showError) ...[
-                          if (_errorMessage != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 12),
-                              child: Text(
-                                _errorMessage!,
-                                style: GoogleFonts.manrope(color: Colors.white),
-                              ),
-                            ),
-                        ],
-                        const SizedBox(height: 24),
-                        LoginButton(
-                          text: 'Next',
-                          isLoading: _isLoading,
-                          loadingWidget: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Checking',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
-                                  (_showManualDbInput && _manualDbController.text.isEmpty) ||
-                                  (!_showManualDbInput && _selectedDatabase == null))
-                              ? null
-                              : () {
-                                  setState(() {
-                                    showError = true;
-                                  });
-                                  if (_errorMessage == null) {
-                                    if (_formKey.currentState!.validate()) {
-                                      var url = _urlController.text.trim();
-                                      url = url.replaceFirst(RegExp(r'^https?://'), '');
-                                      String finalDb = _showManualDbInput
-                                          ? _manualDbController.text.trim()
-                                          : _selectedDatabase ?? '';
-                                      if (finalDb.isEmpty) {
-                                        setState(
-                                          () => _errorMessage =
-                                              "Please select or enter a database",
-                                        );
-                                        return;
-                                      }
-                                      if (_urlHistory.containsKey(url)) {
-                                        final entry = _urlHistory[url]!;
+                                  Text(
+                                    'Sign In',
+                                    style: GoogleFonts.manrope(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Enter your credentials to continue',
+                                    style: GoogleFonts.manrope(
+                                      color: Colors.white70,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 40),
+                                  _buildInputField(
+                                    controller: _urlController,
+                                    label: 'Server address',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  if (_showManualDbInput) _buildManualDbInput(),
+                                  if (!_showManualDbInput &&
+                                      _databases.isNotEmpty)
+                                    _buildDropdown(),
+                                  _LoginErrorDisplay(
+                                    error: showError ? _errorMessage : null,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  LoginButton(
+                                    text: 'Next',
+                                    onPressed:
+                                        (_isLoading ||
+                                            (_databases.isEmpty &&
+                                                !_showManualDbInput) ||
+                                            (_showManualDbInput &&
+                                                _manualDbController
+                                                    .text
+                                                    .isEmpty) ||
+                                            (!_showManualDbInput &&
+                                                _selectedDatabase == null))
+                                        ? null
+                                        : () {
+                                            setState(() {
+                                              showError = true;
+                                            });
+                                            if (_errorMessage == null) {
+                                              if (_formKey.currentState!
+                                                  .validate()) {
+                                                var url = _urlController.text
+                                                    .trim();
+                                                url = url.replaceFirst(
+                                                  RegExp(r'^https?://'),
+                                                  '',
+                                                );
+                                                String finalDb =
+                                                    _showManualDbInput
+                                                    ? _manualDbController.text
+                                                          .trim()
+                                                    : _selectedDatabase ?? '';
+                                                if (finalDb.isEmpty) {
+                                                  setState(
+                                                    () => _errorMessage =
+                                                        "Please select or enter a database",
+                                                  );
+                                                  return;
+                                                }
+                                                if (_urlHistory.containsKey(
+                                                  url,
+                                                )) {
+                                                  final entry =
+                                                      _urlHistory[url]!;
 
-                                        if (!_showManualDbInput && (_selectedDatabase == null ||
-                                            _selectedDatabase!.isEmpty)) {
-                                          finalDb = entry['db'] ?? "";
-                                        }
-                                      }
-                                      Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                          pageBuilder: (
-                                              context,
-                                              animation,
-                                              secondaryAnimation,
-                                              ) =>
-                                              CredentialsPage(
-                                                protocol: _workingProtocol ?? selectedProtocol,
-                                                url: url,
-                                                database: finalDb,
-                                              ),
-                                          transitionDuration:
-                                          const Duration(
-                                            milliseconds: 300,
-                                          ),
-                                          reverseTransitionDuration:
-                                          const Duration(
-                                            milliseconds: 300,
-                                          ),
-                                          transitionsBuilder: (
-                                              context,
-                                              animation,
-                                              secondaryAnimation,
-                                              child,
-                                              ) {
-return FadeTransition(
-                                              opacity: animation,
-                                              child: child,
-                                            );
+                                                  if (!_showManualDbInput &&
+                                                      (_selectedDatabase ==
+                                                              null ||
+                                                          _selectedDatabase!
+                                                              .isEmpty)) {
+                                                    finalDb = entry['db'] ?? "";
+                                                  }
+                                                }
+                                                Navigator.push(
+                                                  context,
+                                                  PageRouteBuilder(
+                                                    pageBuilder:
+                                                        (
+                                                          context,
+                                                          animation,
+                                                          secondaryAnimation,
+                                                        ) => CredentialsPage(
+                                                          protocol:
+                                                              _workingProtocol ??
+                                                              selectedProtocol,
+                                                          url: url,
+                                                          database: finalDb,
+                                                        ),
+                                                    transitionDuration:
+                                                        const Duration(
+                                                          milliseconds: 300,
+                                                        ),
+                                                    reverseTransitionDuration:
+                                                        const Duration(
+                                                          milliseconds: 300,
+                                                        ),
+                                                    transitionsBuilder:
+                                                        (
+                                                          context,
+                                                          animation,
+                                                          secondaryAnimation,
+                                                          child,
+                                                        ) {
+                                                          return FadeTransition(
+                                                            opacity: animation,
+                                                            child: child,
+                                                          );
+                                                        },
+                                                  ),
+                                                );
+                                              }
+                                            }
                                           },
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                        ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 ],
               );
             },
@@ -564,8 +568,10 @@ return FadeTransition(
         _debounce?.cancel();
 
         String hostOnly = selection;
-        final match =
-            RegExp(r'^(https?://)', caseSensitive: false).firstMatch(selection);
+        final match = RegExp(
+          r'^(https?://)',
+          caseSensitive: false,
+        ).firstMatch(selection);
         if (match != null) {
           selectedProtocol = match.group(1)!.toLowerCase();
           hostOnly = selection.substring(match.group(0)!.length);
@@ -606,185 +612,207 @@ return FadeTransition(
       },
       fieldViewBuilder:
           (context, fieldController, focusNode, onFieldSubmitted) {
-        return TextFormField(
-          controller: fieldController,
-          focusNode: focusNode,
-          obscureText: obscure,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '$label is required';
-            }
-            return null;
-          },
-          onChanged: (value) {
-            final match = RegExp(r'^(https?://)', caseSensitive: false)
-                .firstMatch(value);
-            if (match != null) {
-              final detected = match.group(1)!.toLowerCase();
-              final hostOnly = value.substring(match.group(0)!.length);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                fieldController.value = TextEditingValue(
-                  text: hostOnly,
-                  selection:
-                      TextSelection.collapsed(offset: hostOnly.length),
-                );
-                if (selectedProtocol != detected) {
-                  setState(() => selectedProtocol = detected);
+            return TextFormField(
+              controller: fieldController,
+              focusNode: focusNode,
+              obscureText: obscure,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return '$label is required';
                 }
-              });
-              onChanged?.call(hostOnly);
-              return;
-            }
-            onChanged?.call(value);
-          },
-          style: GoogleFonts.manrope(
-            color: Colors.black,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          decoration: InputDecoration(
-            hintText: "Enter Server address",
-            hintStyle: GoogleFonts.manrope(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: Colors.black.withOpacity(.4),
-            ),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(left: 10, right: 4),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      HugeIcons.strokeRoundedServerStack01,
-                      size: 20,
-                      color: Colors.black54,
-                    ),
-                    SizedBox(width: 6),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton2<String>(
-                        value: selectedProtocol,
-                        isExpanded: false,
-                        items: ['http://', 'https://']
-                            .map(
-                              (p) => DropdownMenuItem(
-                            value: p,
-                            child: Text(
-                              p,
-                              style: GoogleFonts.manrope(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black,
+                return null;
+              },
+              onChanged: (value) {
+                final match = RegExp(
+                  r'^(https?://)',
+                  caseSensitive: false,
+                ).firstMatch(value);
+                if (match != null) {
+                  final detected = match.group(1)!.toLowerCase();
+                  final hostOnly = value.substring(match.group(0)!.length);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    fieldController.value = TextEditingValue(
+                      text: hostOnly,
+                      selection: TextSelection.collapsed(
+                        offset: hostOnly.length,
+                      ),
+                    );
+                    if (selectedProtocol != detected) {
+                      setState(() => selectedProtocol = detected);
+                    }
+                  });
+                  onChanged?.call(hostOnly);
+                  return;
+                }
+                onChanged?.call(value);
+              },
+              style: GoogleFonts.manrope(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                hintText: "Enter Server address",
+                hintStyle: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black.withOpacity(.4),
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 4),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          HugeIcons.strokeRoundedServerStack01,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                        SizedBox(width: 6),
+                        DropdownButtonHideUnderline(
+                          child: DropdownButton2<String>(
+                            value: selectedProtocol,
+                            isExpanded: false,
+                            items: ['http://', 'https://']
+                                .map(
+                                  (p) => DropdownMenuItem(
+                                    value: p,
+                                    child: Text(
+                                      p,
+                                      style: GoogleFonts.manrope(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedProtocol = value!;
+                                _loadUrlHistory();
+
+                                onChanged?.call(controller.text);
+                                if (_urlController.text.isNotEmpty) {
+                                  _fetchDatabaseList();
+                                }
+                              });
+                            },
+                            buttonStyleData: ButtonStyleData(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
                               ),
+                              height: 36,
+                              width: 95,
+                            ),
+                            iconStyleData: const IconStyleData(
+                              icon: Icon(
+                                HugeIcons.strokeRoundedArrowDown01,
+                                size: 16,
+                                color: Colors.black54,
+                              ),
+                              iconSize: 16,
                             ),
                           ),
-                        )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedProtocol = value!;
-                            _loadUrlHistory();
-
-                            onChanged?.call(controller.text);
-                            if(_urlController.text.isNotEmpty){
-                              _fetchDatabaseList();
-                            }
-                          });
-                        },
-                        buttonStyleData: ButtonStyleData(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
                           height: 36,
-                          width: 95,
+                          width: 1,
+                          color: Colors.black.withOpacity(0.2),
                         ),
-                        iconStyleData: const IconStyleData(
-                          icon: Icon(
-                            HugeIcons.strokeRoundedArrowDown01,
-                            size: 16,
-                            color: Colors.black54,
+                      ],
+                    ),
+                  ),
+                ),
+                suffixIcon: _isLoading
+                    ? Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.black54,
+                            ),
                           ),
-                          iconSize: 16,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Container(
-                      height: 36,
-                      width: 1,
-                      color: Colors.black.withOpacity(0.2),
-                    ),
-                  ],
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.only(
+                  left: 0,
+                  right: 20,
+                  top: 16,
+                  bottom: 16,
                 ),
-              ),
-            ),
-            suffixIcon: _isLoading
-                ? Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
+                errorStyle: const TextStyle(color: Colors.white),
               ),
-            )
-                : null,
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            errorStyle: const TextStyle(color: Colors.white),
-          ),
-        );
-      },
+            );
+          },
       optionsViewBuilder: (context, onSelected, options) {
         return Align(
           alignment: Alignment.topLeft,
           child: Material(
-            color: Colors.transparent,
+            elevation: 12.0,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            shadowColor: Colors.black.withOpacity(0.2),
             child: Container(
-              margin: const EdgeInsets.only(top: 5),
+              margin: const EdgeInsets.only(top: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.black.withOpacity(0.1),
+                  width: 1,
+                ),
               ),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return InkWell(
-                    onTap: () {
-                      onSelected(option);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Text(
-                        option,
-                        style: GoogleFonts.manrope(
-                          fontSize: 14,
-                          color: Colors.black,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final option = options.elementAt(index);
+                    return InkWell(
+                      onTap: () {
+                        onSelected(option);
+                      },
+                      hoverColor: Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        child: Text(
+                          option,
+                          style: GoogleFonts.manrope(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -836,24 +864,27 @@ return FadeTransition(
             fontWeight: FontWeight.w400,
           ),
         ),
-        items: _databases.toSet().toList().map(
+        items: _databases
+            .toSet()
+            .toList()
+            .map(
               (db) => DropdownMenuItem<String>(
-            value: db,
-            child: Text(
-              db,
-              style: GoogleFonts.manrope(
-                color: Colors.black,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                value: db,
+                child: Text(
+                  db,
+                  style: GoogleFonts.manrope(
+                    color: Colors.black,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
-            ),
-          ),
-        ).toList(),
+            )
+            .toList(),
         onChanged: (value) {
           setState(() => _selectedDatabase = value);
         },
-        onMenuStateChange: (isOpen) {
-        },
+        onMenuStateChange: (isOpen) {},
         validator: (value) {
           if (value == null || value.isEmpty) {
             return 'Please select a database';
@@ -871,6 +902,51 @@ return FadeTransition(
         iconStyleData: const IconStyleData(
           icon: Icon(HugeIcons.strokeRoundedArrowDown01, color: Colors.black54),
         ),
+      ),
+    );
+  }
+}
+
+/// Fixed-height error slot that keeps the "Next" button from shifting.
+class _LoginErrorDisplay extends StatelessWidget {
+  final String? error;
+
+  const _LoginErrorDisplay({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: error != null
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      HugeIcons.strokeRoundedAlertCircle,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        error!,
+                        style: GoogleFonts.manrope(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }

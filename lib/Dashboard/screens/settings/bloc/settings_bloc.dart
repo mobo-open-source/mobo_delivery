@@ -65,15 +65,21 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   /// Loads all settings and dynamic Odoo data (languages, currencies, timezones)
   Future<void> _onLoadSettings(
-      LoadSettingsEvent event, Emitter<SettingsState> emit) async {
+    LoadSettingsEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     emit(state.copyWith(isLoading: true));
     try {
       await settingsStorageService.initialize();
 
-      final language = settingsStorageService.getString('language') ?? state.language;
-      final currency = settingsStorageService.getString('currency') ?? state.currency;
-      final timezone = settingsStorageService.getString('timezone') ?? state.timezone;
-      final darkMode = settingsStorageService.getBool('darkMode') ?? state.isDarkMode;
+      final language =
+          settingsStorageService.getString('language') ?? state.language;
+      final currency =
+          settingsStorageService.getString('currency') ?? state.currency;
+      final timezone =
+          settingsStorageService.getString('timezone') ?? state.timezone;
+      final darkMode =
+          settingsStorageService.getBool('darkMode') ?? state.isDarkMode;
 
       final languagesRaw = await odooService.fetchLanguage() ?? [];
       final currenciesRaw = await odooService.fetchCurrency() ?? [];
@@ -81,18 +87,22 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
       final languages = languagesRaw.cast<Map<String, dynamic>>();
       final currencies = currenciesRaw.cast<Map<String, dynamic>>();
-      emit(state.copyWith(
-        isLoading: false,
-        language: language,
-        currency: currency,
-        timezone: timezone,
-        isDarkMode: darkMode,
-        languages: languages,
-        currencies: currencies,
-        timezones: timezones,
-      ));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          language: language,
+          currency: currency,
+          timezone: timezone,
+          isDarkMode: darkMode,
+          languages: languages,
+          currencies: currencies,
+          timezones: timezones,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: 'Failed to load settings: $e'));
+      emit(
+        state.copyWith(isLoading: false, error: 'Failed to load settings: $e'),
+      );
     }
   }
 
@@ -100,14 +110,18 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   /// Saves the preference locally and updates UI state.
   /// Does not require server communication.
   Future<void> _onToggleDarkMode(
-      ToggleDarkModeEvent event, Emitter<SettingsState> emit) async {
+    ToggleDarkModeEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     await settingsStorageService.setBool('darkMode', event.isDarkMode);
     emit(state.copyWith(isDarkMode: event.isDarkMode));
   }
 
   /// Updates preferred language (local storage + Odoo user record)
   Future<void> _onUpdateLanguage(
-      UpdateLanguageEvent event, Emitter<SettingsState> emit) async {
+    UpdateLanguageEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     try {
       await settingsStorageService.setString('language', event.language);
       await odooService.updateLanguage(userId!, {
@@ -122,7 +136,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   /// Updates preferred currency (currently only local storage)
   Future<void> _onUpdateCurrency(
-      UpdateCurrencyEvent event, Emitter<SettingsState> emit) async {
+    UpdateCurrencyEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     try {
       await settingsStorageService.setString('currency', event.currency);
       emit(state.copyWith(currency: event.currency));
@@ -133,11 +149,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   /// Updates timezone (local + Odoo user record)
   Future<void> _onUpdateTimezone(
-      UpdateTimezoneEvent event, Emitter<SettingsState> emit) async {
+    UpdateTimezoneEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     try {
       await settingsStorageService.setString('timezone', event.timezone);
       await odooService.updateLanguage(userId!, {
-        'lang': event.languageCode ?? state.language,
+        'lang': event.languageCode,
         'tz': event.timezoneCode,
       });
       emit(state.copyWith(timezone: event.timezone));
@@ -148,7 +166,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   /// Refreshes language, currency, and timezone lists from Odoo
   Future<void> _onRefreshLanguageAndRegion(
-      RefreshLanguageAndRegionEvent event, Emitter<SettingsState> emit) async {
+    RefreshLanguageAndRegionEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     emit(state.copyWith(isLanguageLoading: true));
     try {
       final languagesRaw = await odooService.fetchLanguage() ?? [];
@@ -157,18 +177,21 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
       final languages = languagesRaw.cast<Map<String, dynamic>>();
       final currencies = currenciesRaw.cast<Map<String, dynamic>>();
-      emit(state.copyWith(
-        isLanguageLoading: false,
-        languages: languages,
-        currencies: currencies,
-        timezones: timezones,
-      ));
+      emit(
+        state.copyWith(
+          isLanguageLoading: false,
+          languages: languages,
+          currencies: currencies,
+          timezones: timezones,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        isLanguageLoading: false,
-        error: 'Failed to refresh language and region: $e',
-      ));
+      emit(
+        state.copyWith(
+          isLanguageLoading: false,
+          error: 'Failed to refresh language and region: $e',
+        ),
+      );
     }
   }
-
 }

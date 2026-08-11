@@ -50,9 +50,6 @@ class User {
   /// • Preparing data for dropdowns or other serialization
   /// • Debugging or logging
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-    };
+    return {'id': id, 'name': name};
   }
 }

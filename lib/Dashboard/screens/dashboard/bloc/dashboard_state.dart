@@ -81,13 +81,13 @@ class DashboardState extends Equatable {
   /// a hash or a custom wrapper class in the future.
   @override
   List<Object?> get props => [
-        isLoading,
-        currentIndex,
-        userName,
-        mail,
-        profilePicBytes,
-        isSessionExpired,
-        isServerReachable,
-        pages,
-      ];
+    isLoading,
+    currentIndex,
+    userName,
+    mail,
+    profilePicBytes,
+    isSessionExpired,
+    isServerReachable,
+    pages,
+  ];
 }

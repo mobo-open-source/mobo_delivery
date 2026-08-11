@@ -186,7 +186,11 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
               ),
               const SizedBox(width: 4),
             ],
-            Icon(HugeIcons.strokeRoundedArrowDown01, color: textColor, size: 18),
+            Icon(
+              HugeIcons.strokeRoundedArrowDown01,
+              color: textColor,
+              size: 18,
+            ),
           ],
         ),
       ),
@@ -204,18 +208,23 @@ class _CompanySelectorWidgetState extends State<CompanySelectorWidget> {
         backgroundColor: Colors.transparent,
         builder: (context) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Container(
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey[900] : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          return SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
-            ),
-            padding: const EdgeInsets.only(top: 8, bottom: 16),
-            child: _CompanyDropdownContent(
-              provider: provider,
-              onCompanyChanged: widget.onCompanyChanged,
-              width: screenSize.width,
+              padding: const EdgeInsets.only(top: 8, bottom: 16),
+              child: _CompanyDropdownContent(
+                provider: provider,
+                onCompanyChanged: widget.onCompanyChanged,
+                width: screenSize.width,
+              ),
             ),
           );
         },
@@ -435,9 +444,11 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                     );
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       child: Material(
-
                         color: isActive
                             ? AppStyle.accentOn(
                                 isDark ? Brightness.dark : Brightness.light,
@@ -470,16 +481,9 @@ class _CompanyDropdownContentState extends State<_CompanyDropdownContent> {
                                       fontWeight: isActive
                                           ? FontWeight.w600
                                           : FontWeight.normal,
-
-                                      color: isActive
-                                          ? AppStyle.accentOn(
-                                              isDark
-                                                  ? Brightness.dark
-                                                  : Brightness.light,
-                                            )
-                                          : (isDark
-                                              ? Colors.white70
-                                              : Colors.black87),
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black87,
                                     ),
                                   ),
                                 ),

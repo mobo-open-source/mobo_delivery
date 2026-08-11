@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:odoo_delivery_app/Rating/review_service.dart';
 
+const int _kStarCount = 5;
+const double _kStarGap = 6;
+const double _kMaxStarSize = 44;
+
 /// A customizable rating dialog that allows users to rate the app
 /// and optionally provide feedback.
 ///
@@ -83,8 +87,6 @@ class CustomRatingDialog extends StatefulWidget {
 ///
 /// Properly disposes the [_commentController] to prevent memory leaks.
 class _CustomRatingDialogState extends State<CustomRatingDialog> {
-  static const Color _starColor = Color(0xFFF5B82E);
-
   int _rating = 3;
 
   @override
@@ -99,7 +101,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       backgroundColor: backgroundColor,
       surfaceTintColor: Colors.transparent,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -126,25 +128,35 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
             ),
             const SizedBox(height: 32),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                final filled = index < _rating;
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _rating = index + 1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: SvgPicture.asset(
-                      filled
-                          ? 'assets/icons/star_filled.svg'
-                          : 'assets/icons/star_outlined.svg',
-                      width: 44,
-                      height: 44,
-                    ),
-                  ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final starSize =
+                    ((constraints.maxWidth / _kStarCount) - _kStarGap * 2)
+                        .clamp(20.0, _kMaxStarSize);
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_kStarCount, (index) {
+                    final filled = index < _rating;
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _rating = index + 1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _kStarGap,
+                        ),
+                        child: SvgPicture.asset(
+                          filled
+                              ? 'assets/icons/star_filled.svg'
+                              : 'assets/icons/star_outlined.svg',
+                          width: starSize,
+                          height: starSize,
+                        ),
+                      ),
+                    );
+                  }),
                 );
-              }),
+              },
             ),
             const SizedBox(height: 32),
 
@@ -170,10 +182,7 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
                 },
                 child: const Text(
                   'Submit',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                 ),
               ),
             ),

@@ -123,19 +123,21 @@ class CompanyProvider extends ChangeNotifier {
         return;
       }
 
-      final companiesRes = await CompanySessionManager.safeCallKwWithoutCompany({
-        'model': 'res.company',
-        'method': 'search_read',
-        'args': [
-          [
-            ['id', 'in', companyIds],
+      final companiesRes = await CompanySessionManager.safeCallKwWithoutCompany(
+        {
+          'model': 'res.company',
+          'method': 'search_read',
+          'args': [
+            [
+              ['id', 'in', companyIds],
+            ],
           ],
-        ],
-        'kwargs': {
-          'fields': ['id', 'name'],
-          'order': 'name asc',
+          'kwargs': {
+            'fields': ['id', 'name'],
+            'order': 'name asc',
+          },
         },
-      }).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 15));
 
       final serverCompanies = (companiesRes is List)
           ? companiesRes.cast<Map<String, dynamic>>()

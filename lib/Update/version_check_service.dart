@@ -53,8 +53,8 @@ class VersionCheckService {
   String? _iosStoreUrl;
 
   VersionCheckService({http.Client? client, String iosCountry = 'us'})
-      : _client = client ?? http.Client(),
-        _iosCountry = iosCountry;
+    : _client = client ?? http.Client(),
+      _iosCountry = iosCountry;
 
   /// Performs the version check for the current platform.
   Future<VersionCheckResult> check() async {
@@ -87,8 +87,7 @@ class VersionCheckService {
   Future<void> openStore() async {
     final Uri uri = Platform.isIOS
         ? Uri.parse(
-            _iosStoreUrl ??
-                'https://apps.apple.com/search?term=$_iosBundleId',
+            _iosStoreUrl ?? 'https://apps.apple.com/search?term=$_iosBundleId',
           )
         : Uri.parse(
             'https://play.google.com/store/apps/details?id=$_androidPackageId',
@@ -103,9 +102,7 @@ class VersionCheckService {
       'https://itunes.apple.com/lookup'
       '?bundleId=$_iosBundleId&country=$_iosCountry',
     );
-    final res = await _client
-        .get(uri)
-        .timeout(const Duration(seconds: 8));
+    final res = await _client.get(uri).timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) return null;
 
     final body = json.decode(res.body) as Map<String, dynamic>;
@@ -121,9 +118,7 @@ class VersionCheckService {
       'https://play.google.com/store/apps/details'
       '?id=$_androidPackageId&hl=en&gl=US',
     );
-    final res = await _client
-        .get(uri)
-        .timeout(const Duration(seconds: 8));
+    final res = await _client.get(uri).timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) return null;
 
     final body = res.body;
@@ -155,11 +150,7 @@ class VersionCheckService {
   }
 
   List<int> _segments(String version) {
-
     final core = version.split('+').first.split('-').first;
-    return core
-        .split('.')
-        .map((s) => int.tryParse(s.trim()) ?? 0)
-        .toList();
+    return core.split('.').map((s) => int.tryParse(s.trim()) ?? 0).toList();
   }
 }

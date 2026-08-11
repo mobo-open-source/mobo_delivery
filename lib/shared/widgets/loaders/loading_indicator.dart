@@ -17,10 +17,7 @@ class LoadingIndicator extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          LoadingWidget(
-            color: color ?? theme.primaryColor,
-            size: size,
-          ),
+          LoadingWidget(color: color ?? theme.primaryColor, size: size),
           if (message != null) ...[
             const SizedBox(height: 16),
             Text(

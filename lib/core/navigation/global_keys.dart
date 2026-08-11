@@ -8,4 +8,5 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 /// Global scaffold messenger key used to show SnackBars globally.
 /// Allows showing messages without direct access to BuildContext.
 /// Useful for global error or success notifications.
-final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();

@@ -64,7 +64,8 @@ class StockMove {
   /// Converts numeric fields to double safely.
   factory StockMove.fromJson(Map<String, dynamic> json) {
     int? extractUomId(dynamic raw) {
-      if (raw is List && raw.isNotEmpty && raw.first is int) return raw.first as int;
+      if (raw is List && raw.isNotEmpty && raw.first is int)
+        return raw.first as int;
       if (raw is int) return raw;
       return null;
     }
@@ -72,15 +73,23 @@ class StockMove {
     return StockMove(
       id: json['id'] is int ? json['id'] : 0,
       productId: json['product_id'] is List ? json['product_id'] : null,
-      productUomQty: (json['product_uom_qty'] is num ? json['product_uom_qty'] : 0).toDouble(),
-      productUomId: extractUomId(json['product_uom']) ?? extractUomId(json['product_uom_id']),
-      quantity: (json['quantity'] is num
-          ? json['quantity']
-          : (json['quantity_done'] is num ? json['quantity_done'] : 0)).toDouble(),
+      productUomQty:
+          (json['product_uom_qty'] is num ? json['product_uom_qty'] : 0)
+              .toDouble(),
+      productUomId:
+          extractUomId(json['product_uom']) ??
+          extractUomId(json['product_uom_id']),
+      quantity:
+          (json['quantity'] is num
+                  ? json['quantity']
+                  : (json['quantity_done'] is num ? json['quantity_done'] : 0))
+              .toDouble(),
       pickingId: json['picking_id'] is List ? json['picking_id'] : null,
       locationId: json['location_id'] is List ? json['location_id'] : null,
       lotId: json['lot_id'] is List ? json['lot_id'] : null,
-      quantityProductUom: json['quantity_product_uom'] is String ? json['quantity_product_uom'] : null,
+      quantityProductUom: json['quantity_product_uom'] is String
+          ? json['quantity_product_uom']
+          : null,
     );
   }
 

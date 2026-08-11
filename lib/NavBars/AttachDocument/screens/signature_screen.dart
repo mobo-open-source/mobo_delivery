@@ -38,7 +38,10 @@ class _SignatureDialogState extends State<SignatureDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = SignatureController(penColor: Colors.black, penStrokeWidth: 5);
+    _controller = SignatureController(
+      penColor: Colors.black,
+      penStrokeWidth: 5,
+    );
   }
 
   @override

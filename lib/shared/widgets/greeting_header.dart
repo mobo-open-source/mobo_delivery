@@ -56,8 +56,9 @@ class GreetingHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final trimmed = (userName ?? '').trim();
     final firstName = trimmed.isEmpty ? '' : trimmed.split(' ').first;
-    final greetingText =
-        firstName.isEmpty ? '${_greeting()}!' : '${_greeting()} $firstName!';
+    final greetingText = firstName.isEmpty
+        ? '${_greeting()}!'
+        : '${_greeting()} $firstName!';
 
     return Container(
       margin: margin,
@@ -123,11 +124,23 @@ class _GreetingShimmer extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _bar(height: 28, width: 200, radius: 6, base: 0.3, highlight: 0.6,
-            fill: 0.4),
+        _bar(
+          height: 28,
+          width: 200,
+          radius: 6,
+          base: 0.3,
+          highlight: 0.6,
+          fill: 0.4,
+        ),
         const SizedBox(height: 12),
-        _bar(height: 18, width: 280, radius: 4, base: 0.2, highlight: 0.4,
-            fill: 0.3),
+        _bar(
+          height: 18,
+          width: 280,
+          radius: 4,
+          base: 0.2,
+          highlight: 0.4,
+          fill: 0.3,
+        ),
       ],
     );
   }

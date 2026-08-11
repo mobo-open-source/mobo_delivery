@@ -24,8 +24,10 @@ class MapService {
   ///
   /// Returns empty list on error or invalid response.
   Future<List<String>> fetchSuggestions(
-      String input, String apiKey,
-      {LatLng? proximity}) async {
+    String input,
+    String apiKey, {
+    LatLng? proximity,
+  }) async {
     if (input.trim().isEmpty) return [];
     final encoded = Uri.encodeComponent(input);
     final proximityParam = proximity != null
@@ -40,11 +42,11 @@ class MapService {
       if (json['results'] != null) {
         return List<String>.from(
           (json['results'] as List).map(
-              (r) => r['address']?['freeformAddress'] as String? ?? ''),
+            (r) => r['address']?['freeformAddress'] as String? ?? '',
+          ),
         ).where((s) => s.isNotEmpty).toList();
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     return [];
   }
 
@@ -54,8 +56,10 @@ class MapService {
   ///
   /// Returns `null` if no results or API error.
   Future<LatLng?> getLatLngFromPlace(
-      String placeDescription, String apiKey,
-      {LatLng? proximity}) async {
+    String placeDescription,
+    String apiKey, {
+    LatLng? proximity,
+  }) async {
     final encoded = Uri.encodeComponent(placeDescription);
     final proximityParam = proximity != null
         ? '&lat=${proximity.latitude}&lon=${proximity.longitude}'
@@ -66,16 +70,14 @@ class MapService {
     try {
       final response = await http.get(Uri.parse(url));
       final json = jsonDecode(response.body);
-      if (json['results'] != null &&
-          (json['results'] as List).isNotEmpty) {
+      if (json['results'] != null && (json['results'] as List).isNotEmpty) {
         final pos = json['results'][0]['position'];
         return LatLng(
           (pos['lat'] as num).toDouble(),
           (pos['lon'] as num).toDouble(),
         );
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     return null;
   }
 
@@ -88,10 +90,12 @@ class MapService {
     for (final leg in legs) {
       final legPoints = leg['points'] as List? ?? [];
       for (final p in legPoints) {
-        points.add(LatLng(
-          (p['latitude'] as num).toDouble(),
-          (p['longitude'] as num).toDouble(),
-        ));
+        points.add(
+          LatLng(
+            (p['latitude'] as num).toDouble(),
+            (p['longitude'] as num).toDouble(),
+          ),
+        );
       }
     }
     return points;
@@ -109,7 +113,8 @@ class MapService {
 
     final dLon = lon2 - lon1;
     final y = math.sin(dLon) * math.cos(lat2);
-    final x = math.cos(lat1) * math.sin(lat2) -
+    final x =
+        math.cos(lat1) * math.sin(lat2) -
         math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
 
     return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
@@ -137,7 +142,9 @@ class MapService {
 
     final double C = x2 - x1, D = y2 - y1;
     final double lenSq = C * C + D * D;
-    final double param = lenSq != 0 ? ((x - x1) * C + (y - y1) * D) / lenSq : -1;
+    final double param = lenSq != 0
+        ? ((x - x1) * C + (y - y1) * D) / lenSq
+        : -1;
 
     double xx, yy;
     if (param < 0) {
@@ -165,7 +172,8 @@ class MapService {
     final dLat = math.pi * (b.latitude - a.latitude) / 180.0;
     final dLon = math.pi * (b.longitude - a.longitude) / 180.0;
 
-    final aSin = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final aSin =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(lat1) *
             math.cos(lat2) *
             math.sin(dLon / 2) *

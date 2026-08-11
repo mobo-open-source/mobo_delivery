@@ -2,8 +2,7 @@
 // Do not modify
 // Check in to version control
 
-import 'package:hive_ce/hive_ce.dart';
-import 'package:odoo_delivery_app/Dashboard/models/profile.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/CreateNewPicking/models/Hive/pending_creates.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/move_line.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/operation_type.dart';
@@ -32,7 +31,6 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(PickingFormAdapter());
     registerAdapter(ProductAdapter());
     registerAdapter(ProductUpdatesAdapter());
-    registerAdapter(ProfileAdapter());
     registerAdapter(ReturnPickingAdapter());
     registerAdapter(StockMoveAdapter());
     registerAdapter(UserAdapter());
@@ -52,7 +50,6 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(PickingFormAdapter());
     registerAdapter(ProductAdapter());
     registerAdapter(ProductUpdatesAdapter());
-    registerAdapter(ProfileAdapter());
     registerAdapter(ReturnPickingAdapter());
     registerAdapter(StockMoveAdapter());
     registerAdapter(UserAdapter());

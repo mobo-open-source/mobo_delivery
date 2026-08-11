@@ -42,8 +42,10 @@ class _DocumentPreviewPageState extends State<DocumentPreviewPage> {
 
   bool get _isImage =>
       widget.mimetype.startsWith('image/') ||
-      RegExp(r'\.(png|jpe?g|gif|webp|bmp)$', caseSensitive: false)
-          .hasMatch(widget.name);
+      RegExp(
+        r'\.(png|jpe?g|gif|webp|bmp)$',
+        caseSensitive: false,
+      ).hasMatch(widget.name);
 
   bool get _isPdf =>
       widget.mimetype == 'application/pdf' ||
@@ -136,10 +138,7 @@ class _DocumentPreviewPageState extends State<DocumentPreviewPage> {
   Widget _buildBody(bool isDark) {
     if (_loading) {
       return const Center(
-        child: LoadingWidget(
-          size: 40,
-          variant: LoadingVariant.staggeredDots,
-        ),
+        child: LoadingWidget(size: 40, variant: LoadingVariant.staggeredDots),
       );
     }
     if (_error != null) {
@@ -171,10 +170,7 @@ class _DocumentPreviewPageState extends State<DocumentPreviewPage> {
     if (_bytes == null) return const SizedBox.shrink();
 
     if (_isPdf) {
-      return PdfViewer.data(
-        _bytes!,
-        sourceName: widget.name,
-      );
+      return PdfViewer.data(_bytes!, sourceName: widget.name);
     }
 
     return InteractiveViewer(

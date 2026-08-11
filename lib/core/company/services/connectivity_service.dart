@@ -152,6 +152,9 @@ class ConnectivityService {
   /// Returns last known server reachability state.
   bool get lastKnownServerReachable =>
       _currentServerUrl == null ? true : _lastServerReachable;
+
+  /// Returns last known internet reachability state.
+  bool get lastKnownInternetReachable => _lastInternetReachable;
 }
 
 /// Exception thrown when internet is unavailable.

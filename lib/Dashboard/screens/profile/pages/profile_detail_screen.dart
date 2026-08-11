@@ -2,6 +2,7 @@ import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
+import '../../../../shared/widgets/error_state_widget.dart';
 import 'profile_detail_shimmer.dart';
 import '../../../../shared/widgets/odoo_avatar.dart';
 import '../../../../shared/widgets/forms/custom_dropdown_field.dart';
@@ -30,6 +31,7 @@ class ProfileDetailScreen extends StatefulWidget {
 
 class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   bool _isLoading = true;
+  String? _profileError;
   bool _isEditMode = false;
   bool _isSaving = false;
   bool _isShowingLoadingDialog = false;
@@ -143,7 +145,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   Future<void> _fetchUserProfile({bool forceRefresh = false}) async {
     if (!mounted) return;
-    setState(() => _isLoading = _userData == null);
+    setState(() {
+      _isLoading = _userData == null;
+      _profileError = null;
+    });
 
     try {
       final session = await CompanySessionManager.getCurrentSession();
@@ -157,7 +162,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         'method': 'read',
         'args': [
           [session.userId],
-          ['name', 'email', 'image_1920', 'company_id', 'partner_id', 'website', 'function'],
+          [
+            'name',
+            'email',
+            'image_1920',
+            'company_id',
+            'partner_id',
+            'website',
+            'function',
+          ],
         ],
         'kwargs': {},
       });
@@ -174,7 +187,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               'method': 'read',
               'args': [
                 [partner[0]],
-                ['phone', 'mobile', 'street', 'street2', 'city', 'zip', 'state_id', 'country_id', 'parent_id'],
+                [
+                  'phone',
+                  'mobile',
+                  'street',
+                  'street2',
+                  'city',
+                  'zip',
+                  'state_id',
+                  'country_id',
+                  'parent_id',
+                ],
               ],
               'kwargs': {},
             });
@@ -199,10 +222,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           if (serverMapToken.isNotEmpty) {
             await DashboardStorageService().saveMapToken(serverMapToken);
             _loadedMapToken = serverMapToken;
-            _mapTokenController.text = _isEditMode ? _loadedMapToken : '••••••••••••••••';
+            _mapTokenController.text = _isEditMode
+                ? _loadedMapToken
+                : '••••••••••••••••';
           }
-        } catch (_) {
-        }
+        } catch (_) {}
 
         if (mounted) {
           setState(() {
@@ -220,7 +244,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         CompanySessionManager.logout(context);
         return;
       }
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _profileError = e.toString();
+        });
+      }
     }
   }
 
@@ -241,7 +270,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         'model': 'res.country',
         'method': 'search_read',
         'args': [[]],
-        'kwargs': {'fields': ['id', 'name'], 'order': 'name asc'},
+        'kwargs': {
+          'fields': ['id', 'name'],
+          'order': 'name asc',
+        },
       });
       if (res is List && mounted) {
         setState(() {
@@ -260,8 +292,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       final res = await CompanySessionManager.callKwWithCompany({
         'model': 'res.country.state',
         'method': 'search_read',
-        'args': [[['country_id', '=', countryId]]],
-        'kwargs': {'fields': ['id', 'name'], 'order': 'name asc'},
+        'args': [
+          [
+            ['country_id', '=', countryId],
+          ],
+        ],
+        'kwargs': {
+          'fields': ['id', 'name'],
+          'order': 'name asc',
+        },
       });
       if (res is List && mounted) {
         setState(() {
@@ -299,20 +338,25 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       : Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: LoadingWidget(size: 32, variant: LoadingVariant.staggeredDots),
+                child: LoadingWidget(
+                  size: 32,
+                  variant: LoadingVariant.staggeredDots,
+                ),
               ),
               const SizedBox(height: 16),
-              Text(message,
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.grey[900],
-                      )),
+              Text(
+                message,
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.grey[900],
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Please wait while we process your request',
                 style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    ),
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -324,7 +368,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   Future<void> _saveAllChanges() async {
     if (!_formKey.currentState!.validate()) {
-      CustomSnackbar.showError(context, 'Please fix the validation errors before saving');
+      CustomSnackbar.showError(
+        context,
+        'Please fix the validation errors before saving',
+      );
       return;
     }
 
@@ -339,22 +386,28 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       final userUpdates = <String, dynamic>{};
       final partnerUpdates = <String, dynamic>{};
 
-      if (_nameController.text.trim() != _normalizeForEdit(_userData?['name'])) {
+      if (_nameController.text.trim() !=
+          _normalizeForEdit(_userData?['name'])) {
         userUpdates['name'] = _nameController.text.trim();
       }
-      if (_emailController.text.trim() != _normalizeForEdit(_userData?['email'])) {
+      if (_emailController.text.trim() !=
+          _normalizeForEdit(_userData?['email'])) {
         userUpdates['email'] = _emailController.text.trim();
       }
-      if (_phoneController.text.trim() != _normalizeForEdit(_userData?['phone'])) {
+      if (_phoneController.text.trim() !=
+          _normalizeForEdit(_userData?['phone'])) {
         partnerUpdates['phone'] = _phoneController.text.trim();
       }
-      if (_mobileController.text.trim() != _normalizeForEdit(_userData?['mobile'])) {
+      if (_mobileController.text.trim() !=
+          _normalizeForEdit(_userData?['mobile'])) {
         partnerUpdates['mobile'] = _mobileController.text.trim();
       }
-      if (_websiteController.text.trim() != _normalizeForEdit(_userData?['website'])) {
+      if (_websiteController.text.trim() !=
+          _normalizeForEdit(_userData?['website'])) {
         partnerUpdates['website'] = _websiteController.text.trim();
       }
-      if (_functionController.text.trim() != _normalizeForEdit(_userData?['function'])) {
+      if (_functionController.text.trim() !=
+          _normalizeForEdit(_userData?['function'])) {
         partnerUpdates['function'] = _functionController.text.trim();
       }
       if (_pickedImageBase64 != null) {
@@ -371,31 +424,44 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           final modelResult = await CompanySessionManager.callKwWithCompany({
             'model': 'ir.model',
             'method': 'search_read',
-            'args': [[['model', '=', 'res.company']]],
+            'args': [
+              [
+                ['model', '=', 'res.company'],
+              ],
+            ],
             'kwargs': {},
           });
 
           if (modelResult != null && modelResult.isNotEmpty) {
             final int modelIdInt = int.parse(modelResult[0]['id'].toString());
-            final existingField = await CompanySessionManager.callKwWithCompany({
-              'model': 'ir.model.fields',
-              'method': 'search_read',
-              'args': [[['model', '=', 'res.company'], ['name', '=', 'x_map_key_encrypted']]],
-              'kwargs': {},
-            });
+            final existingField = await CompanySessionManager.callKwWithCompany(
+              {
+                'model': 'ir.model.fields',
+                'method': 'search_read',
+                'args': [
+                  [
+                    ['model', '=', 'res.company'],
+                    ['name', '=', 'x_map_key_encrypted'],
+                  ],
+                ],
+                'kwargs': {},
+              },
+            );
 
             if (existingField == null || existingField.isEmpty) {
               await CompanySessionManager.callKwWithCompany({
                 'model': 'ir.model.fields',
                 'method': 'create',
-                'args': [{
-                  'name': 'x_map_key_encrypted',
-                  'field_description': 'Google Map API Key',
-                  'ttype': 'char',
-                  'copied': false,
-                  'model': 'res.company',
-                  'model_id': modelIdInt,
-                }],
+                'args': [
+                  {
+                    'name': 'x_map_key_encrypted',
+                    'field_description': 'Google Map API Key',
+                    'ttype': 'char',
+                    'copied': false,
+                    'model': 'res.company',
+                    'model_id': modelIdInt,
+                  },
+                ],
                 'kwargs': {},
               });
             }
@@ -404,11 +470,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           await CompanySessionManager.callKwWithCompany({
             'model': 'res.company',
             'method': 'write',
-            'args': [[companyId], {'x_map_key_encrypted': encryptedToken}],
+            'args': [
+              [companyId],
+              {'x_map_key_encrypted': encryptedToken},
+            ],
             'kwargs': {},
           });
-        } catch (_) {
-        }
+        } catch (_) {}
 
         await DashboardStorageService().saveMapToken(newMapToken);
         _loadedMapToken = newMapToken;
@@ -419,7 +487,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         await CompanySessionManager.callKwWithCompany({
           'model': 'res.users',
           'method': 'write',
-          'args': [[session.userId], userUpdates],
+          'args': [
+            [session.userId],
+            userUpdates,
+          ],
           'kwargs': {},
         });
       }
@@ -427,7 +498,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         await CompanySessionManager.callKwWithCompany({
           'model': 'res.partner',
           'method': 'write',
-          'args': [[_partnerId], partnerUpdates],
+          'args': [
+            [_partnerId],
+            partnerUpdates,
+          ],
           'kwargs': {},
         });
       }
@@ -448,7 +522,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       Navigator.of(context).pop();
     }
     if (isSuccess) {
-      CustomSnackbar.show(context: context, title: 'Success', message: 'Profile updated successfully', type: SnackbarType.success);
+      CustomSnackbar.show(
+        context: context,
+        title: 'Success',
+        message: 'Profile updated successfully',
+        type: SnackbarType.success,
+      );
     } else {
       CustomSnackbar.showError(context, 'Failed to save changes');
     }
@@ -456,14 +535,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   Future<void> _pickImageFromSource(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(source: source, imageQuality: 80, maxWidth: 600);
+      final picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 600,
+      );
       if (picked == null || !mounted) return;
       final bytes = await picked.readAsBytes();
       if (!mounted) return;
       setState(() => _pickedImageBase64 = base64Encode(bytes));
       await _saveImage();
     } catch (e) {
-      if (mounted) CustomSnackbar.showError(context, 'Failed to pick image: $e');
+      if (mounted)
+        CustomSnackbar.showError(context, 'Failed to pick image: $e');
     }
   }
 
@@ -477,14 +561,24 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         await CompanySessionManager.callKwWithCompany({
           'model': 'res.users',
           'method': 'write',
-          'args': [[session.userId], {'image_1920': _pickedImageBase64}],
+          'args': [
+            [session.userId],
+            {'image_1920': _pickedImageBase64},
+          ],
           'kwargs': {},
         });
       }
       await _fetchUserProfile(forceRefresh: true);
-      if (mounted) CustomSnackbar.show(context: context, title: 'Success', message: 'Image updated successfully', type: SnackbarType.success);
+      if (mounted)
+        CustomSnackbar.show(
+          context: context,
+          title: 'Success',
+          message: 'Image updated successfully',
+          type: SnackbarType.success,
+        );
     } catch (e) {
-      if (mounted) CustomSnackbar.showError(context, 'Failed to update image: $e');
+      if (mounted)
+        CustomSnackbar.showError(context, 'Failed to update image: $e');
     } finally {
       _isShowingLoadingDialog = false;
     }
@@ -495,45 +589,93 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      builder: (ctx) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 40, height: 4,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey[700] : Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
+      builder: (ctx) => SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[700] : Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          InkWell(
-            onTap: () { Navigator.pop(ctx); _pickImageFromSource(ImageSource.camera); },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Row(children: [
-                HugeIcon(icon: HugeIcons.strokeRoundedCamera02, size: 24, color: isDark ? Colors.white : Colors.black87),
-                const SizedBox(width: 16),
-                const Text('Take Photo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-              ]),
+            InkWell(
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImageFromSource(ImageSource.camera);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedCamera02,
+                      size: 24,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Take Photo',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          Divider(height: 1, thickness: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-          InkWell(
-            onTap: () { Navigator.pop(ctx); _pickImageFromSource(ImageSource.gallery); },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Row(children: [
-                HugeIcon(icon: HugeIcons.strokeRoundedImageCrop, size: 24, color: isDark ? Colors.white : Colors.black87),
-                const SizedBox(width: 16),
-                const Text('Choose from Gallery', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-              ]),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: isDark ? Colors.grey[800] : Colors.grey[200],
             ),
-          ),
-          const SizedBox(height: 8),
-        ],
+            InkWell(
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImageFromSource(ImageSource.gallery);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Row(
+                  children: [
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedImageCrop,
+                      size: 24,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Choose from Gallery',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -545,12 +687,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   bool _hasUnsavedChanges() {
     if (_userData == null) return false;
-    return _nameController.text.trim() != _normalizeForEdit(_userData!['name']) ||
-        _emailController.text.trim() != _normalizeForEdit(_userData!['email']) ||
-        _phoneController.text.trim() != _normalizeForEdit(_userData!['phone']) ||
-        _mobileController.text.trim() != _normalizeForEdit(_userData!['mobile']) ||
-        _websiteController.text.trim() != _normalizeForEdit(_userData!['website']) ||
-        _functionController.text.trim() != _normalizeForEdit(_userData!['function']) ||
+    return _nameController.text.trim() !=
+            _normalizeForEdit(_userData!['name']) ||
+        _emailController.text.trim() !=
+            _normalizeForEdit(_userData!['email']) ||
+        _phoneController.text.trim() !=
+            _normalizeForEdit(_userData!['phone']) ||
+        _mobileController.text.trim() !=
+            _normalizeForEdit(_userData!['mobile']) ||
+        _websiteController.text.trim() !=
+            _normalizeForEdit(_userData!['website']) ||
+        _functionController.text.trim() !=
+            _normalizeForEdit(_userData!['function']) ||
         _mapTokenController.text.trim() != _loadedMapToken ||
         _pickedImageBase64 != null;
   }
@@ -560,7 +708,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       final result = await DataLossWarningDialog.show(
         context: context,
         title: 'Discard Changes?',
-        message: 'You have unsaved changes that will be lost if you leave this page. Are you sure you want to discard these changes?',
+        message:
+            'You have unsaved changes that will be lost if you leave this page. Are you sure you want to discard these changes?',
         confirmText: 'Discard',
         cancelText: 'Keep Editing',
       );
@@ -573,17 +722,30 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   void _showEditAddressDialog() {
     if (_userData == null) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
 
-    final streetCtrl = TextEditingController(text: _normalizeForEdit(_userData!['street']));
-    final street2Ctrl = TextEditingController(text: _normalizeForEdit(_userData!['street2']));
-    final cityCtrl = TextEditingController(text: _normalizeForEdit(_userData!['city']));
-    final zipCtrl = TextEditingController(text: _normalizeForEdit(_userData!['zip']));
+    final streetCtrl = TextEditingController(
+      text: _normalizeForEdit(_userData!['street']),
+    );
+    final street2Ctrl = TextEditingController(
+      text: _normalizeForEdit(_userData!['street2']),
+    );
+    final cityCtrl = TextEditingController(
+      text: _normalizeForEdit(_userData!['city']),
+    );
+    final zipCtrl = TextEditingController(
+      text: _normalizeForEdit(_userData!['zip']),
+    );
 
-    int? selectedCountryId = (_userData!['country_id'] is List && (_userData!['country_id'] as List).isNotEmpty)
-        ? _userData!['country_id'][0] as int? : null;
-    int? selectedStateId = (_userData!['state_id'] is List && (_userData!['state_id'] as List).isNotEmpty)
-        ? _userData!['state_id'][0] as int? : null;
+    int? selectedCountryId =
+        (_userData!['country_id'] is List &&
+            (_userData!['country_id'] as List).isNotEmpty)
+        ? _userData!['country_id'][0] as int?
+        : null;
+    int? selectedStateId =
+        (_userData!['state_id'] is List &&
+            (_userData!['state_id'] as List).isNotEmpty)
+        ? _userData!['state_id'][0] as int?
+        : null;
 
     if (selectedCountryId != null && _states.isEmpty && !_isLoadingStates) {
       _loadStates(selectedCountryId);
@@ -595,33 +757,88 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) {
           final validCountryIds = _countries.map((c) => c['id']).toSet();
-          final safeCountryId = selectedCountryId != null && validCountryIds.contains(selectedCountryId) ? selectedCountryId : null;
+          final safeCountryId =
+              selectedCountryId != null &&
+                  validCountryIds.contains(selectedCountryId)
+              ? selectedCountryId
+              : null;
           final validStateIds = _states.map((s) => s['id']).toSet();
-          final safeStateId = selectedStateId != null && validStateIds.contains(selectedStateId) ? selectedStateId : null;
+          final safeStateId =
+              selectedStateId != null && validStateIds.contains(selectedStateId)
+              ? selectedStateId
+              : null;
 
           final countryItems = _isLoadingCountries
-              ? [const DropdownMenuItem<String>(value: null, child: Text('Loading...'))]
+              ? [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Loading...'),
+                  ),
+                ]
               : [
-                  const DropdownMenuItem<String>(value: null, child: Text('Select Country', style: TextStyle(fontStyle: FontStyle.italic))),
-                  ..._countries.map((c) => DropdownMenuItem<String>(value: c['id'].toString(), child: Text(c['name']))),
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text(
+                      'Select Country',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                  ..._countries.map(
+                    (c) => DropdownMenuItem<String>(
+                      value: c['id'].toString(),
+                      child: Text(c['name']),
+                    ),
+                  ),
                 ];
 
           final stateEnabled = safeCountryId != null;
           final stateItems = !stateEnabled
-              ? [const DropdownMenuItem<String>(value: null, child: Text('Select country first', style: TextStyle(fontStyle: FontStyle.italic)))]
+              ? [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text(
+                      'Select country first',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                ]
               : _isLoadingStates
-                  ? [const DropdownMenuItem<String>(value: null, child: Text('Loading...'))]
-                  : [
-                      const DropdownMenuItem<String>(value: null, child: Text('Select State/Province', style: TextStyle(fontStyle: FontStyle.italic))),
-                      ..._states.map((s) => DropdownMenuItem<String>(value: s['id'].toString(), child: Text(s['name']))),
-                    ];
+              ? [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Loading...'),
+                  ),
+                ]
+              : [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text(
+                      'Select State/Province',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                  ..._states.map(
+                    (s) => DropdownMenuItem<String>(
+                      value: s['id'].toString(),
+                      child: Text(s['name']),
+                    ),
+                  ),
+                ];
 
           return AlertDialog(
             backgroundColor: isDark ? Colors.grey[850] : Colors.white,
             surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text('Edit Address',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              'Edit Address',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
             content: SingleChildScrollView(
               child: SizedBox(
                 width: 400,
@@ -629,43 +846,85 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CustomTextField(
-                      controller: streetCtrl, labelText: 'Street Address',
-                      hintText: 'Enter street address', isDark: isDark,
+                      controller: streetCtrl,
+                      labelText: 'Street Address',
+                      hintText: 'Enter street address',
+                      isDark: isDark,
                       isRequired: true,
-                      validator: (value) => value == null || value.trim().isEmpty ? 'This field is required' : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'This field is required'
+                          : null,
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(controller: street2Ctrl, labelText: 'Street Address 2',
-                      hintText: 'Apartment, suite, etc. (optional)', isDark: isDark),
+                    CustomTextField(
+                      controller: street2Ctrl,
+                      labelText: 'Street Address 2',
+                      hintText: 'Apartment, suite, etc. (optional)',
+                      isDark: isDark,
+                    ),
                     const SizedBox(height: 16),
-                    CustomTextField(controller: cityCtrl, labelText: 'City', hintText: 'Enter city', isDark: isDark),
+                    CustomTextField(
+                      controller: cityCtrl,
+                      labelText: 'City',
+                      hintText: 'Enter city',
+                      isDark: isDark,
+                    ),
                     const SizedBox(height: 16),
-                    CustomTextField(controller: zipCtrl, labelText: 'ZIP Code', hintText: 'Enter ZIP code',
-                      isDark: isDark, keyboardType: TextInputType.number),
+                    CustomTextField(
+                      controller: zipCtrl,
+                      labelText: 'ZIP Code',
+                      hintText: 'Enter ZIP code',
+                      isDark: isDark,
+                      keyboardType: TextInputType.number,
+                    ),
                     const SizedBox(height: 16),
                     CustomDropdownField(
                       value: safeCountryId?.toString(),
-                      labelText: 'Country', hintText: 'Select Country', isDark: isDark,
+                      labelText: 'Country',
+                      hintText: 'Select Country',
+                      isDark: isDark,
                       isRequired: true,
                       items: countryItems,
-                      onChanged: _isLoadingCountries ? null : (val) {
-                        setDlg(() { selectedCountryId = val != null ? int.tryParse(val) : null; selectedStateId = null; _states = []; });
-                        if (selectedCountryId != null) {
-                          _loadStates(selectedCountryId!).then((_) { if (ctx.mounted) setDlg(() {}); });
-                        }
-                      },
-                      validator: (value) => value == null ? 'Please select a country' : null,
+                      onChanged: _isLoadingCountries
+                          ? null
+                          : (val) {
+                              setDlg(() {
+                                selectedCountryId = val != null
+                                    ? int.tryParse(val)
+                                    : null;
+                                selectedStateId = null;
+                                _states = [];
+                              });
+                              if (selectedCountryId != null) {
+                                _loadStates(selectedCountryId!).then((_) {
+                                  if (ctx.mounted) setDlg(() {});
+                                });
+                              }
+                            },
+                      validator: (value) =>
+                          value == null ? 'Please select a country' : null,
                     ),
                     const SizedBox(height: 16),
                     CustomDropdownField(
                       value: safeStateId?.toString(),
                       labelText: 'State/Province',
-                      hintText: stateEnabled ? (_isLoadingStates ? 'Loading...' : 'Select State/Province') : 'Select country first',
+                      hintText: stateEnabled
+                          ? (_isLoadingStates
+                                ? 'Loading...'
+                                : 'Select State/Province')
+                          : 'Select country first',
                       isDark: isDark,
                       items: stateItems,
-                      onChanged: (!stateEnabled || _isLoadingStates) ? null : (val) {
-                        setDlg(() => selectedStateId = val != null ? int.tryParse(val) : null);
-                      },
+                      onChanged: (!stateEnabled || _isLoadingStates)
+                          ? null
+                          : (val) {
+                              setDlg(
+                                () => selectedStateId = val != null
+                                    ? int.tryParse(val)
+                                    : null,
+                              );
+                            },
                     ),
                   ],
                 ),
@@ -678,7 +937,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 borderRadius: 8,
                 onPressed: () {
                   Navigator.pop(ctx);
-                  streetCtrl.dispose(); street2Ctrl.dispose(); cityCtrl.dispose(); zipCtrl.dispose();
+                  streetCtrl.dispose();
+                  street2Ctrl.dispose();
+                  cityCtrl.dispose();
+                  zipCtrl.dispose();
                 },
               ),
               MoboButton.primary(
@@ -692,34 +954,56 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   }
                   final addressData = {
                     'street': streetCtrl.text.trim(),
-                    'street2': street2Ctrl.text.trim().isEmpty ? false : street2Ctrl.text.trim(),
-                    'city': cityCtrl.text.trim().isEmpty ? false : cityCtrl.text.trim(),
-                    'zip': zipCtrl.text.trim().isEmpty ? false : zipCtrl.text.trim(),
+                    'street2': street2Ctrl.text.trim().isEmpty
+                        ? false
+                        : street2Ctrl.text.trim(),
+                    'city': cityCtrl.text.trim().isEmpty
+                        ? false
+                        : cityCtrl.text.trim(),
+                    'zip': zipCtrl.text.trim().isEmpty
+                        ? false
+                        : zipCtrl.text.trim(),
                     'country_id': selectedCountryId ?? false,
                     'state_id': selectedStateId ?? false,
                   };
                   final navigator = Navigator.of(context);
                   navigator.pop();
-                  streetCtrl.dispose(); street2Ctrl.dispose(); cityCtrl.dispose(); zipCtrl.dispose();
+                  streetCtrl.dispose();
+                  street2Ctrl.dispose();
+                  cityCtrl.dispose();
+                  zipCtrl.dispose();
                   _showLoadingDialog(context, 'Updating Address');
                   try {
                     if (_partnerId != null) {
                       await CompanySessionManager.callKwWithCompany({
-                        'model': 'res.partner', 'method': 'write',
-                        'args': [[_partnerId], addressData], 'kwargs': {},
+                        'model': 'res.partner',
+                        'method': 'write',
+                        'args': [
+                          [_partnerId],
+                          addressData,
+                        ],
+                        'kwargs': {},
                       });
                     }
                     await _fetchUserProfile(forceRefresh: true);
                     if (mounted) {
                       _isShowingLoadingDialog = false;
                       navigator.pop();
-                      CustomSnackbar.show(context: context, title: 'Success', message: 'Address updated successfully', type: SnackbarType.success);
+                      CustomSnackbar.show(
+                        context: context,
+                        title: 'Success',
+                        message: 'Address updated successfully',
+                        type: SnackbarType.success,
+                      );
                     }
                   } catch (e) {
                     if (mounted) {
                       _isShowingLoadingDialog = false;
                       navigator.pop();
-                      CustomSnackbar.showError(context, 'Failed to update address: $e');
+                      CustomSnackbar.showError(
+                        context,
+                        'Failed to update address: $e',
+                      );
                     }
                   }
                 },
@@ -742,13 +1026,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
     Future<void> loadCompanies([String q = '']) async {
       try {
-        final domain = [['is_company', '=', true]];
+        final domain = [
+          ['is_company', '=', true],
+        ];
         if (q.trim().isNotEmpty) domain.add(['name', 'ilike', q.trim()]);
         final res = await CompanySessionManager.callKwWithCompany({
           'model': 'res.partner',
           'method': 'search_read',
           'args': [domain],
-          'kwargs': {'fields': ['id', 'name'], 'limit': 20, 'order': 'name asc'},
+          'kwargs': {
+            'fields': ['id', 'name'],
+            'limit': 20,
+            'order': 'name asc',
+          },
         });
         companies = (res as List).cast<Map<String, dynamic>>();
       } catch (e) {
@@ -767,9 +1057,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         builder: (ctx, setDlg) => AlertDialog(
           backgroundColor: isDark ? Colors.grey[850] : Colors.white,
           surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text('Select Related Company',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Text(
+            'Select Related Company',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -793,23 +1091,49 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   height: 320,
                   width: double.infinity,
                   child: loading
-                      ? Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(theme.primaryColor)))
-                      : companies.isEmpty
-                          ? Center(child: Text('No companies found', style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600])))
-                          : ListView.separated(
-                              itemCount: companies.length,
-                              separatorBuilder: (_, __) => Divider(height: .01, thickness: .01, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                              itemBuilder: (ctx, i) {
-                                final c = companies[i];
-                                final selected = c['id'] == _relatedCompanyId;
-                                return ListTile(
-                                  dense: true,
-                                  title: Text(c['name'] ?? ''),
-                                  trailing: selected ? Icon(HugeIcons.strokeRoundedTick03, color: theme.primaryColor, size: 18) : null,
-                                  onTap: () => Navigator.of(ctx).pop(c),
-                                );
-                              },
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(
+                              theme.primaryColor,
                             ),
+                          ),
+                        )
+                      : companies.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No companies found',
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: companies.length,
+                          separatorBuilder: (_, __) => Divider(
+                            height: .01,
+                            thickness: .01,
+                            color: isDark ? Colors.grey[800] : Colors.grey[200],
+                          ),
+                          itemBuilder: (ctx, i) {
+                            final c = companies[i];
+                            final selected = c['id'] == _relatedCompanyId;
+                            return ListTile(
+                              dense: true,
+                              title: Text(c['name'] ?? ''),
+                              trailing: selected
+                                  ? Icon(
+                                      HugeIcons.strokeRoundedTick03,
+                                      color: theme.primaryColor,
+                                      size: 18,
+                                    )
+                                  : null,
+                              onTap: () => Navigator.of(ctx).pop(c),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -830,8 +1154,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       _showLoadingDialog(context, 'Updating Related Company');
       if (_partnerId != null) {
         await CompanySessionManager.callKwWithCompany({
-          'model': 'res.partner', 'method': 'write',
-          'args': [[_partnerId], {'parent_id': selected['id']}], 'kwargs': {},
+          'model': 'res.partner',
+          'method': 'write',
+          'args': [
+            [_partnerId],
+            {'parent_id': selected['id']},
+          ],
+          'kwargs': {},
         });
       }
       if (!mounted) return;
@@ -841,12 +1170,20 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         _relatedCompanyId = selected['id'] as int?;
         _relatedCompanyName = selected['name']?.toString();
       });
-      CustomSnackbar.show(context: context, title: 'Success', message: 'Related Company updated', type: SnackbarType.success);
+      CustomSnackbar.show(
+        context: context,
+        title: 'Success',
+        message: 'Related Company updated',
+        type: SnackbarType.success,
+      );
     } catch (e) {
       if (mounted) {
         _isShowingLoadingDialog = false;
         Navigator.of(context).pop();
-        CustomSnackbar.showError(context, 'Failed to update related company: $e');
+        CustomSnackbar.showError(
+          context,
+          'Failed to update related company: $e',
+        );
       }
     }
   }
@@ -884,11 +1221,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 padding: const EdgeInsets.only(right: 8.0),
                 child: TextButton(
                   onPressed: _isSaving ? null : _cancelEdit,
-                  child: Text('Cancel',
-                      style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w500, letterSpacing: 0.2,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      )),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.2,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
                 ),
               ),
             Padding(
@@ -906,10 +1247,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 child: Text(
                   _isEditMode ? 'Save' : 'Edit',
                   style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
                     color: _isEditMode
                         ? (isDark ? Colors.white : Colors.black)
-                        : isDark ? Colors.white : Theme.of(context).primaryColor,
+                        : isDark
+                        ? Colors.white
+                        : Theme.of(context).primaryColor,
                   ),
                 ),
               ),
@@ -922,95 +1267,131 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         body: _isLoading && _userData == null
             ? const ProfileDetailShimmer()
             : _userData == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(HugeIcons.strokeRoundedAlert02, size: 40, color: Colors.grey),
-                        const SizedBox(height: 12),
-                        const Text('Failed to load profile'),
-                        const SizedBox(height: 12),
-                        MoboButton.secondary(label: 'Retry', fullWidth: false, onPressed: _fetchUserProfile),
-                      ]),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: () => _fetchUserProfile(forceRefresh: true),
-                    child: SingleChildScrollView(
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildProfileImageSection(context, isDark),
-                              const SizedBox(height: 32),
-                              const Text('Personal Information',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 20),
-                              _buildCustomTextField(context, 'Full Name', _userData!['name']?.toString(),
-                                  HugeIcons.strokeRoundedUserAccount, controller: _nameController),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(context, 'Email', _userData!['email']?.toString(),
-                                  HugeIcons.strokeRoundedMail01, controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(context, 'Phone', _userData!['phone']?.toString(),
-                                  HugeIcons.strokeRoundedCall02, controller: _phoneController,
-                                  keyboardType: TextInputType.phone),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(context, 'Mobile', _userData!['mobile']?.toString(),
-                                  HugeIcons.strokeRoundedSmartPhone01, controller: _mobileController,
-                                  keyboardType: TextInputType.phone),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(context, 'Website', _userData!['website']?.toString(),
-                                  HugeIcons.strokeRoundedWebDesign02, controller: _websiteController,
-                                  keyboardType: TextInputType.url),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(context, 'Job Title', _userData!['function']?.toString(),
-                                  HugeIcons.strokeRoundedWorkHistory, controller: _functionController),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(
-                                context,
-                                'Company',
-                                _userData!['company_id'] is List && (_userData!['company_id'] as List).length > 1
-                                    ? (_userData!['company_id'][1]?.toString() ?? '')
-                                    : '',
-                                HugeIcons.strokeRoundedBuilding05,
-                                showNonEditableMessage: true,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(
-                                context,
-                                'Related Company',
-                                _relatedCompanyName ?? '',
-                                HugeIcons.strokeRoundedBuilding01,
-                                onEdit: _isEditMode ? _showRelatedCompanyPicker : null,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildCustomTextField(
-                                context,
-                                'Google Maps API Key',
-                                _loadedMapToken.isNotEmpty ? (_isEditMode ? _loadedMapToken : '••••••••••••••••') : '',
-                                HugeIcons.strokeRoundedMaps,
-                                controller: _mapTokenController,
-                              ),
-                              const SizedBox(height: 20),
-                              _buildCustomTextField(
-                                context,
-                                'Address',
-                                formatAddress(_userData!),
-                                HugeIcons.strokeRoundedLocation05,
-                                onEdit: _isEditMode ? _showEditAddressDialog : null,
-                              ),
-                              const SizedBox(height: 32),
-                            ],
+            ? ErrorStateWidget(
+                errorMessage: _profileError,
+                onRetry: _fetchUserProfile,
+              )
+            : RefreshIndicator(
+                onRefresh: () => _fetchUserProfile(forceRefresh: true),
+                child: SingleChildScrollView(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildProfileImageSection(context, isDark),
+                          const SizedBox(height: 32),
+                          const Text(
+                            'Personal Information',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                          _buildCustomTextField(
+                            context,
+                            'Full Name',
+                            _userData!['name']?.toString(),
+                            HugeIcons.strokeRoundedUserAccount,
+                            controller: _nameController,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Email',
+                            _userData!['email']?.toString(),
+                            HugeIcons.strokeRoundedMail01,
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Phone',
+                            _userData!['phone']?.toString(),
+                            HugeIcons.strokeRoundedCall02,
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Mobile',
+                            _userData!['mobile']?.toString(),
+                            HugeIcons.strokeRoundedSmartPhone01,
+                            controller: _mobileController,
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Website',
+                            _userData!['website']?.toString(),
+                            HugeIcons.strokeRoundedWebDesign02,
+                            controller: _websiteController,
+                            keyboardType: TextInputType.url,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Job Title',
+                            _userData!['function']?.toString(),
+                            HugeIcons.strokeRoundedWorkHistory,
+                            controller: _functionController,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Company',
+                            _userData!['company_id'] is List &&
+                                    (_userData!['company_id'] as List).length >
+                                        1
+                                ? (_userData!['company_id'][1]?.toString() ??
+                                      '')
+                                : '',
+                            HugeIcons.strokeRoundedBuilding05,
+                            showNonEditableMessage: true,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Related Company',
+                            _relatedCompanyName ?? '',
+                            HugeIcons.strokeRoundedBuilding01,
+                            onEdit: _isEditMode
+                                ? _showRelatedCompanyPicker
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          _buildCustomTextField(
+                            context,
+                            'Google Maps API Key',
+                            _loadedMapToken.isNotEmpty
+                                ? (_isEditMode
+                                      ? _loadedMapToken
+                                      : '••••••••••••••••')
+                                : '',
+                            HugeIcons.strokeRoundedMaps,
+                            controller: _mapTokenController,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildCustomTextField(
+                            context,
+                            'Address',
+                            formatAddress(_userData!),
+                            HugeIcons.strokeRoundedLocation05,
+                            onEdit: _isEditMode ? _showEditAddressDialog : null,
+                          ),
+                          const SizedBox(height: 32),
+                        ],
                       ),
                     ),
                   ),
+                ),
+              ),
       ),
     );
   }
@@ -1027,9 +1408,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final displayValue =
-        (value == null || value.trim().isEmpty || value.trim().toLowerCase() == 'false')
-            ? 'Not set'
-            : value;
+        (value == null ||
+            value.trim().isEmpty ||
+            value.trim().toLowerCase() == 'false')
+        ? 'Not set'
+        : value;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1039,17 +1422,30 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w500).fontFamily,
+            fontFamily: GoogleFonts.manrope(
+              fontWeight: FontWeight.w500,
+            ).fontFamily,
             color: isDark ? Colors.white70 : const Color(0xff7F7F7F),
           ),
         ),
         const SizedBox(height: 8),
         _isEditMode && controller != null
-            ? _buildEditableField(context, controller, keyboardType, labelText, isDark)
-            : _buildDisplayField(context, displayValue, icon, isDark,
+            ? _buildEditableField(
+                context,
+                controller,
+                keyboardType,
+                labelText,
+                isDark,
+              )
+            : _buildDisplayField(
+                context,
+                displayValue,
+                icon,
+                isDark,
                 onEdit: onEdit,
                 labelText: labelText,
-                showNonEditableMessage: showNonEditableMessage),
+                showNonEditableMessage: showNonEditableMessage,
+              ),
       ],
     );
   }
@@ -1064,11 +1460,15 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     bool showNonEditableMessage = false,
   }) {
     return GestureDetector(
-      onTap: onEdit ??
+      onTap:
+          onEdit ??
           (showNonEditableMessage && labelText != null
               ? () {
                   if (mounted) {
-                    CustomSnackbar.showInfo(context, '$labelText cannot be modified from this screen');
+                    CustomSnackbar.showInfo(
+                      context,
+                      '$labelText cannot be modified from this screen',
+                    );
                   }
                 }
               : null),
@@ -1088,7 +1488,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 child: Text(
                   displayValue,
                   style: TextStyle(
-                    fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w600).fontFamily,
+                    fontFamily: GoogleFonts.manrope(
+                      fontWeight: FontWeight.w600,
+                    ).fontFamily,
                     color: displayValue == 'Not set'
                         ? Colors.grey[500]
                         : (isDark ? Colors.white70 : const Color(0xff000000)),
@@ -1122,17 +1524,28 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB),
+                  color: isDark
+                      ? const Color(0xFF2A2A2A)
+                      : const Color(0xffF8FAFB),
                   border: Border.all(
-                    color: hasFocus ? Theme.of(context).primaryColor : Colors.transparent,
+                    color: hasFocus
+                        ? Theme.of(context).primaryColor
+                        : Colors.transparent,
                     width: 1,
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   child: Row(
                     children: [
-                      _buildIcon(_getIconForField(labelText), isDark ? Colors.white70 : Colors.black, 20),
+                      _buildIcon(
+                        _getIconForField(labelText),
+                        isDark ? Colors.white70 : Colors.black,
+                        20,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
@@ -1141,8 +1554,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           validator: _getValidatorForField(labelText),
                           autovalidateMode: AutovalidateMode.onUserInteraction,
                           style: TextStyle(
-                            fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w600).fontFamily,
-                            color: isDark ? Colors.white70 : const Color(0xff000000),
+                            fontFamily: GoogleFonts.manrope(
+                              fontWeight: FontWeight.w600,
+                            ).fontFamily,
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xff000000),
                             fontSize: 14,
                             height: 1.2,
                             letterSpacing: 0.0,
@@ -1153,11 +1570,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                             focusedBorder: InputBorder.none,
                             errorBorder: InputBorder.none,
                             focusedErrorBorder: InputBorder.none,
-                            hintText: controller.text.isEmpty ? 'Enter $labelText' : null,
+                            hintText: controller.text.isEmpty
+                                ? 'Enter $labelText'
+                                : null,
                             hintStyle: TextStyle(
-                              fontFamily: GoogleFonts.manrope(fontWeight: FontWeight.w400).fontFamily,
+                              fontFamily: GoogleFonts.manrope(
+                                fontWeight: FontWeight.w400,
+                              ).fontFamily,
                               fontWeight: FontWeight.w400,
-                              color: isDark ? Colors.grey[500] : Colors.grey[500],
+                              color: isDark
+                                  ? Colors.grey[500]
+                                  : Colors.grey[500],
                               fontStyle: FontStyle.italic,
                               fontSize: 14,
                               height: 1.2,
@@ -1185,14 +1608,22 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   dynamic _getIconForField(String labelText) {
     switch (labelText.toLowerCase()) {
-      case 'full name': return HugeIcons.strokeRoundedUserAccount;
-      case 'email': return HugeIcons.strokeRoundedMail01;
-      case 'phone': return HugeIcons.strokeRoundedCall02;
-      case 'mobile': return HugeIcons.strokeRoundedSmartPhone01;
-      case 'website': return HugeIcons.strokeRoundedWebDesign02;
-      case 'job title': return HugeIcons.strokeRoundedWorkHistory;
-      case 'google maps api key': return HugeIcons.strokeRoundedMaps;
-      default: return HugeIcons.strokeRoundedUserAccount;
+      case 'full name':
+        return HugeIcons.strokeRoundedUserAccount;
+      case 'email':
+        return HugeIcons.strokeRoundedMail01;
+      case 'phone':
+        return HugeIcons.strokeRoundedCall02;
+      case 'mobile':
+        return HugeIcons.strokeRoundedSmartPhone01;
+      case 'website':
+        return HugeIcons.strokeRoundedWebDesign02;
+      case 'job title':
+        return HugeIcons.strokeRoundedWorkHistory;
+      case 'google maps api key':
+        return HugeIcons.strokeRoundedMaps;
+      default:
+        return HugeIcons.strokeRoundedUserAccount;
     }
   }
 
@@ -1202,14 +1633,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         return (value) {
           if (value == null || value.trim().isEmpty) return null;
           final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-          if (!emailRegex.hasMatch(value.trim())) return 'Please enter a valid email address';
+          if (!emailRegex.hasMatch(value.trim()))
+            return 'Please enter a valid email address';
           return null;
         };
       case 'website':
         return (value) {
           if (value == null || value.trim().isEmpty) return null;
-          final urlRegex = RegExp(r'^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+(\/.*)?$');
-          if (!urlRegex.hasMatch(value.trim())) return 'Please enter a valid website URL';
+          final urlRegex = RegExp(
+            r'^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+(\/.*)?$',
+          );
+          if (!urlRegex.hasMatch(value.trim()))
+            return 'Please enter a valid website URL';
           return null;
         };
       default:
@@ -1217,7 +1652,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
-  Widget _buildErrorMessage(TextEditingController controller, String labelText, bool isDark) {
+  Widget _buildErrorMessage(
+    TextEditingController controller,
+    String labelText,
+    bool isDark,
+  ) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, child) {
@@ -1228,7 +1667,11 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           padding: const EdgeInsets.only(top: 4, left: 4),
           child: Text(
             errorMessage,
-            style: TextStyle(color: Colors.red[400], fontSize: 12, fontWeight: FontWeight.w400),
+            style: TextStyle(
+              color: Colors.red[400],
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         );
       },
@@ -1239,12 +1682,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     Widget photoWidget;
     if (_pickedImageBase64 != null) {
       photoWidget = ClipOval(
-        child: Image.memory(base64Decode(_pickedImageBase64!), width: 120, height: 120, fit: BoxFit.cover),
+        child: Image.memory(
+          base64Decode(_pickedImageBase64!),
+          width: 120,
+          height: 120,
+          fit: BoxFit.cover,
+        ),
       );
     } else {
       photoWidget = OdooAvatar(
         imageBase64: _userAvatarBase64,
-        size: 120, iconSize: 60,
+        size: 120,
+        iconSize: 60,
         borderRadius: BorderRadius.circular(60),
         placeholderColor: isDark ? Colors.grey[700] : Colors.grey[300],
         iconColor: isDark ? Colors.grey[500] : Colors.grey[600],
@@ -1261,30 +1710,51 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: isDark ? Colors.grey[600]! : Colors.grey[300]!, width: 3),
+                    border: Border.all(
+                      color: isDark ? Colors.grey[600]! : Colors.grey[300]!,
+                      width: 3,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 6), spreadRadius: 2),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                        spreadRadius: 2,
+                      ),
                     ],
                   ),
                   child: photoWidget,
                 ),
                 if (_isEditMode)
                   Positioned(
-                    bottom: 8, right: 8,
+                    bottom: 8,
+                    right: 8,
                     child: InkWell(
                       onTap: _showImageSourceActionSheet,
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
-                        width: 36, height: 36,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: Theme.of(context).primaryColor,
                           shape: BoxShape.circle,
-                          border: Border.all(color: isDark ? Colors.grey[900]! : Colors.white, width: 3),
+                          border: Border.all(
+                            color: isDark ? Colors.grey[900]! : Colors.white,
+                            width: 3,
+                          ),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2)),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
-                        child: const HugeIcon(icon: HugeIcons.strokeRoundedCamera02, color: Colors.white, size: 18),
+                        child: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedCamera02,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),

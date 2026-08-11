@@ -7,10 +7,10 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/company/session/company_session_manager.dart';
-import '../../../../Dashboard/screens/dashboard/bloc/dashboard_bloc.dart';
-import '../../../../Dashboard/screens/dashboard/bloc/dashboard_state.dart';
 import '../../../../Dashboard/infrastructure/profile_refresh_bus.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
+import '../../../../StoreToOffline/pending_sync_service.dart';
+import '../../../../StoreToOffline/sync_center_page.dart';
 import '../services/pickings_filter_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
 import '../../../../shared/utils/globals.dart';
@@ -20,7 +20,6 @@ import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/list_search_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
-import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../CreateNewPicking/pages/create_picking_page.dart';
 import '../../PickingFormPage/pages/picking_details_page.dart';
@@ -81,7 +80,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   bool hasGroupBy = false;
   Timer? _searchDebounce;
   bool catchError = false;
-  bool _allGroupsExpanded = true;
+  String? _errorText;
 
   final Map<String, String> filterTechnicalNames = {
     "To Do": "to_do",
@@ -157,22 +156,26 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   /// when there is nothing to fall back to do we replace the page with
   /// the retryable error widget.
   Future<void> _fetchData() async {
-    final hadDataBefore =
-        _service.allPickingsByLocation.values.any((list) => list.isNotEmpty);
+    final hadDataBefore = _service.allPickingsByLocation.values.any(
+      (list) => list.isNotEmpty,
+    );
     setState(() {
       isLoading = true;
       catchError = false;
+      _errorText = null;
     });
     try {
-      await _service.fetchData(
-        scheduledDate: selectedScheduleDate,
-        deadlineDate: selectedDeadlineDate,
-        state: selectedStateValue,
-        type: selectedType,
-        searchTerm: _searchTerm,
-        filters: _selectedFilters,
-        forceRefresh: _isFreshFetch,
-      ).timeout(const Duration(seconds: 15));
+      await _service
+          .fetchData(
+            scheduledDate: selectedScheduleDate,
+            deadlineDate: selectedDeadlineDate,
+            state: selectedStateValue,
+            type: selectedType,
+            searchTerm: _searchTerm,
+            filters: _selectedFilters,
+            forceRefresh: _isFreshFetch,
+          )
+          .timeout(const Duration(seconds: 15));
       _isFreshFetch = false;
       final allPickings = _service.allPickingsByLocation.values
           .expand((e) => e)
@@ -186,7 +189,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       if (mounted) {
         CompanySessionManager.logout(context);
       }
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
       if (mounted) {
         if (hadDataBefore) {
           CustomSnackbar.showError(
@@ -194,10 +197,13 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             'Refresh took too long. Showing previous results.',
           );
         } else {
-          setState(() => catchError = true);
+          setState(() {
+            catchError = true;
+            _errorText = e.toString();
+          });
         }
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         if (hadDataBefore) {
           CustomSnackbar.showError(
@@ -205,7 +211,10 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
             'Could not refresh pickings. Showing previous results.',
           );
         } else {
-          setState(() => catchError = true);
+          setState(() {
+            catchError = true;
+            _errorText = e.toString();
+          });
         }
       }
     } finally {
@@ -306,10 +315,11 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   }
 
   Future<void> _loadNextPage(String location) async {
-
     final pageSize = _service.pageSize;
-    final totalGlobal = _service.totalPickingsCount.values
-        .fold<int>(0, (a, b) => a + b);
+    final totalGlobal = _service.totalPickingsCount.values.fold<int>(
+      0,
+      (a, b) => a + b,
+    );
     final maxPage = totalGlobal > 0 ? ((totalGlobal - 1) ~/ pageSize) : 0;
     final currentPage = _service.currentPage[location] ?? 0;
     if (currentPage >= maxPage) return;
@@ -335,7 +345,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     setState(() => isPageLoading = true);
 
     try {
-
       await _service.fetchData(
         scheduledDate: selectedScheduleDate,
         deadlineDate: selectedDeadlineDate,
@@ -378,96 +387,135 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final groupMap = groupTechnicalNames;
 
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.8,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF232323) : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          return SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF232323) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
-            ),
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Filter & Group By',
-                            style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Filter & Group By',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(
-                            HugeIcons.strokeRoundedCancel01,
-                            color: isDark ? Colors.white : Colors.black54,
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: Icon(
+                              HugeIcons.strokeRoundedCancel01,
+                              color: isDark ? Colors.white : Colors.black54,
+                            ),
+                            splashRadius: 20,
                           ),
-                          splashRadius: 20,
+                        ],
+                      ),
+                    ),
+
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        indicator: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2A2A2A)
+                              : AppStyle.primaryColor,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
+                        indicatorPadding: const EdgeInsets.all(4),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        overlayColor: WidgetStateProperty.all(
+                          Colors.transparent,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: isDark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        tabs: const [
+                          Tab(height: 48, text: "Filter"),
+                          Tab(height: 48, text: "Group By"),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
 
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TabBar(
-                      indicator: BoxDecoration(
-                        color: isDark ? const Color(0xFF2A2A2A) : AppStyle.primaryColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      indicatorPadding: const EdgeInsets.all(4),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      overlayColor: WidgetStateProperty.all(Colors.transparent),
-                      splashFactory: NoSplash.splashFactory,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: isDark
-                          ? Colors.grey[400]
-                          : Colors.grey[600],
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                      tabs: const [
-                        Tab(height: 48, text: "Filter"),
-                        Tab(height: 48, text: "Group By"),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (tempFilters.isNotEmpty) ...[
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (tempFilters.isNotEmpty) ...[
+                                  Text(
+                                    'Active Filters',
+                                    style: TextStyle(
+                                      color: AppStyle.primaryColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: filterTechnicalNames.entries
+                                        .where(
+                                          (e) => tempFilters.contains(e.value),
+                                        )
+                                        .map(
+                                          (e) => _buildActiveFilterChip(
+                                            isDark,
+                                            e.key,
+                                            () => setDialogState(
+                                              () => tempFilters.remove(e.value),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                  const SizedBox(height: 18),
+                                ],
                                 Text(
-                                  'Active Filters',
+                                  'Filters',
                                   style: TextStyle(
-                                    color: AppStyle.primaryColor,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -476,191 +524,169 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: filterTechnicalNames.entries
-                                      .where((e) =>
-                                          tempFilters.contains(e.value))
-                                      .map(
-                                        (e) => _buildActiveFilterChip(
-                                          isDark,
-                                          e.key,
-                                          () => setDialogState(
-                                            () => tempFilters.remove(e.value),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                                const SizedBox(height: 18),
-                              ],
-                              Text(
-                                'Filters',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: filterTechnicalNames.keys.map((label) {
-                                  final tech = filterTechnicalNames[label]!;
-                                  final selected = tempFilters.contains(tech);
+                                  children: filterTechnicalNames.keys.map((
+                                    label,
+                                  ) {
+                                    final tech = filterTechnicalNames[label]!;
+                                    final selected = tempFilters.contains(tech);
 
-                                  return ChoiceChip(
-                                label: Text(
-                                  label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                    color: selected
-                                        ? Colors.white
-                                        : (isDark
+                                    return ChoiceChip(
+                                      label: Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: selected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: selected
                                               ? Colors.white
-                                              : Colors.black87),
-                                  ),
+                                              : (isDark
+                                                    ? Colors.white
+                                                    : Colors.black87),
+                                        ),
+                                      ),
+                                      selected: selected,
+                                      selectedColor: AppStyle.primaryColor,
+                                      backgroundColor: isDark
+                                          ? Colors.white.withOpacity(0.08)
+                                          : AppStyle.primaryColor.withOpacity(
+                                              0.08,
+                                            ),
+                                      elevation: 0,
+                                      pressElevation: 0,
+                                      shadowColor: Colors.transparent,
+                                      surfaceTintColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? Colors.grey[600]!
+                                              : Colors.grey[300]!,
+                                        ),
+                                      ),
+                                      onSelected: (val) {
+                                        setDialogState(() {
+                                          if (val) {
+                                            tempFilters.add(tech);
+                                          } else {
+                                            tempFilters.remove(tech);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
                                 ),
-                                selected: selected,
-                                selectedColor: AppStyle.primaryColor,
-                                backgroundColor: isDark
-                                    ? Colors.white.withOpacity(0.08)
-                                    : AppStyle.primaryColor.withOpacity(0.08),
-                                elevation: 0,
-                                pressElevation: 0,
-                                shadowColor: Colors.transparent,
-                                surfaceTintColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? Colors.grey[600]!
-                                        : Colors.grey[300]!,
-                                  ),
-                                ),
-                                onSelected: (val) {
-                                  setDialogState(() {
-                                    if (val) {
-                                      tempFilters.add(tech);
-                                    } else {
-                                      tempFilters.remove(tech);
-                                    }
-                                  });
-                                },
-                              );
-                                }).toList(),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
 
-                        ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                'Group pickings by',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                          ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'Group pickings by',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            _buildGroupOption(
-                              isDark: isDark,
-                              label: 'None',
-                              subtitle: 'Display as a simple list',
-                              isSelected: tempGroupBy == null,
-                              onTap: () =>
-                                  setDialogState(() => tempGroupBy = null),
-                            ),
-                            Divider(
-                              height: 1,
-                              color: isDark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[200],
-                            ),
-                            for (final entry in groupMap.entries)
                               _buildGroupOption(
                                 isDark: isDark,
-                                label: entry.key,
-                                subtitle: 'Group by ${entry.key.toLowerCase()}',
-                                isSelected: tempGroupBy == entry.value,
-                                onTap: () => setDialogState(
-                                  () => tempGroupBy = entry.value,
-                                ),
+                                label: 'None',
+                                subtitle: 'Display as a simple list',
+                                isSelected: tempGroupBy == null,
+                                onTap: () =>
+                                    setDialogState(() => tempGroupBy = null),
                               ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF232323) : Colors.white,
-                      border: Border(
-                        top: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                        ),
+                              Divider(
+                                height: 1,
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[200],
+                              ),
+                              for (final entry in groupMap.entries)
+                                _buildGroupOption(
+                                  isDark: isDark,
+                                  label: entry.key,
+                                  subtitle:
+                                      'Group by ${entry.key.toLowerCase()}',
+                                  isSelected: tempGroupBy == entry.value,
+                                  onTap: () => setDialogState(
+                                    () => tempGroupBy = entry.value,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: MoboButton.secondary(
-                            label: 'Clear All',
-                            borderRadius: 8,
-                            onPressed: () {
-                              setState(() {
-                                selectedStateValue = null;
-                                selectedType = 'outgoing';
-                                selectedScheduleDate = null;
-                                selectedDeadlineDate = null;
-                                _selectedFilters.clear();
-                                _selectedGroupBy = null;
-                                isFilterApplied = false;
-                              });
 
-                              Navigator.pop(context);
-                              _service.clearPaginationState();
-                              _fetchData();
-                            },
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF232323) : Colors.white,
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[200]!,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: MoboButton.primary(
-                            label: 'Apply',
-                            borderRadius: 8,
-                            onPressed: () {
-                              setState(() {
-                                _selectedFilters = List.from(tempFilters);
-                                _selectedGroupBy = tempGroupBy;
-                                isFilterApplied =
-                                    tempFilters.isNotEmpty ||
-                                    tempGroupBy != null;
-                              });
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: MoboButton.secondary(
+                              label: 'Clear All',
+                              borderRadius: 8,
+                              onPressed: () {
+                                setState(() {
+                                  selectedStateValue = null;
+                                  selectedType = 'outgoing';
+                                  selectedScheduleDate = null;
+                                  selectedDeadlineDate = null;
+                                  _selectedFilters.clear();
+                                  _selectedGroupBy = null;
+                                  isFilterApplied = false;
+                                });
 
-                              Navigator.pop(context);
-                              _service.clearPaginationState();
-                              _fetchData();
-                            },
+                                Navigator.pop(context);
+                                _service.clearPaginationState();
+                                _fetchData();
+                              },
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: MoboButton.primary(
+                              label: 'Apply',
+                              borderRadius: 8,
+                              onPressed: () {
+                                setState(() {
+                                  _selectedFilters = List.from(tempFilters);
+                                  _selectedGroupBy = tempGroupBy;
+                                  isFilterApplied =
+                                      tempFilters.isNotEmpty ||
+                                      tempGroupBy != null;
+                                });
+
+                                Navigator.pop(context);
+                                _service.clearPaginationState();
+                                _fetchData();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -795,9 +821,9 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   }
 
   Widget _buildEmptyState(bool isDark, bool hasFilters, BuildContext context) {
-
     final hasSearch = _searchTerm.isNotEmpty;
-    final hasActiveFilters = _selectedFilters.isNotEmpty ||
+    final hasActiveFilters =
+        _selectedFilters.isNotEmpty ||
         _selectedGroupBy != null ||
         selectedStateValue != null ||
         selectedScheduleDate != null ||
@@ -861,8 +887,9 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   Widget _buildGroupToggle(bool isDark) {
     final count = _groupedPickings.length;
 
-    final expanded = _groupedPickings.keys
-        .every((k) => _groupExpanded[k] ?? true);
+    final expanded = _groupedPickings.keys.every(
+      (k) => _groupExpanded[k] ?? true,
+    );
     return TextButton.icon(
       onPressed: () {
         setState(() {
@@ -870,7 +897,6 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
           for (final key in _groupedPickings.keys) {
             _groupExpanded[key] = target;
           }
-          _allGroupsExpanded = target;
         });
       },
       icon: Icon(
@@ -894,9 +920,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
 
   Widget _buildErrorState(bool isDark, BuildContext context) {
     return ErrorStateWidget(
-      title: 'Something went wrong',
-      message: 'Unable to load pickings. Please check your connection or try again.',
-      errorType: ErrorType.general,
+      errorMessage: _errorText,
       onRetry: () async {
         await context.read<CompanyProvider>().initialize();
         ProfileRefreshBus.notifyProfileRefresh();
@@ -904,14 +928,17 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
-    final bool hasFilters = _selectedFilters.isNotEmpty ||
+    final bool hasFilters =
+        _selectedFilters.isNotEmpty ||
         _searchTerm.isNotEmpty ||
         selectedScheduleDate != null ||
         selectedDeadlineDate != null ||
         selectedStateValue != null;
-    final int activeFilterCount = _selectedFilters.length +
+    final int activeFilterCount =
+        _selectedFilters.length +
         (_searchTerm.isNotEmpty ? 1 : 0) +
         (selectedScheduleDate != null ? 1 : 0) +
         (selectedDeadlineDate != null ? 1 : 0) +
@@ -937,284 +964,325 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => const [],
         body: Column(
-        children: [
-          ListSearchBar(
-            controller: _searchController,
-            hintText: 'Search pickings...',
-            hasActiveFilters: hasFilters || hasGroupBy,
-            onFilterTap: () => openFilterGroupBySheet(context),
-            onChanged: (value) {
-              _searchDebounce?.cancel();
-              _searchDebounce = Timer(const Duration(milliseconds: 400), () {
-                setState(() {
-                  _searchTerm = value;
-                  _service.clearPaginationState();
+          children: [
+            ListSearchBar(
+              controller: _searchController,
+              hintText: 'Search pickings...',
+              hasActiveFilters: hasFilters || hasGroupBy,
+              onFilterTap: () => openFilterGroupBySheet(context),
+              onChanged: (value) {
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+                  setState(() {
+                    _searchTerm = value;
+                    _service.clearPaginationState();
+                  });
+                  _fetchData();
                 });
-                _fetchData();
-              });
-            },
-          ),
-
-          if (isLoading || isPageLoading)
-            const PaginationBarShimmer()
-          else if (!catchError && filteredLocations.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    _buildFilterIndicator(isDark, activeFilterCount),
-                  ],
-                ),
-                if (_selectedGroupBy != null &&
-                    _groupedPickings.isNotEmpty)
-                  _buildGroupToggle(isDark)
-                else if (_selectedGroupBy == null)
-                  Consumer<CompanyProvider>(
-                      builder: (context, companyProvider, _) {
-
-                    final liveGlobal = _service.globalPickingCount;
-                    final livePerWh = _service.totalPickingsCount.values
-                        .fold<int>(0, (sum, count) => sum + count);
-                    final totalGlobalCount =
-                        liveGlobal > 0 ? liveGlobal : livePerWh;
-                    final pageSize = _service.pageSize;
-
-                    final firstLoc = _service.allPickingsByLocation.keys.isNotEmpty
-                        ? _service.allPickingsByLocation.keys.first
-                        : null;
-                    final rawCurrentPage = firstLoc != null
-                        ? (_service.currentPage[firstLoc] ?? 0)
-                        : 0;
-
-                    final maxPage = totalGlobalCount > 0
-                        ? ((totalGlobalCount - 1) ~/ pageSize)
-                        : 0;
-                    final currentPage = rawCurrentPage.clamp(0, maxPage);
-                    final hasNext = currentPage < maxPage;
-
-                    final start = totalGlobalCount == 0
-                        ? 0
-                        : currentPage * pageSize + 1;
-                    final end = ((currentPage + 1) * pageSize)
-                        .clamp(0, totalGlobalCount);
-                    final rangeText = totalGlobalCount > 0
-                        ? '$start-$end/$totalGlobalCount'
-                        : '0/0';
-
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white10 : Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color:
-                                  isDark ? Colors.white24 : Colors.grey.shade300,
-                            ),
-                          ),
-                          child: Text(
-                            rangeText,
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ),
-                        if (firstLoc != null && maxPage > 0) ...[
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: Icon(
-                              HugeIcons.strokeRoundedArrowLeft01,
-                              size: 25,
-                              color: currentPage > 0
-                                  ? (isDark ? Colors.white70 : Colors.black87)
-                                  : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
-                            ),
-                            onPressed: currentPage > 0 ? () => _loadPrevPage(firstLoc) : null,
-                          ),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: Icon(
-                              HugeIcons.strokeRoundedArrowRight01,
-                              size: 25,
-                              color: hasNext
-                                  ? (isDark ? Colors.white70 : Colors.black87)
-                                  : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
-                            ),
-                            onPressed: hasNext ? () => _loadNextPage(firstLoc) : null,
-                          ),
-                        ],
-                      ],
-                    );
-                  }),
-              ],
+              },
             ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                if (isLoading || isPageLoading)
-                  const PickingListShimmer(itemCount: 6)
-                else if (catchError)
-                  Positioned.fill(
-                    child: _buildErrorState(isDark, context),
-                  )
-                else if (filteredLocations.isEmpty)
-                  Positioned.fill(
-                    child: _buildEmptyState(isDark, hasFilters, context),
-                  )
-                else if (_selectedGroupBy != null &&
-                    _selectedGroupBy!.isNotEmpty &&
-                    _groupedPickings.isNotEmpty)
-                  Column(
-                    children: [
-                      Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: () async => reloadPickingList(),
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            itemCount: _groupedPickings.length,
-                            itemBuilder: (context, index) {
-                              final groupName = _groupedPickings.keys.elementAt(
-                                index,
-                              );
-                              final groupPickings = _groupedPickings[groupName]!;
-                              final isExpanded = _groupExpanded[groupName] ?? true;
 
-                              return Container(
+            const _PendingCreatesBanner(),
+
+            if (isLoading || isPageLoading)
+              const PaginationBarShimmer()
+            else if (!catchError && filteredLocations.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        _buildFilterIndicator(isDark, activeFilterCount),
+                      ],
+                    ),
+                    if (_selectedGroupBy != null && _groupedPickings.isNotEmpty)
+                      _buildGroupToggle(isDark)
+                    else if (_selectedGroupBy == null)
+                      Consumer<CompanyProvider>(
+                        builder: (context, companyProvider, _) {
+                          final liveGlobal = _service.globalPickingCount;
+                          final livePerWh = _service.totalPickingsCount.values
+                              .fold<int>(0, (sum, count) => sum + count);
+                          final totalGlobalCount = liveGlobal > 0
+                              ? liveGlobal
+                              : livePerWh;
+                          final pageSize = _service.pageSize;
+
+                          final firstLoc =
+                              _service.allPickingsByLocation.keys.isNotEmpty
+                              ? _service.allPickingsByLocation.keys.first
+                              : null;
+                          final rawCurrentPage = firstLoc != null
+                              ? (_service.currentPage[firstLoc] ?? 0)
+                              : 0;
+
+                          final maxPage = totalGlobalCount > 0
+                              ? ((totalGlobalCount - 1) ~/ pageSize)
+                              : 0;
+                          final currentPage = rawCurrentPage.clamp(0, maxPage);
+                          final hasNext = currentPage < maxPage;
+
+                          final start = totalGlobalCount == 0
+                              ? 0
+                              : currentPage * pageSize + 1;
+                          final end = ((currentPage + 1) * pageSize).clamp(
+                            0,
+                            totalGlobalCount,
+                          );
+                          final rangeText = totalGlobalCount > 0
+                              ? '$start-$end/$totalGlobalCount'
+                              : '0/0';
+
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: isDark
+                                      ? Colors.white10
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: isDark
-                                        ? Colors.white.withOpacity(0.08)
-                                        : Colors.black.withOpacity(0.06),
+                                        ? Colors.white24
+                                        : Colors.grey.shade300,
                                   ),
-                                  boxShadow: [
-                                    if (!isDark)
-                                      BoxShadow(
-                                        blurRadius: 16,
-                                        spreadRadius: 2,
-                                        offset: const Offset(0, 6),
-                                        color: Colors.black.withOpacity(0.08),
-                                      ),
-                                  ],
                                 ),
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: Column(
-                                  children: [
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          _groupExpanded[groupName] = !isExpanded;
-                                        });
-                                      },
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    _selectedGroupBy == 'state'
-                                                        ? capitalizeFirstLetter(
-                                                            groupName,
-                                                          )
-                                                        : groupName,
-                                                    style: TextStyle(
-                                                      color: isDark
-                                                          ? Colors.white
-                                                          : Colors.black87,
-                                                      fontWeight: FontWeight.w600,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    '${groupPickings.length} Pickings',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: isDark
-                                                          ? Colors.grey[400]
-                                                          : Colors.grey[600],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            Icon(
-                                              isExpanded
-                                                  ? HugeIcons.strokeRoundedArrowUp01
-                                                  : HugeIcons.strokeRoundedArrowDown01,
-                                              color: isDark
-                                                  ? Colors.white70
-                                                  : Colors.black54,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                child: Text(
+                                  rangeText,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black87,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                              if (firstLoc != null && maxPage > 0) ...[
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(
+                                    HugeIcons.strokeRoundedArrowLeft01,
+                                    size: 25,
+                                    color: currentPage > 0
+                                        ? (isDark
+                                              ? Colors.white70
+                                              : Colors.black87)
+                                        : (isDark
+                                              ? Colors.grey[800]
+                                              : Colors.grey.withValues(
+                                                  alpha: 0.4,
+                                                )),
+                                  ),
+                                  onPressed: currentPage > 0
+                                      ? () => _loadPrevPage(firstLoc)
+                                      : null,
+                                ),
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(
+                                    HugeIcons.strokeRoundedArrowRight01,
+                                    size: 25,
+                                    color: hasNext
+                                        ? (isDark
+                                              ? Colors.white70
+                                              : Colors.black87)
+                                        : (isDark
+                                              ? Colors.grey[800]
+                                              : Colors.grey.withValues(
+                                                  alpha: 0.4,
+                                                )),
+                                  ),
+                                  onPressed: hasNext
+                                      ? () => _loadNextPage(firstLoc)
+                                      : null,
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: Stack(
+                children: [
+                  if (isLoading || isPageLoading)
+                    const PickingListShimmer(itemCount: 6)
+                  else if (catchError ||
+                      (_service.isDataFromHive &&
+                          _service.allPickingsByLocation.values.every(
+                            (list) => list.isEmpty,
+                          )))
+                    Positioned.fill(child: _buildErrorState(isDark, context))
+                  else if (filteredLocations.isEmpty)
+                    Positioned.fill(
+                      child: _buildEmptyState(isDark, hasFilters, context),
+                    )
+                  else if (_selectedGroupBy != null &&
+                      _selectedGroupBy!.isNotEmpty &&
+                      _groupedPickings.isNotEmpty)
+                    Column(
+                      children: [
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () async => reloadPickingList(),
+                            child: ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: _groupedPickings.length,
+                              itemBuilder: (context, index) {
+                                final groupName = _groupedPickings.keys
+                                    .elementAt(index);
+                                final groupPickings =
+                                    _groupedPickings[groupName]!;
+                                final isExpanded =
+                                    _groupExpanded[groupName] ?? true;
 
-                                    if (isExpanded) ...[
-                                      const SizedBox(height: 4),
-                                      ...groupPickings.map(
-                                        (picking) => Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          child: _buildPickingCard(
-                                            picking,
-                                            isDark,
-                                            insideGroup: true,
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF1E1E1E)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white.withOpacity(0.08)
+                                          : Colors.black.withOpacity(0.06),
+                                    ),
+                                    boxShadow: [
+                                      if (!isDark)
+                                        BoxShadow(
+                                          blurRadius: 16,
+                                          spreadRadius: 2,
+                                          offset: const Offset(0, 6),
+                                          color: Colors.black.withOpacity(0.08),
+                                        ),
+                                    ],
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: Column(
+                                    children: [
+                                      InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            _groupExpanded[groupName] =
+                                                !isExpanded;
+                                          });
+                                        },
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      _selectedGroupBy ==
+                                                              'state'
+                                                          ? capitalizeFirstLetter(
+                                                              groupName,
+                                                            )
+                                                          : groupName,
+                                                      style: TextStyle(
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : Colors.black87,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 16,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      '${groupPickings.length} Pickings',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color: isDark
+                                                            ? Colors.grey[400]
+                                                            : Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Icon(
+                                                isExpanded
+                                                    ? HugeIcons
+                                                          .strokeRoundedArrowUp01
+                                                    : HugeIcons
+                                                          .strokeRoundedArrowDown01,
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : Colors.black54,
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 8),
+
+                                      if (isExpanded) ...[
+                                        const SizedBox(height: 4),
+                                        ...groupPickings.map(
+                                          (picking) => Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            child: _buildPickingCard(
+                                              picking,
+                                              isDark,
+                                              insideGroup: true,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                      ],
                                     ],
-                                  ],
-                                ),
-                              );
-                            },
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
+                      ],
+                    )
+                  else
+                    RefreshIndicator(
+                      onRefresh: () async => reloadPickingList(),
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        itemCount: filteredLocations
+                            .expand((e) => e.value)
+                            .length,
+                        itemBuilder: (context, index) {
+                          final allPickings = filteredLocations
+                              .expand((e) => e.value)
+                              .toList();
+                          final picking = allPickings[index];
+                          return _buildPickingCard(picking, isDark);
+                        },
                       ),
-                    ],
-                  )
-                else
-                  RefreshIndicator(
-                    onRefresh: () async => reloadPickingList(),
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                      itemCount: filteredLocations.expand((e) => e.value).length,
-                      itemBuilder: (context, index) {
-                        final allPickings = filteredLocations.expand((e) => e.value).toList();
-                        final picking = allPickings[index];
-                        return _buildPickingCard(picking, isDark);
-                      },
                     ),
-                  ),
-
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'pickingsCreateFab',
@@ -1227,15 +1295,13 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
               transitionDuration: const Duration(milliseconds: 300),
               reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder: (context, animation, _, child) {
-return FadeTransition(opacity: animation, child: child);
+                return FadeTransition(opacity: animation, child: child);
               },
             ),
           ).then((_) => reloadPickingList());
         },
         backgroundColor: AppStyle.primaryColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const HugeIcon(
           icon: HugeIcons.strokeRoundedFileAdd,
           size: 30,
@@ -1341,7 +1407,9 @@ return FadeTransition(opacity: animation, child: child);
                     HugeIcon(
                       icon: HugeIcons.strokeRoundedCalendar03,
                       size: 14,
-                      color: isDark ? (Colors.grey[100] ?? Colors.white) : const Color(0xffC5C5C5),
+                      color: isDark
+                          ? (Colors.grey[100] ?? Colors.white)
+                          : const Color(0xffC5C5C5),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -1396,11 +1464,11 @@ return FadeTransition(opacity: animation, child: child);
   }
 
   Widget _buildStatusBadge(String state, bool isDark) {
-    const Color statusGreen  = Colors.green;
-    const Color statusBlue   = Colors.blue;
+    const Color statusGreen = Colors.green;
+    const Color statusBlue = Colors.blue;
     const Color statusOrange = Colors.orange;
-    const Color statusRed    = Colors.red;
-    const Color statusGrey   = Colors.grey;
+    const Color statusRed = Colors.red;
+    const Color statusGrey = Colors.grey;
 
     Color color;
     String label;
@@ -1454,6 +1522,82 @@ return FadeTransition(opacity: animation, child: child);
           letterSpacing: 0.1,
         ),
       ),
+    );
+  }
+}
+
+/// Surfaces pickings created offline, which live only in Hive and so never
+/// appear in this server-backed list. Taps through to the Sync Center.
+class _PendingCreatesBanner extends StatelessWidget {
+  const _PendingCreatesBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ValueListenableBuilder<int>(
+      valueListenable: PendingSyncService.instance.pendingCreateCount,
+      builder: (context, count, _) {
+        if (count == 0) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Material(
+            color: isDark
+                ? Colors.orange.withValues(alpha: 0.16)
+                : const Color(0xFFFDF6E7),
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SyncCenterPage()),
+                );
+                await PendingSyncService.instance.refreshCount();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      HugeIcons.strokeRoundedCloudUpload,
+                      size: 18,
+                      color: isDark
+                          ? Colors.orange.shade300
+                          : Colors.orange.shade800,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '$count picking${count == 1 ? '' : 's'} created '
+                        'offline — waiting to sync',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? Colors.orange.shade200
+                              : Colors.orange.shade900,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      HugeIcons.strokeRoundedArrowRight01,
+                      size: 18,
+                      color: isDark
+                          ? Colors.orange.shade300
+                          : Colors.orange.shade800,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

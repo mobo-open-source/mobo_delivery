@@ -1,169 +1,227 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import '../../core/company/services/connectivity_service.dart';
 import '../utils/globals.dart';
 
-/// Defines the type of error to display the appropriate Lottie animation and colors.
+/// Defines the type of error, used to pick the fallback icon if the Lottie
+/// asset fails to load.
 enum ErrorType { network, server, general }
 
-/// A common error display widget with support for retry and support actions.
-/// Provides a consistent look and feel for error states across the application.
-class ErrorStateWidget extends StatelessWidget {
-  final String title;
-  final String message;
-  final ErrorType errorType;
+/// The app's single full-page error state. Derives its title and message
+/// from [errorMessage] and the current connectivity.
+class ErrorStateWidget extends StatefulWidget {
+  /// Raw exception text.
+  final String? errorMessage;
+
   final VoidCallback? onRetry;
-  final VoidCallback? onContactSupport;
+  final ErrorType errorType;
 
   const ErrorStateWidget({
     super.key,
-    required this.title,
-    required this.message,
-    this.errorType = ErrorType.general,
+    this.errorMessage,
     this.onRetry,
-    this.onContactSupport,
+    this.errorType = ErrorType.general,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  State<ErrorStateWidget> createState() => _ErrorStateWidgetState();
+}
 
-    return Material(
-      color: Colors.transparent,
-      child: Column(
-        children: [
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        height: 220,
-                        child: Lottie.asset(
-                          _getLottieAsset(),
-                          fit: BoxFit.contain,
-                          repeat: true,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            _getFallbackIcon(),
-                            size: 100,
-                            color: isDark ? Colors.red[700] : Colors.red[400],
-                          ),
-                        ),
+class _ErrorStateWidgetState extends State<ErrorStateWidget> {
+  late bool _noInternet =
+      !ConnectivityService.instance.lastKnownInternetReachable;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshConnectivity();
+  }
+
+  Future<void> _refreshConnectivity() async {
+    final online = await ConnectivityService.instance.hasInternetAccess();
+    if (mounted && online == _noInternet) {
+      setState(() => _noInternet = !online);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? Colors.grey[900]! : Colors.grey[50]!;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+
+    final info = _noInternet
+        ? const {
+            'title': 'No Internet Connection',
+            'message': 'Please check your internet connection and try again.',
+          }
+        : _errorInfo(widget.errorMessage);
+
+    final title = info['title']!;
+    final subtitle = info['message']!;
+
+    final isSessionError =
+        title.toLowerCase().contains('session expired') ||
+        subtitle.toLowerCase().contains('session has expired') ||
+        subtitle.toLowerCase().contains('log in again');
+
+    final buttonText = isSessionError ? 'Log In' : 'Retry';
+    final onAction = isSessionError
+        ? () {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/login', (route) => false);
+          }
+        : widget.onRetry;
+
+    return Container(
+      color: backgroundColor,
+      width: double.infinity,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Lottie.asset(
+                'assets/lotties/error_404.json',
+                width: MediaQuery.of(context).size.width * 0.6,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  _fallbackIcon(),
+                  size: 100,
+                  color: isDark ? Colors.red[700] : Colors.red[400],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: subtitleColor,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (onAction != null) ...[
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: 140,
+                  child: OutlinedButton(
+                    onPressed: onAction,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: AppStyle.primaryColor,
+                        width: 1.2,
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                        textAlign: TextAlign.center,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: (isDark ? Colors.red[900] : Colors.red[50])
-                              ?.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: (isDark ? Colors.red[700] : Colors.red[200])!
-                                .withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          message,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isDark ? Colors.grey[300] : Colors.black54,
-                            height: 1.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+                      foregroundColor: AppStyle.primaryColor,
+                    ),
+                    child: Text(
+                      buttonText,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 16),
-                    ],
+                    ),
                   ),
                 ),
-              );
-            },
+              ],
+            ],
           ),
         ),
-        if (onRetry != null || onContactSupport != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: [
-                if (onRetry != null)
-                  OutlinedButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh, size: 20),
-                    label: const Text('Retry'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      foregroundColor:
-                          AppStyle.accentOf(context),
-                      side: BorderSide(
-                        color: AppStyle.accentOf(context),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                if (onContactSupport != null)
-                  ElevatedButton.icon(
-                    onPressed: onContactSupport,
-                    icon: const Icon(Icons.support_agent, size: 20),
-                    label: const Text('Contact Support'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      backgroundColor: AppStyle.primaryColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  String _getLottieAsset() {
-    switch (errorType) {
-      case ErrorType.network:
-        return 'assets/lotties/error_404.json';
-      case ErrorType.server:
-        return 'assets/lotties/error_404.json';
-      case ErrorType.general:
-        return 'assets/lotties/error_404.json';
+  Map<String, String> _errorInfo(String? error) {
+    const serverUnreachable = {
+      'title': 'Can\'t Reach Server',
+      'message':
+          'Unable to connect to your Odoo server. Please check your network '
+          'connection and try again.',
+    };
+
+    if (error == null || error.isEmpty) return serverUnreachable;
+
+    final errorLower = error.toLowerCase();
+
+    if (errorLower.contains('session expired') ||
+        errorLower.contains('access denied') ||
+        errorLower.contains('odoo session expired')) {
+      return {
+        'title': 'Session Expired',
+        'message': 'Your session has expired. Please log in again to continue.',
+      };
     }
+
+    if (errorLower.contains('socketexception') ||
+        errorLower.contains('no route to host') ||
+        errorLower.contains('failed host lookup') ||
+        errorLower.contains('connection refused') ||
+        errorLower.contains('network is unreachable') ||
+        errorLower.contains('clientexception') ||
+        errorLower.contains('timeoutexception') ||
+        errorLower.contains('odoo server error')) {
+      return serverUnreachable;
+    }
+
+    if (errorLower.contains('formatexception') ||
+        errorLower.contains('html') ||
+        errorLower.contains('unexpected character')) {
+      return {
+        'title': 'Server Error',
+        'message':
+            'The server returned an unexpected response. Please try again later.',
+      };
+    }
+
+    if (errorLower.contains('500 internal server error')) {
+      return {
+        'title': 'Server Error (500)',
+        'message': 'The server encountered an error. Please try again later.',
+      };
+    }
+    if (errorLower.contains('502 bad gateway')) {
+      return {
+        'title': 'Server Error (502)',
+        'message': 'Bad gateway. The server is temporarily unavailable.',
+      };
+    }
+    if (errorLower.contains('503 service unavailable')) {
+      return {
+        'title': 'Server Unavailable (503)',
+        'message':
+            'The server is temporarily unavailable. Please try again later.',
+      };
+    }
+    if (errorLower.contains('504 gateway timeout')) {
+      return {
+        'title': 'Server Timeout (504)',
+        'message': 'The server took too long to respond. Please try again.',
+      };
+    }
+
+    return {'title': 'Error', 'message': error};
   }
 
-  IconData _getFallbackIcon() {
-    switch (errorType) {
+  IconData _fallbackIcon() {
+    switch (widget.errorType) {
       case ErrorType.network:
         return Icons.wifi_off_rounded;
       case ErrorType.server:

@@ -266,16 +266,18 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
         try {
           final dbList = await Future.any([
             _networkService.fetchDatabaseList('$protocol$host'),
-            Future.delayed(const Duration(seconds: 15)).then(
-              (_) => throw TimeoutException('Request timed out'),
-            ),
+            Future.delayed(
+              const Duration(seconds: 15),
+            ).then((_) => throw TimeoutException('Request timed out')),
           ]);
 
           if (dbList.isNotEmpty) {
             if (mounted) {
               setState(() {
                 final uniqueDbList = dbList.toSet().toList();
-                uniqueDbList.sort((a, b) => a.toString().compareTo(b.toString()));
+                uniqueDbList.sort(
+                  (a, b) => a.toString().compareTo(b.toString()),
+                );
                 _databases = uniqueDbList;
                 _workingProtocol = protocol;
                 _errorMessage = null;
@@ -440,13 +442,13 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                     onTap: _isLoading
                         ? null
                         : () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => Dashboard(),
-                        ),
-                      );
-                    },
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => Dashboard(),
+                              ),
+                            );
+                          },
                     borderRadius: BorderRadius.circular(32),
                     child: Container(
                       height: 64,
@@ -572,9 +574,12 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                             size: 26,
                             variant: LoadingVariant.staggeredDots,
                           ),
-                          onPressed: ((_databases.isEmpty && !_showManualDbInput) ||
-                                  (_showManualDbInput && _manualDbController.text.isEmpty) ||
-                                  (!_showManualDbInput && _selectedDatabase == null))
+                          onPressed:
+                              ((_databases.isEmpty && !_showManualDbInput) ||
+                                  (_showManualDbInput &&
+                                      _manualDbController.text.isEmpty) ||
+                                  (!_showManualDbInput &&
+                                      _selectedDatabase == null))
                               ? null
                               : () {
                                   setState(() {
@@ -590,16 +595,17 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                                       : _selectedDatabase!;
                                   if (finalDb.isEmpty) {
                                     setState(
-                                          () => _errorMessage =
-                                      "Database name is required",
+                                      () => _errorMessage =
+                                          "Database name is required",
                                     );
                                     return;
                                   }
                                   if (_urlHistory.containsKey(url)) {
                                     final entry = _urlHistory[url]!;
 
-                                    if (!_showManualDbInput && (_selectedDatabase == null ||
-                                        _selectedDatabase!.isEmpty)) {
+                                    if (!_showManualDbInput &&
+                                        (_selectedDatabase == null ||
+                                            _selectedDatabase!.isEmpty)) {
                                       finalDb = entry['db'] ?? "";
                                     }
                                   }
@@ -725,8 +731,10 @@ class _UrlInputField extends StatelessWidget {
 
       onSelected: (selection) {
         String hostOnly = selection;
-        final match =
-            RegExp(r'^(https?://)', caseSensitive: false).firstMatch(selection);
+        final match = RegExp(
+          r'^(https?://)',
+          caseSensitive: false,
+        ).firstMatch(selection);
         if (match != null) {
           final detectedProtocol = match.group(1)!.toLowerCase();
           hostOnly = selection.substring(match.group(0)!.length);
@@ -751,14 +759,17 @@ class _UrlInputField extends StatelessWidget {
             return null;
           },
           onChanged: (value) {
-            final match = RegExp(r'^(https?://)', caseSensitive: false)
-                .firstMatch(value);
+            final match = RegExp(
+              r'^(https?://)',
+              caseSensitive: false,
+            ).firstMatch(value);
             if (match != null) {
               final detected = match.group(1)!.toLowerCase();
               final hostOnly = value.substring(match.group(0)!.length);
               controller.text = hostOnly;
-              controller.selection =
-                  TextSelection.collapsed(offset: hostOnly.length);
+              controller.selection = TextSelection.collapsed(
+                offset: hostOnly.length,
+              );
               onProtocolChanged(detected);
               onUrlChanged(hostOnly);
               return;

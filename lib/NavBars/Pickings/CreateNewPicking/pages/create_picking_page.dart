@@ -9,7 +9,6 @@ import '../../../../Rating/review_service.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/utils/date_picker_utils.dart';
 import '../../../../shared/utils/globals.dart';
-import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../../shared/widgets/snackbar.dart';
 import '../../PickingFormPage/pages/picking_details_page.dart';
@@ -163,10 +162,15 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           }),
         ]);
 
-        final freshProducts = (results[0] as List?)?.cast<ProductModel>() ?? <ProductModel>[];
-        final freshPartners = (results[1] as List?)?.cast<PartnerModel>() ?? <PartnerModel>[];
-        final freshUsers = (results[2] as List?)?.cast<UserModel>() ?? <UserModel>[];
-        final freshOpTypes = (results[3] as List?)?.cast<OperationTypeModel>() ?? <OperationTypeModel>[];
+        final freshProducts =
+            (results[0] as List?)?.cast<ProductModel>() ?? <ProductModel>[];
+        final freshPartners =
+            (results[1] as List?)?.cast<PartnerModel>() ?? <PartnerModel>[];
+        final freshUsers =
+            (results[2] as List?)?.cast<UserModel>() ?? <UserModel>[];
+        final freshOpTypes =
+            (results[3] as List?)?.cast<OperationTypeModel>() ??
+            <OperationTypeModel>[];
 
         setState(() {
           if (freshProducts.isNotEmpty) products = freshProducts;
@@ -190,7 +194,8 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
     } catch (e) {
       if (mounted && partnerList.isEmpty && operationTypes.isEmpty) {
         setState(() {
-          _errorMessage = "Error loading data: ${e.toString().replaceFirst('Exception: ', '')}";
+          _errorMessage =
+              "Error loading data: ${e.toString().replaceFirst('Exception: ', '')}";
         });
       }
     } finally {
@@ -348,8 +353,9 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           throw Exception("Invalid locations");
         }
 
-        final pickingCompanyId =
-            await odooService.getPickingCompanyId(pickingId);
+        final pickingCompanyId = await odooService.getPickingCompanyId(
+          pickingId,
+        );
 
         for (var product in moveProducts) {
           try {
@@ -413,7 +419,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
               reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+                    return FadeTransition(opacity: animation, child: child);
                   },
             ),
           );
@@ -457,13 +463,15 @@ return FadeTransition(opacity: animation, child: child);
               .toList(),
         });
 
+        if (!mounted) return;
         setState(() {
           isLoading = false;
-          _errorMessage = "No internet. Picking saved offline.";
+          _isSubmitting = false;
         });
         CustomSnackbar.showWarning(
           context,
-          'No internet. Picking saved offline.',
+          'Server unreachable. Picking saved offline — it will sync '
+          'automatically and is listed under Sync Center.',
         );
         Navigator.pop(context);
       }
@@ -504,7 +512,8 @@ return FadeTransition(opacity: animation, child: child);
       (p) => p?.id == move.productId,
       orElse: () => null,
     );
-    final initial = existing ??
+    final initial =
+        existing ??
         ProductModel(
           id: move.productId,
           name: move.productName,
@@ -582,14 +591,43 @@ return FadeTransition(opacity: animation, child: child);
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (isLoading) {
-      return _guarded(Scaffold(
-        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
+      return _guarded(
+        Scaffold(
+          backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
 
+          appBar: AppBar(
+            forceMaterialTransparency: true,
+            backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
+            title: Text(
+              "Create New Picking",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 22,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            leading: IconButton(
+              icon: Icon(
+                HugeIcons.strokeRoundedArrowLeft01,
+                color: isDark ? Colors.white : Colors.black,
+                size: 28,
+              ),
+              onPressed: _onBackPressed,
+            ),
+          ),
+          body: _buildShimmerLoading(),
+        ),
+      );
+    }
+
+    return _guarded(
+      Scaffold(
+        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
         appBar: AppBar(
           forceMaterialTransparency: true,
           backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
           title: Text(
-            "Create New Picking",
+            'Create New Picking',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 22,
@@ -605,420 +643,414 @@ return FadeTransition(opacity: animation, child: child);
             onPressed: _onBackPressed,
           ),
         ),
-        body: _buildShimmerLoading(),
-      ));
-    }
-
-    return _guarded(Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-      appBar: AppBar(
-        forceMaterialTransparency: true,
-        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-        title: Text(
-          'Create New Picking',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 22,
-            color: isDark ? Colors.white : Colors.black,
-          ),
-        ),
-        leading: IconButton(
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
-            color: isDark ? Colors.white : Colors.black,
-            size: 28,
-          ),
-          onPressed: _onBackPressed,
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900] : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: TextButton(
-            onPressed: (!isLoading &&
-                    _selectedPartnerId != null &&
-                    _selectedOperationTypeId != null)
-                ? _createPicking
-                : null,
-            style: TextButton.styleFrom(
-              backgroundColor: AppStyle.primaryColor,
-              disabledBackgroundColor: Colors.grey[400],
-              disabledForegroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.all(13),
-            ),
-            child: const Text(
-              'Create Picking',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-          ),
-        ),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        behavior: HitTestBehavior.opaque,
-        child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[850] : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.18)
-                            : Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Delivery Information',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : Colors.grey[900],
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.grey[700] : Colors.grey[200],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            RequiredLabel(
-                              'Delivery Address',
-                              isRequired: true,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? Colors.white70
-                                  : const Color(0xff7F7F7F),
-                            ),
-
-                            const SizedBox(height: 8),
-                            InfoRow(
-                              label: "Delivery Address",
-                              value: null,
-                              isEditing: true,
-                              dropdownItems: partnerList,
-                              selectedId: _selectedPartnerId,
-                              prefixIcon:
-                                  HugeIcons.strokeRoundedPackageDelivered,
-                              onDropdownChanged: (value) {
-                                setState(() {
-                                  _selectedPartnerId = value?.id;
-                                  _selectedPartnerName = value?.name;
-                                  _errorMessage = '';
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            RequiredLabel(
-                              'Operation Type',
-                              isRequired: true,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? Colors.white70
-                                  : const Color(0xff7F7F7F),
-                            ),
-
-                            const SizedBox(height: 8),
-                            InfoRow(
-                              label: "Operation Type",
-                              value: null,
-                              isEditing: true,
-                              dropdownItems: operationTypes,
-                              selectedId: _selectedOperationTypeId,
-                              itemAsString: (item) => item.name,
-                              prefixIcon: HugeIcons.strokeRoundedExchange01,
-                              onDropdownChanged: (value) {
-                                setState(() {
-                                  _selectedOperationTypeId = value?.id;
-                                  _selectedOperationTypeName = value?.name;
-                                  defaultLocationSrcId =
-                                      value?.defaultLocationSrcId;
-                                  defaultLocationDestId =
-                                      value?.defaultLocationDestId;
-                                  _errorMessage = '';
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            Text(
-                              'Schedule Date',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? Colors.white70
-                                    : const Color(0xff7F7F7F),
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-                            InfoRow(
-                              label: "Scheduled Date",
-                              value: null,
-                              isEditing: true,
-                              controller: scheduledDateController,
-                              prefixIcon: HugeIcons.strokeRoundedCalendar03,
-                              onTapEditing: () async {
-                                final now = DateTime.now();
-                                DateTime? pickedDate =
-                                    await DatePickerUtils.showStandardDatePicker(
-                                  context: context,
-                                  initialDate: now,
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (pickedDate != null && context.mounted) {
-                                  TimeOfDay? pickedTime =
-                                      await DatePickerUtils.showStandardTimePicker(
-                                    context: context,
-                                    initialTime: TimeOfDay.now(),
-                                  );
-                                  if (pickedTime != null) {
-                                    final combined = DateTime(
-                                      pickedDate.year,
-                                      pickedDate.month,
-                                      pickedDate.day,
-                                      pickedTime.hour,
-                                      pickedTime.minute,
-                                    );
-                                    setState(() {
-                                      scheduledDateController.text = DateFormat(
-                                        'dd-MM-yyyy HH:mm:ss',
-                                      ).format(combined);
-                                    });
-                                  }
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            Text(
-                              'Source Document',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? Colors.white70
-                                    : const Color(0xff7F7F7F),
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-                            InfoRow(
-                              label: "Source Document",
-                              value: null,
-                              isEditing: true,
-                              controller: sourceDocController,
-                              prefixIcon: HugeIcons.strokeRoundedDocumentCode,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          left: false,
+          right: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900] : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
                 ),
-
-                Container(
-                  margin: const EdgeInsets.only(bottom: 24),
-                  child: DefaultTabController(
-                    length: 3,
-                    child: Builder(
-                      builder: (context) {
-                        final TabController tabController =
-                            DefaultTabController.of(context)!;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              height: 40,
-                              child: MediaQuery(
-                                data: MediaQuery.of(context).copyWith(
-                                  textScaler: MediaQuery.of(context)
-                                      .textScaler
-                                      .clamp(maxScaleFactor: 1.1),
-                                ),
-                                child: ListView.separated(
-                                  controller: _tabHeaderScrollController,
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const ClampingScrollPhysics(),
-                                  itemCount: 3,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: 8),
-                                  itemBuilder: (context, index) {
-                                    const labels = [
-                                      'Operations',
-                                      'Additional Info',
-                                      'Note',
-                                    ];
-                                    return ListenableBuilder(
-                                      listenable: tabController,
-                                      builder: (context, _) {
-                                        return Center(
-                                          child: GestureDetector(
-                                            key: _tabItemKeys[index],
-                                            onTap: () {
-                                              tabController.animateTo(index);
-                                              _ensureTabVisible(index);
-                                            },
-                                            child: _buildPillTab(
-                                              label: labels[index],
-                                              isSelected:
-                                                  tabController.index == index,
-                                              isDark: isDark,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                              ),
-                              Container(
-                                width: double.infinity,
-                                constraints:
-                                    const BoxConstraints(minHeight: 240),
-                                clipBehavior: Clip.antiAliasWithSaveLayer,
-                                decoration: BoxDecoration(
-                                  color:
-                                      isDark ? Colors.grey[850] : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: isDark
-                                          ? Colors.black.withValues(alpha: 0.18)
-                                          : Colors.black.withValues(alpha: 0.06),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.translucent,
-                                  onHorizontalDragEnd: (details) {
-                                    final v = details.primaryVelocity ?? 0;
-                                    if (v < -250 && tabController.index < 2) {
-                                      final next = tabController.index + 1;
-                                      tabController.animateTo(next);
-                                      _ensureTabVisible(next);
-                                    } else if (v > 250 &&
-                                        tabController.index > 0) {
-                                      final prev = tabController.index - 1;
-                                      tabController.animateTo(prev);
-                                      _ensureTabVisible(prev);
-                                    }
-                                  },
-                                  child: AnimatedBuilder(
-                                    animation: tabController.animation!,
-                                    builder: (context, _) {
-                                      switch (tabController.index) {
-                                        case 1:
-                                          return AdditionalInfo(
-                                            selectedShippingPolicy:
-                                                _selectedShippingPolicy,
-                                            onShippingPolicyChanged: (value) {
-                                              setState(() {
-                                                _selectedShippingPolicy = value;
-                                              });
-                                            },
-                                            userList: users,
-                                            selectedUserId: _selectedUserId,
-                                            onUserChanged: (value) {
-                                              setState(() {
-                                                _selectedUserId = value?.id;
-                                                _selectedUserName = value?.name;
-                                              });
-                                            },
-                                          );
-                                        case 2:
-                                          return NotesTab(
-                                            noteController: _noteController,
-                                          );
-                                        default:
-                                          return ProductTable(
-                                            moveProducts: moveProducts,
-                                            onAddLine: _showAddProductDialog,
-                                            onEdit: _showEditProductDialog,
-                                            onDelete: _deleteProduct,
-                                          );
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                if (_errorMessage.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      _errorMessage,
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
               ],
             ),
-          ],
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton(
+                onPressed:
+                    (!isLoading &&
+                        _selectedPartnerId != null &&
+                        _selectedOperationTypeId != null)
+                    ? _createPicking
+                    : null,
+                style: TextButton.styleFrom(
+                  backgroundColor: AppStyle.primaryColor,
+                  disabledBackgroundColor: Colors.grey[400],
+                  disabledForegroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(13),
+                ),
+                child: const Text(
+                  'Create Picking',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.opaque,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[850] : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.18)
+                                : Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              'Delivery Information',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.grey[900],
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                          Divider(
+                            height: 1,
+                            color: isDark ? Colors.grey[700] : Colors.grey[200],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                RequiredLabel(
+                                  'Delivery Address',
+                                  isRequired: true,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xff7F7F7F),
+                                ),
+
+                                const SizedBox(height: 8),
+                                InfoRow(
+                                  label: "Delivery Address",
+                                  value: null,
+                                  isEditing: true,
+                                  dropdownItems: partnerList,
+                                  selectedId: _selectedPartnerId,
+                                  prefixIcon:
+                                      HugeIcons.strokeRoundedPackageDelivered,
+                                  onDropdownChanged: (value) {
+                                    setState(() {
+                                      _selectedPartnerId = value?.id;
+                                      _selectedPartnerName = value?.name;
+                                      _errorMessage = '';
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+
+                                RequiredLabel(
+                                  'Operation Type',
+                                  isRequired: true,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xff7F7F7F),
+                                ),
+
+                                const SizedBox(height: 8),
+                                InfoRow(
+                                  label: "Operation Type",
+                                  value: null,
+                                  isEditing: true,
+                                  dropdownItems: operationTypes,
+                                  selectedId: _selectedOperationTypeId,
+                                  itemAsString: (item) => item.name,
+                                  prefixIcon: HugeIcons.strokeRoundedExchange01,
+                                  onDropdownChanged: (value) {
+                                    setState(() {
+                                      _selectedOperationTypeId = value?.id;
+                                      _selectedOperationTypeName = value?.name;
+                                      defaultLocationSrcId =
+                                          value?.defaultLocationSrcId;
+                                      defaultLocationDestId =
+                                          value?.defaultLocationDestId;
+                                      _errorMessage = '';
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+
+                                Text(
+                                  'Schedule Date',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xff7F7F7F),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+                                InfoRow(
+                                  label: "Scheduled Date",
+                                  value: null,
+                                  isEditing: true,
+                                  controller: scheduledDateController,
+                                  prefixIcon: HugeIcons.strokeRoundedCalendar03,
+                                  onTapEditing: () async {
+                                    final now = DateTime.now();
+                                    DateTime? pickedDate =
+                                        await DatePickerUtils.showStandardDatePicker(
+                                          context: context,
+                                          initialDate: now,
+                                          firstDate: DateTime(2000),
+                                          lastDate: DateTime(2100),
+                                        );
+                                    if (pickedDate != null && context.mounted) {
+                                      TimeOfDay? pickedTime =
+                                          await DatePickerUtils.showStandardTimePicker(
+                                            context: context,
+                                            initialTime: TimeOfDay.now(),
+                                          );
+                                      if (pickedTime != null) {
+                                        final combined = DateTime(
+                                          pickedDate.year,
+                                          pickedDate.month,
+                                          pickedDate.day,
+                                          pickedTime.hour,
+                                          pickedTime.minute,
+                                        );
+                                        setState(() {
+                                          scheduledDateController.text =
+                                              DateFormat(
+                                                'dd-MM-yyyy HH:mm:ss',
+                                              ).format(combined);
+                                        });
+                                      }
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+
+                                Text(
+                                  'Source Document',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xff7F7F7F),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+                                InfoRow(
+                                  label: "Source Document",
+                                  value: null,
+                                  isEditing: true,
+                                  controller: sourceDocController,
+                                  prefixIcon:
+                                      HugeIcons.strokeRoundedDocumentCode,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      child: DefaultTabController(
+                        length: 3,
+                        child: Builder(
+                          builder: (context) {
+                            final TabController tabController =
+                                DefaultTabController.of(context)!;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  height: 40,
+                                  child: MediaQuery(
+                                    data: MediaQuery.of(context).copyWith(
+                                      textScaler: MediaQuery.of(
+                                        context,
+                                      ).textScaler.clamp(maxScaleFactor: 1.1),
+                                    ),
+                                    child: ListView.separated(
+                                      controller: _tabHeaderScrollController,
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const ClampingScrollPhysics(),
+                                      itemCount: 3,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 8),
+                                      itemBuilder: (context, index) {
+                                        const labels = [
+                                          'Operations',
+                                          'Additional Info',
+                                          'Note',
+                                        ];
+                                        return ListenableBuilder(
+                                          listenable: tabController,
+                                          builder: (context, _) {
+                                            return Center(
+                                              child: GestureDetector(
+                                                key: _tabItemKeys[index],
+                                                onTap: () {
+                                                  tabController.animateTo(
+                                                    index,
+                                                  );
+                                                  _ensureTabVisible(index);
+                                                },
+                                                child: _buildPillTab(
+                                                  label: labels[index],
+                                                  isSelected:
+                                                      tabController.index ==
+                                                      index,
+                                                  isDark: isDark,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  width: double.infinity,
+                                  constraints: const BoxConstraints(
+                                    minHeight: 240,
+                                  ),
+                                  clipBehavior: Clip.antiAliasWithSaveLayer,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.grey[850]
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: isDark
+                                            ? Colors.black.withValues(
+                                                alpha: 0.18,
+                                              )
+                                            : Colors.black.withValues(
+                                                alpha: 0.06,
+                                              ),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onHorizontalDragEnd: (details) {
+                                      final v = details.primaryVelocity ?? 0;
+                                      if (v < -250 && tabController.index < 2) {
+                                        final next = tabController.index + 1;
+                                        tabController.animateTo(next);
+                                        _ensureTabVisible(next);
+                                      } else if (v > 250 &&
+                                          tabController.index > 0) {
+                                        final prev = tabController.index - 1;
+                                        tabController.animateTo(prev);
+                                        _ensureTabVisible(prev);
+                                      }
+                                    },
+                                    child: AnimatedBuilder(
+                                      animation: tabController.animation!,
+                                      builder: (context, _) {
+                                        switch (tabController.index) {
+                                          case 1:
+                                            return AdditionalInfo(
+                                              selectedShippingPolicy:
+                                                  _selectedShippingPolicy,
+                                              onShippingPolicyChanged: (value) {
+                                                setState(() {
+                                                  _selectedShippingPolicy =
+                                                      value;
+                                                });
+                                              },
+                                              userList: users,
+                                              selectedUserId: _selectedUserId,
+                                              onUserChanged: (value) {
+                                                setState(() {
+                                                  _selectedUserId = value?.id;
+                                                  _selectedUserName =
+                                                      value?.name;
+                                                });
+                                              },
+                                            );
+                                          case 2:
+                                            return NotesTab(
+                                              noteController: _noteController,
+                                            );
+                                          default:
+                                            return ProductTable(
+                                              moveProducts: moveProducts,
+                                              onAddLine: _showAddProductDialog,
+                                              onEdit: _showEditProductDialog,
+                                              onDelete: _deleteProduct,
+                                            );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                    if (_errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          _errorMessage,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Widget _buildPillTab({
@@ -1030,11 +1062,11 @@ return FadeTransition(opacity: animation, child: child);
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: isSelected
-            ? Colors.black
+            ? AppStyle.primaryColor
             : (isDark ? Colors.grey[800] : Colors.white),
         border: Border.all(
           color: isSelected
-              ? Colors.black
+              ? AppStyle.primaryColor
               : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
           width: 1,
         ),
@@ -1076,26 +1108,40 @@ return FadeTransition(opacity: animation, child: child);
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
-                children: List.generate(4, (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    children: [
-                      Container(width: 24, height: 24, color: Colors.white),
-                      const SizedBox(width: 12),
-                      Expanded(child: Container(height: 20, color: Colors.white)),
-                    ],
+                children: List.generate(
+                  4,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      children: [
+                        Container(width: 24, height: 24, color: Colors.white),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(height: 20, color: Colors.white),
+                        ),
+                      ],
+                    ),
                   ),
-                )),
+                ),
               ),
             ),
             const SizedBox(height: 24),
             Row(
-              children: List.generate(3, (index) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Container(height: 40, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14))),
+              children: List.generate(
+                3,
+                (index) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
                 ),
-              )),
+              ),
             ),
             const SizedBox(height: 16),
             Container(

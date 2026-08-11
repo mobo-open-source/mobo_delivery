@@ -15,6 +15,9 @@ class MoboCard extends StatelessWidget {
   final Color? background;
   final VoidCallback? onTap;
 
+  /// Overrides the app-wide resting shadow.
+  final List<BoxShadow>? boxShadow;
+
   const MoboCard({
     super.key,
     required this.child,
@@ -22,6 +25,7 @@ class MoboCard extends StatelessWidget {
     this.radius = 16,
     this.background,
     this.onTap,
+    this.boxShadow,
   });
 
   @override
@@ -34,7 +38,7 @@ class MoboCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: background ?? home.surface,
         borderRadius: r,
-        boxShadow: home.cardShadow,
+        boxShadow: boxShadow ?? home.cardShadow,
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -42,11 +46,7 @@ class MoboCard extends StatelessWidget {
     if (onTap != null) {
       content = Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: r,
-          child: content,
-        ),
+        child: InkWell(onTap: onTap, borderRadius: r, child: content),
       );
     }
     return content;

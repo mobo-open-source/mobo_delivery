@@ -32,10 +32,10 @@ class DatePickerUtils {
               onPrimary: Colors.white,
               surface: isDark ? Colors.grey[850] : Colors.white,
               onSurface: isDark ? Colors.white : Colors.black,
-              surfaceContainerHighest:
-                  isDark ? Colors.grey[800] : Colors.grey[100],
-              onSurfaceVariant:
-                  isDark ? Colors.grey[300] : Colors.grey[700],
+              surfaceContainerHighest: isDark
+                  ? Colors.grey[800]
+                  : Colors.grey[100],
+              onSurfaceVariant: isDark ? Colors.grey[300] : Colors.grey[700],
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
@@ -72,12 +72,14 @@ class DatePickerUtils {
                 if (states.contains(WidgetState.selected)) return primaryColor;
                 return Colors.transparent;
               }),
-              rangePickerBackgroundColor:
-                  isDark ? Colors.grey[850] : Colors.white,
+              rangePickerBackgroundColor: isDark
+                  ? Colors.grey[850]
+                  : Colors.white,
               rangePickerHeaderBackgroundColor: primaryColor,
               rangePickerHeaderForegroundColor: Colors.white,
-              rangeSelectionBackgroundColor:
-                  primaryColor.withValues(alpha: 0.1),
+              rangeSelectionBackgroundColor: primaryColor.withValues(
+                alpha: 0.1,
+              ),
               rangeSelectionOverlayColor: WidgetStateProperty.all(
                 primaryColor.withValues(alpha: 0.1),
               ),
@@ -118,10 +120,10 @@ class DatePickerUtils {
               onPrimary: Colors.white,
               surface: isDark ? Colors.grey[850] : Colors.white,
               onSurface: isDark ? Colors.white : Colors.black,
-              surfaceContainerHighest:
-                  isDark ? Colors.grey[800] : Colors.grey[100],
-              onSurfaceVariant:
-                  isDark ? Colors.grey[300] : Colors.grey[700],
+              surfaceContainerHighest: isDark
+                  ? Colors.grey[800]
+                  : Colors.grey[100],
+              onSurfaceVariant: isDark ? Colors.grey[300] : Colors.grey[700],
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
@@ -170,8 +172,7 @@ class DatePickerUtils {
                 return isDark ? Colors.grey[800]! : Colors.grey[100]!;
               }),
               dialHandColor: primaryColor,
-              dialBackgroundColor:
-                  isDark ? Colors.grey[800] : Colors.grey[100],
+              dialBackgroundColor: isDark ? Colors.grey[800] : Colors.grey[100],
               dialTextColor: WidgetStateColor.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
                   return Colors.white;

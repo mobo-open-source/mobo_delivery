@@ -30,7 +30,11 @@ class HomeService {
     final grouped = await CompanySessionManager.callKwWithCompany({
       'model': 'stock.picking',
       'method': 'read_group',
-      'args': [_outgoingDomain, ['state'], ['state']],
+      'args': [
+        _outgoingDomain,
+        ['state'],
+        ['state'],
+      ],
       'kwargs': {},
     });
 
@@ -57,8 +61,13 @@ class HomeService {
     final lateDomain = <dynamic>[
       ..._outgoingDomain,
       '&',
-      ['state', 'in', ['assigned', 'waiting', 'confirmed']],
-      '|', '|',
+      [
+        'state',
+        'in',
+        ['assigned', 'waiting', 'confirmed'],
+      ],
+      '|',
+      '|',
       ['has_deadline_issue', '=', true],
       ['date_deadline', '<', nowTs],
       ['scheduled_date', '<', nowTs],
@@ -104,17 +113,28 @@ class HomeService {
 
     final domain = <dynamic>[
       ..._outgoingDomain,
-      ['state', 'in', ['assigned', 'waiting', 'confirmed']],
+      [
+        'state',
+        'in',
+        ['assigned', 'waiting', 'confirmed'],
+      ],
     ];
 
     final raw = await CompanySessionManager.callKwWithCompany({
       'model': 'stock.picking',
       'method': 'search_read',
-      'args': [domain, ['id', 'name', 'partner_id', 'state', 'scheduled_date', 'date_deadline']],
-      'kwargs': {
-        'limit': limit * 4,
-        'order': 'scheduled_date asc',
-      },
+      'args': [
+        domain,
+        [
+          'id',
+          'name',
+          'partner_id',
+          'state',
+          'scheduled_date',
+          'date_deadline',
+        ],
+      ],
+      'kwargs': {'limit': limit * 4, 'order': 'scheduled_date asc'},
     });
 
     if (raw is! List) return const [];
@@ -137,15 +157,17 @@ class HomeService {
       final due = deadline ?? scheduled;
       final isLate = due != null && due.isBefore(now);
 
-      rows.add(HomeAttentionRow(
-        id: id,
-        reference: name,
-        partner: partner,
-        state: state,
-        isLate: isLate,
-        dueAt: due,
-        dueFromDeadline: deadline != null,
-      ));
+      rows.add(
+        HomeAttentionRow(
+          id: id,
+          reference: name,
+          partner: partner,
+          state: state,
+          isLate: isLate,
+          dueAt: due,
+          dueFromDeadline: deadline != null,
+        ),
+      );
     }
 
     rows.sort((a, b) {
@@ -190,9 +212,5 @@ class HomeCounts {
     required this.doneToday,
   });
 
-  const HomeCounts.zero()
-      : ready = 0,
-        waiting = 0,
-        late = 0,
-        doneToday = 0;
+  const HomeCounts.zero() : ready = 0, waiting = 0, late = 0, doneToday = 0;
 }

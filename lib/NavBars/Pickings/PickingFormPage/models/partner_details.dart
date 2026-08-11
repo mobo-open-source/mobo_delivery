@@ -22,11 +22,7 @@ class PartnerDetails extends HiveObject {
   @HiveField(2)
   String? imageBase64;
 
-  PartnerDetails({
-    required this.id,
-    this.address,
-    this.imageBase64,
-  });
+  PartnerDetails({required this.id, this.address, this.imageBase64});
 
   /// Creates a `PartnerDetails` instance from JSON (usually from service layer)
   ///
@@ -51,10 +47,6 @@ class PartnerDetails extends HiveObject {
   /// • Preparing data for UI display or debugging
   /// • Potentially sending back to other services
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'address': address,
-      'image_1920': imageBase64,
-    };
+    return {'id': id, 'address': address, 'image_1920': imageBase64};
   }
 }

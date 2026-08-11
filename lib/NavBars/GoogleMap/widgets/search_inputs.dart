@@ -50,7 +50,12 @@ class SearchInputs extends StatelessWidget {
                     controller: sourceController,
                     decoration: InputDecoration(
                       hintText: 'Enter source location',
-                      hintStyle: TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w400, fontStyle: FontStyle.italic),
+                      hintStyle: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        fontStyle: FontStyle.italic,
+                      ),
                       prefixIcon: Icon(
                         HugeIcons.strokeRoundedLocation03,
                         color: Colors.black54,
@@ -76,7 +81,12 @@ class SearchInputs extends StatelessWidget {
                             controller: stopControllers[index],
                             decoration: InputDecoration(
                               hintText: 'Enter stop ${index + 1} location',
-                              hintStyle: TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w400, fontStyle: FontStyle.italic),
+                              hintStyle: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                fontStyle: FontStyle.italic,
+                              ),
                               prefixIcon: const Icon(
                                 HugeIcons.strokeRoundedBlocked,
                                 color: Colors.black54,

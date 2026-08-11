@@ -19,8 +19,5 @@ class PendingUpdates extends HiveObject {
   @HiveField(1)
   final Map<String, dynamic> pickingData;
 
-  PendingUpdates({
-    required this.pickingId,
-    required this.pickingData,
-  });
+  PendingUpdates({required this.pickingId, required this.pickingData});
 }

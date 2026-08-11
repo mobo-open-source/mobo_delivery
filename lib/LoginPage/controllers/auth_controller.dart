@@ -24,8 +24,8 @@ class AuthController {
   AuthController({
     required AuthService authService,
     required StorageService storageService,
-  })  : _authService = authService,
-        _storageService = storageService;
+  }) : _authService = authService,
+       _storageService = storageService;
 
   /// Checks whether the user is currently logged in and if biometric auth is enabled.
   ///
@@ -49,11 +49,15 @@ class AuthController {
   /// - `useLocalAuth`: whether biometric/PIN authentication is required
   ///
   /// This method should be called early in the app lifecycle (e.g. after splash screen).
-  Future<void> handleAuthentication(BuildContext context, AuthModel authModel) async {
+  Future<void> handleAuthentication(
+    BuildContext context,
+    AuthModel authModel,
+  ) async {
     if (authModel.isLoggedIn) {
       if (authModel.useLocalAuth) {
         final authResult = await _authService.authenticateWithBiometrics();
-        if (authResult == AuthenticationResult.success || authResult == AuthenticationResult.unavailable) {
+        if (authResult == AuthenticationResult.success ||
+            authResult == AuthenticationResult.unavailable) {
           await _navigateToDashboard(context);
         } else {
           await _navigateToLogin(context);
@@ -75,11 +79,12 @@ class AuthController {
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const Dashboard(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const Dashboard(),
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+          return FadeTransition(opacity: animation, child: child);
         },
       ),
     );
@@ -95,29 +100,30 @@ return FadeTransition(opacity: animation, child: child);
   /// Also uses fade transition and respects motion reduction setting.
   Future<void> _navigateToLogin(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    bool isGetStarted = prefs.getBool('hasSeenGetStarted')?? false;
-    if(isGetStarted) {
+    bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
+    if (isGetStarted) {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => LoginScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              LoginScreen(),
           transitionDuration: const Duration(milliseconds: 300),
           reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+            return FadeTransition(opacity: animation, child: child);
           },
         ),
       );
-    }else{
+    } else {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation,
-              secondaryAnimation) => const GetStartedScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const GetStartedScreen(),
           transitionDuration: const Duration(milliseconds: 300),
           reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+            return FadeTransition(opacity: animation, child: child);
           },
         ),
       );

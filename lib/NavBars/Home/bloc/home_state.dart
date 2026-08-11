@@ -27,11 +27,11 @@ class HomeState extends Equatable {
   });
 
   const HomeState.initial()
-      : status = HomeStatus.loading,
-        counts = const HomeCounts.zero(),
-        attention = const [],
-        online = true,
-        errorMessage = null;
+    : status = HomeStatus.loading,
+      counts = const HomeCounts.zero(),
+      attention = const [],
+      online = true,
+      errorMessage = null;
 
   HomeState copyWith({
     HomeStatus? status,

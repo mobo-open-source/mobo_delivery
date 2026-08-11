@@ -27,10 +27,7 @@ class AllCaughtUp extends StatelessWidget {
           Container(
             width: 52,
             height: 52,
-            decoration: BoxDecoration(
-              color: circleBg,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: circleBg, shape: BoxShape.circle),
             child: Icon(
               HugeIcons.strokeRoundedCheckmarkCircle02,
               size: 28,

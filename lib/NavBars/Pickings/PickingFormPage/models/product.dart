@@ -53,7 +53,10 @@ class Product {
     return Product(
       id: json['id'] ?? 0,
       name: displayName.isNotEmpty ? displayName : rawName,
-      uom_id: (json['uom_id'] != null && json['uom_id'] is List && json['uom_id'].isNotEmpty)
+      uom_id:
+          (json['uom_id'] != null &&
+              json['uom_id'] is List &&
+              json['uom_id'].isNotEmpty)
           ? json['uom_id'][0] as int
           : 0,
       imageBase64: (image is String && image.isNotEmpty && image != 'false')
@@ -69,10 +72,6 @@ class Product {
   /// • Preparing data for dropdowns or other serialization
   /// • Debugging or logging
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'uom_id': uom_id,
-    };
+    return {'id': id, 'name': name, 'uom_id': uom_id};
   }
 }

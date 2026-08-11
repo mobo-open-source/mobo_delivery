@@ -10,11 +10,19 @@ class SectionHeader extends StatelessWidget {
   final String? trailingLabel;
   final VoidCallback? onTrailingTap;
 
+  /// Overrides the title's font size. Defaults to 16.
+  final double titleFontSize;
+
+  /// Overrides the title's color. Defaults to [MoboHomeTheme.textPrimary].
+  final Color? titleColor;
+
   const SectionHeader({
     super.key,
     required this.title,
     this.trailingLabel,
     this.onTrailingTap,
+    this.titleFontSize = 16,
+    this.titleColor,
   });
 
   @override
@@ -30,10 +38,10 @@ class SectionHeader extends StatelessWidget {
         Text(
           title,
           style: GoogleFonts.manrope(
-            fontSize: 16,
+            fontSize: titleFontSize,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.16,
-            color: home.textPrimary,
+            color: titleColor ?? home.textPrimary,
           ),
         ),
         if (trailingLabel != null && onTrailingTap != null)

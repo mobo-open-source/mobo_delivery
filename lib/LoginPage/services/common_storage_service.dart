@@ -67,7 +67,8 @@ class CommonStorageService {
       'userLogin': prefs.getString('userLogin') ?? '',
       'userName': prefs.getString('userName') ?? '',
       'allowedCompanies': prefs.getStringList('allowedCompanies') ?? [],
-      'mapToken': await const FlutterSecureStorage().read(key: 'mapToken') ?? '',
+      'mapToken':
+          await const FlutterSecureStorage().read(key: 'mapToken') ?? '',
     };
   }
 
@@ -118,10 +119,12 @@ class CommonStorageService {
     final prefs = await SharedPreferences.getInstance();
     final accounts = await getAccounts();
 
-    accounts.removeWhere((a) =>
-    a['userLogin'] == account['userLogin'] &&
-        a['url'] == account['url'] &&
-        a['database'] == account['database']);
+    accounts.removeWhere(
+      (a) =>
+          a['userLogin'] == account['userLogin'] &&
+          a['url'] == account['url'] &&
+          a['database'] == account['database'],
+    );
 
     if (!account.containsKey('image')) {
       account['image'] = '';

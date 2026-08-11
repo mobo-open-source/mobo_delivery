@@ -17,11 +17,12 @@ import '../bloc/home_state.dart';
 import '../widgets/all_caught_up.dart';
 import '../widgets/home_speed_dial.dart';
 import '../widgets/picking_row.dart';
+import '../widgets/section_error_state.dart';
 import '../widgets/section_header.dart';
 import '../widgets/stat_tile.dart';
 
 /// Bottom inset so the [HomeSpeedDial] never covers the last attention row.
-const double _kFabScrollInset = 88;
+const double _kFabScrollInset = 72;
 
 /// Bottom-nav index of the Pickings tab after Home is prepended.
 /// Kept as a named constant so the Home screen and any future deep-link
@@ -59,7 +60,6 @@ class _HomeView extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       body: SafeArea(
         bottom: false,
@@ -68,14 +68,20 @@ class _HomeView extends StatelessWidget {
             final dashState = context.watch<DashboardBloc>().state;
             return RefreshIndicator(
               onRefresh: () async {
-                context.read<HomeBloc>().add(const LoadHome(forceRefresh: true));
+                context.read<HomeBloc>().add(
+                  const LoadHome(forceRefresh: true),
+                );
 
                 await Future.delayed(const Duration(milliseconds: 400));
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding:
-                    const EdgeInsets.fromLTRB(16, 16, 16, _kFabScrollInset),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  _kFabScrollInset,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -89,17 +95,21 @@ class _HomeView extends StatelessWidget {
                           : 'Working offline — cached data',
                       onAvatarTap: () => _openConfiguration(context, dashState),
                     ),
-                    const SizedBox(height: 20),
-                    const SectionHeader(title: 'Overview'),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 24),
+                    SectionHeader(
+                      title: 'Overview',
+                      titleFontSize: 18,
+                      titleColor: isDark ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(height: 12),
                     _StatGrid(state: state),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     SectionHeader(
                       title: 'Needs attention',
                       trailingLabel: 'View all',
                       onTrailingTap: () => _openPickings(context, null),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     _AttentionList(state: state),
                   ],
                 ),
@@ -130,7 +140,6 @@ class _HomeView extends StatelessWidget {
   }
 
   void _openPickings(BuildContext context, String? chip) {
-
     PickingsFilterBus.request(chip);
     context.read<DashboardBloc>().add(const ChangeTab(_kPickingsTabIndex));
   }
@@ -143,6 +152,21 @@ class _StatGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final home = Theme.of(context).extension<MoboHomeTheme>()!;
+
+    if (state.status == HomeStatus.error) {
+      return SectionErrorState(
+        sectionTitle: 'Overview',
+        message: homeSectionErrorMessage(
+          online: state.online,
+          error: state.errorMessage,
+          offlineDetail:
+              'Dashboard counts require network access to load from your '
+              'Odoo server.',
+          genericDetail: 'Failed to load dashboard data. Please try again.',
+        ),
+        icon: HugeIcons.strokeRoundedDashboardSquare02,
+      );
+    }
 
     if (state.status == HomeStatus.loading) {
       return const _Grid(
@@ -162,6 +186,7 @@ class _StatGrid extends StatelessWidget {
           icon: HugeIcons.strokeRoundedPackage,
           value: counts.ready,
           label: 'Ready to ship',
+          subtitle: 'Orders ready for pickup',
           accentFg: home.readyFg,
           accentBg: home.readyBg,
           onTap: () => _tap(context, 'ready'),
@@ -170,6 +195,7 @@ class _StatGrid extends StatelessWidget {
           icon: HugeIcons.strokeRoundedClock01,
           value: counts.waiting,
           label: 'Waiting',
+          subtitle: 'Confirmed, not yet ready',
           accentFg: home.waitFg,
           accentBg: home.waitBg,
           onTap: () => _tap(context, 'waiting'),
@@ -178,6 +204,7 @@ class _StatGrid extends StatelessWidget {
           icon: HugeIcons.strokeRoundedAlert02,
           value: counts.late,
           label: 'Late',
+          subtitle: 'Overdue deliveries',
           accentFg: home.lateFg,
           accentBg: home.lateBg,
           prominent: true,
@@ -187,6 +214,7 @@ class _StatGrid extends StatelessWidget {
           icon: HugeIcons.strokeRoundedCheckmarkCircle02,
           value: counts.doneToday,
           label: 'Done today',
+          subtitle: 'Completed today',
           accentFg: home.doneFg,
           accentBg: home.doneBg,
           onTap: () => _tap(context, 'donetoday'),
@@ -205,31 +233,48 @@ class _Grid extends StatelessWidget {
   final List<Widget> children;
   const _Grid({required this.children});
 
+  /// Matches the sales-app dashboard grid's phone aspect ratio.
+  static const double _cardAspectRatio = 1.15;
+
   @override
   Widget build(BuildContext context) {
     assert(children.length == 4);
     return Column(
       children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: children[0]),
-              const SizedBox(width: 11),
-              Expanded(child: children[1]),
-            ],
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: _cardAspectRatio,
+                child: children[0],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: _cardAspectRatio,
+                child: children[1],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 11),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: children[2]),
-              const SizedBox(width: 11),
-              Expanded(child: children[3]),
-            ],
-          ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: _cardAspectRatio,
+                child: children[2],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: _cardAspectRatio,
+                child: children[3],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -255,10 +300,16 @@ class _AttentionList extends StatelessWidget {
     }
 
     if (state.status == HomeStatus.error) {
-      return _ErrorCard(
-        message: state.errorMessage ?? 'Could not load pickings.',
-        onRetry: () =>
-            context.read<HomeBloc>().add(const LoadHome(forceRefresh: true)),
+      return SectionErrorState(
+        sectionTitle: 'Needs attention',
+        message: homeSectionErrorMessage(
+          online: state.online,
+          error: state.errorMessage,
+          offlineDetail:
+              'Pickings require network access to load from your Odoo server.',
+          genericDetail: 'Failed to load pickings. Please try again.',
+        ),
+        icon: HugeIcons.strokeRoundedAlert02,
       );
     }
 
@@ -283,10 +334,7 @@ class _AttentionList extends StatelessWidget {
   }
 
   Future<void> _openDetails(BuildContext context, dynamic row) async {
-    final picking = <String, dynamic>{
-      'id': row.id,
-      'name': row.reference,
-    };
+    final picking = <String, dynamic>{'id': row.id, 'name': row.reference};
     final service = OdooPickingFormService();
     await service.initializeOdooClient();
     if (!context.mounted) return;
@@ -304,49 +352,5 @@ class _AttentionList extends StatelessWidget {
     );
     if (!context.mounted) return;
     context.read<HomeBloc>().add(const LoadHome(forceRefresh: true));
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  const _ErrorCard({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final home = Theme.of(context).extension<MoboHomeTheme>()!;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: home.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: home.lateBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.error_outline_rounded, color: home.lateFg, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(fontSize: 13, color: home.textPrimary),
-            ),
-          ),
-          const SizedBox(width: 10),
-          TextButton(
-            onPressed: onRetry,
-            style: TextButton.styleFrom(
-              foregroundColor: home.accent,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('Retry',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
   }
 }

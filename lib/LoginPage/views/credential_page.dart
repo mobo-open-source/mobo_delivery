@@ -521,7 +521,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
               reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+                    return FadeTransition(opacity: animation, child: child);
                   },
             ),
           );
@@ -658,11 +658,11 @@ return FadeTransition(opacity: animation, child: child);
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: viewportConstraints.maxHeight -
+                      minHeight:
+                          viewportConstraints.maxHeight -
                           MediaQuery.of(context).viewPadding.top,
                     ),
                     child: Column(
-
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Padding(
@@ -704,148 +704,155 @@ return FadeTransition(opacity: animation, child: child);
                               mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                        Text(
-                          'Sign In',
-                          style: GoogleFonts.manrope(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            fontSize: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'use proper information to continue',
-                          style: GoogleFonts.manrope(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        _buildInputField(
-                          controller: _usernameController,
-                          label: "Email",
-                          icon: HugeIcons.strokeRoundedUser03,
-                          focusNode: _usernameFocusNode,
-                          textInputAction: TextInputAction.next,
-                          onFieldSubmitted: (_) {
-                            FocusScope.of(context).requestFocus(_passwordFocusNode);
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        _buildInputField(
-                          controller: _passwordController,
-                          label: "Password",
-                          obscure: true,
-                          icon: HugeIcons.strokeRoundedSquareLockPassword,
-                          isPasswordField: true,
-                          focusNode: _passwordFocusNode,
-                          textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) {
-                            _passwordFocusNode.unfocus();
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  pageBuilder:
-                                      (
+                                Text(
+                                  'Sign In',
+                                  style: GoogleFonts.manrope(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'use proper information to continue',
+                                  style: GoogleFonts.manrope(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                                const SizedBox(height: 30),
+                                _buildInputField(
+                                  controller: _usernameController,
+                                  label: "Email",
+                                  icon: HugeIcons.strokeRoundedUser03,
+                                  focusNode: _usernameFocusNode,
+                                  textInputAction: TextInputAction.next,
+                                  onFieldSubmitted: (_) {
+                                    FocusScope.of(
+                                      context,
+                                    ).requestFocus(_passwordFocusNode);
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                                _buildInputField(
+                                  controller: _passwordController,
+                                  label: "Password",
+                                  obscure: true,
+                                  icon:
+                                      HugeIcons.strokeRoundedSquareLockPassword,
+                                  isPasswordField: true,
+                                  focusNode: _passwordFocusNode,
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) {
+                                    _passwordFocusNode.unfocus();
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
                                         context,
-                                        animation,
-                                        secondaryAnimation,
-                                      ) => ResetPasswordScreen(
-                                        url: widget.protocol + baseUrl,
-                                        database: widget.database,
+                                        PageRouteBuilder(
+                                          pageBuilder:
+                                              (
+                                                context,
+                                                animation,
+                                                secondaryAnimation,
+                                              ) => ResetPasswordScreen(
+                                                url: widget.protocol + baseUrl,
+                                                database: widget.database,
+                                              ),
+                                          transitionDuration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          reverseTransitionDuration:
+                                              const Duration(milliseconds: 300),
+                                          transitionsBuilder:
+                                              (
+                                                context,
+                                                animation,
+                                                secondaryAnimation,
+                                                child,
+                                              ) {
+                                                return FadeTransition(
+                                                  opacity: animation,
+                                                  child: child,
+                                                );
+                                              },
+                                        ),
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
                                       ),
-                                  transitionDuration:
-                                      const Duration(milliseconds: 300),
-                                  reverseTransitionDuration:
-                                      const Duration(milliseconds: 300),
-                                  transitionsBuilder:
-                                      (
-                                        context,
-                                        animation,
-                                        secondaryAnimation,
-                                        child,
-                                      ) {
-return FadeTransition(
-                                          opacity: animation,
-                                          child: child,
-                                        );
-                                      },
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: GoogleFonts.manrope(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              'Forgot Password?',
-                              style: GoogleFonts.manrope(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (_errorMessage != null) ...[
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              _errorMessage!,
-                              style: GoogleFonts.manrope(color: Colors.white),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        LoginButton(
-                          text: 'Sign In',
-                          isLoading: _isLoading,
-                          loadingWidget: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Signing In',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
+                                const SizedBox(height: 20),
+                                if (_errorMessage != null) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: GoogleFonts.manrope(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 20),
+                                LoginButton(
+                                  text: 'Sign In',
+                                  isLoading: _isLoading,
+                                  loadingWidget: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Signing In',
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  onPressed: _isLoading ? null : _login,
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          onPressed: _isLoading ? null : _login,
-                        ),
                               ],
                             ),
                           ),
                         ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
-                );
+                ),
+              );
             },
           ),
         ],

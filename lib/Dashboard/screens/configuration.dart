@@ -140,7 +140,6 @@ class _ConfigurationState extends State<Configuration> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final imageData = profile?['image_1920'];
 
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
@@ -180,19 +179,16 @@ class _ConfigurationState extends State<Configuration> {
                     profile?['name']?.toString() ??
                     widget.userName ??
                     'Unknown User',
-                email:
-                    (profile?['email'] != null && profile?['email'] != false)
-                        ? profile!['email'].toString()
-                        : widget.mail ?? '',
+                email: (profile?['email'] != null && profile?['email'] != false)
+                    ? profile!['email'].toString()
+                    : widget.mail ?? '',
                 jobFunction: '',
                 avatarBase64: _userAvatarBase64,
                 showCameraButton: false,
                 onTap: () async {
                   await Navigator.push(
                     context,
-                    _buildPageRoute(
-                      const ProfileDetailScreen(),
-                    ),
+                    _buildPageRoute(const ProfileDetailScreen()),
                   );
                   _loadProfile();
                 },
@@ -208,9 +204,7 @@ class _ConfigurationState extends State<Configuration> {
     );
   }
 
-  Widget _buildQuickActionsSection(
-    BuildContext context,
-    ) {
+  Widget _buildQuickActionsSection(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -240,10 +234,7 @@ class _ConfigurationState extends State<Configuration> {
             subtitle: 'App preferences and sync options',
             icon: HugeIcons.strokeRoundedSettings02,
             onTap: () {
-              Navigator.push(
-                context,
-                _buildPageRoute(const SettingsPage()),
-              );
+              Navigator.push(context, _buildPageRoute(const SettingsPage()));
             },
           ),
           _buildDivider(isDark),
@@ -278,10 +269,7 @@ class _ConfigurationState extends State<Configuration> {
     );
   }
 
-  Widget _buildSwitchAccountsTile(
-    BuildContext context,
-    bool isDark,
-    ) {
+  Widget _buildSwitchAccountsTile(BuildContext context, bool isDark) {
     final Color subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
     final Color iconColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
 
@@ -330,11 +318,7 @@ class _ConfigurationState extends State<Configuration> {
                 children: [
                   if (otherAccounts.isEmpty) _buildEmptyAccountState(isDark),
                   ...otherAccounts.map(
-                    (user) => _buildAccountTile(
-                      context,
-                      user,
-                      isDark,
-                      ),
+                    (user) => _buildAccountTile(context, user, isDark),
                   ),
                   _buildAddAccountButton(context, isDark),
                 ],
@@ -347,7 +331,6 @@ class _ConfigurationState extends State<Configuration> {
   }
 
   Widget _buildEmptyAccountState(bool isDark) {
-
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -392,7 +375,7 @@ class _ConfigurationState extends State<Configuration> {
     BuildContext context,
     Map<String, dynamic> user,
     bool isDark,
-    ) {
+  ) {
     final dynamic imageVal = user['image'];
     final String? imageBase64 = imageVal is String ? imageVal : null;
     final hasImage =
@@ -483,10 +466,7 @@ class _ConfigurationState extends State<Configuration> {
                   const SizedBox(width: 10),
                   Text(
                     'Remove',
-                    style: TextStyle(
-                      color: Colors.red[600],
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.red[600], fontSize: 14),
                   ),
                 ],
               ),
@@ -559,10 +539,7 @@ class _ConfigurationState extends State<Configuration> {
     );
   }
 
-  Widget _buildAddAccountButton(
-    BuildContext context,
-    bool isDark,
-    ) {
+  Widget _buildAddAccountButton(BuildContext context, bool isDark) {
     return Container(
       margin: const EdgeInsets.all(16),
       width: double.infinity,
@@ -602,7 +579,11 @@ class _ConfigurationState extends State<Configuration> {
       ),
       child: Row(
         children: [
-          Icon(HugeIcons.strokeRoundedLocationOffline01, size: 16, color: Colors.orange[700]),
+          Icon(
+            HugeIcons.strokeRoundedLocationOffline01,
+            size: 16,
+            color: Colors.orange[700],
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -644,14 +625,12 @@ class _ConfigurationState extends State<Configuration> {
       transitionDuration: const Duration(milliseconds: 300),
       reverseTransitionDuration: const Duration(milliseconds: 300),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+        return FadeTransition(opacity: animation, child: child);
       },
     );
   }
 
-  Future<void> _switchAccount(
-    Map<String, dynamic> user,
-    ) async {
+  Future<void> _switchAccount(Map<String, dynamic> user) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (mounted) {
@@ -667,10 +646,7 @@ return FadeTransition(opacity: animation, child: child);
               borderRadius: BorderRadius.circular(20),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 28,
-                vertical: 32,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -802,14 +778,11 @@ return FadeTransition(opacity: animation, child: child);
       reauthReason =
           'Server took too long to confirm the session. Account was not switched.';
     } on NoInternetException {
-      reauthReason =
-          'No internet connection. Connect and try switching again.';
+      reauthReason = 'No internet connection. Connect and try switching again.';
     } on ServerUnreachableException {
-      reauthReason =
-          'Could not reach $url. Verify the server and try again.';
+      reauthReason = 'Could not reach $url. Verify the server and try again.';
     } catch (e) {
-      reauthReason =
-          'Could not sign in to $displayName: ${_extractReason(e)}';
+      reauthReason = 'Could not sign in to $displayName: ${_extractReason(e)}';
     }
 
     if (!reauthOk) {
@@ -850,8 +823,7 @@ return FadeTransition(opacity: animation, child: child);
         );
       }
       await CompanySessionManager.clearSessionCache();
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   /// Extracts a short, user-readable reason from an arbitrary exception.

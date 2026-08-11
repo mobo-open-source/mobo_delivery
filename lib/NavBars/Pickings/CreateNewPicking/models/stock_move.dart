@@ -27,5 +27,11 @@ class StockMoveModel extends Equatable {
   });
 
   @override
-  List<Object?> get props => [productId, productName, productUomQty, productUomId, quantity];
+  List<Object?> get props => [
+    productId,
+    productName,
+    productUomQty,
+    productUomId,
+    quantity,
+  ];
 }

@@ -47,21 +47,33 @@ class OperationTypeModel extends Equatable {
     final resolvedName = (displayName is String && displayName.isNotEmpty)
         ? displayName
         : (name is String && name.isNotEmpty)
-            ? name
-            : 'Unknown';
+        ? name
+        : 'Unknown';
     return OperationTypeModel(
       id: json['id'],
       name: resolvedName,
-      defaultLocationSrcId: (json['default_location_src_id'] != null && json['default_location_src_id'] is List && json['default_location_src_id'].isNotEmpty)
+      defaultLocationSrcId:
+          (json['default_location_src_id'] != null &&
+              json['default_location_src_id'] is List &&
+              json['default_location_src_id'].isNotEmpty)
           ? json['default_location_src_id'][0]
           : null,
-      defaultLocationDestId: (json['default_location_dest_id'] != null && json['default_location_dest_id'] is List && json['default_location_dest_id'].isNotEmpty)
+      defaultLocationDestId:
+          (json['default_location_dest_id'] != null &&
+              json['default_location_dest_id'] is List &&
+              json['default_location_dest_id'].isNotEmpty)
           ? json['default_location_dest_id'][0]
           : null,
-      companyId: (json['company_id'] != null && json['company_id'] is List && json['company_id'].isNotEmpty)
+      companyId:
+          (json['company_id'] != null &&
+              json['company_id'] is List &&
+              json['company_id'].isNotEmpty)
           ? json['company_id'][0]
           : null,
-      companyName: (json['company_id'] != null && json['company_id'] is List && json['company_id'].isNotEmpty)
+      companyName:
+          (json['company_id'] != null &&
+              json['company_id'] is List &&
+              json['company_id'].isNotEmpty)
           ? json['company_id'][1]
           : null,
     );
@@ -71,5 +83,12 @@ class OperationTypeModel extends Equatable {
   ///
   /// Thanks to `Equatable`, objects are compared by value instead of reference.
   @override
-  List<Object?> get props => [id, name, defaultLocationSrcId, defaultLocationDestId, companyId, companyName];
+  List<Object?> get props => [
+    id,
+    name,
+    defaultLocationSrcId,
+    defaultLocationDestId,
+    companyId,
+    companyName,
+  ];
 }

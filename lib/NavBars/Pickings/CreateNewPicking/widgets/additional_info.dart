@@ -42,8 +42,7 @@ class AdditionalInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final labelColor =
-        isDark ? Colors.white70 : const Color(0xff7F7F7F);
+    final labelColor = isDark ? Colors.white70 : const Color(0xff7F7F7F);
     final itemColor = isDark ? Colors.white : Colors.black87;
     final manrope = GoogleFonts.manrope().fontFamily;
 
@@ -61,9 +60,7 @@ class AdditionalInfo extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: isDark
-                  ? const Color(0xFF2A2A2A)
-                  : const Color(0xFFF2F4F6),
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF2F4F6),
               border: Border.all(color: Colors.transparent, width: 1),
             ),
             child: DropdownButton2<String>(

@@ -108,8 +108,9 @@ class MoboTextField extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = AppStyle.primaryColor;
 
-    final Color fillColor =
-        isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB);
+    final Color fillColor = isDark
+        ? const Color(0xFF2A2A2A)
+        : const Color(0xffF8FAFB);
     final Color textColor = isDark ? Colors.white70 : const Color(0xff000000);
     final Color labelColor = isDark ? Colors.white70 : const Color(0xff7F7F7F);
     final Color hintColor = isDark ? Colors.white38 : Colors.grey[500]!;
@@ -117,7 +118,8 @@ class MoboTextField extends StatelessWidget {
         ? (isDark ? Colors.grey[700]! : Colors.grey[400]!)
         : Colors.transparent;
 
-    OutlineInputBorder borderOf(Color color, double width) => OutlineInputBorder(
+    OutlineInputBorder borderOf(Color color, double width) =>
+        OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: color, width: width),
         );
@@ -157,8 +159,9 @@ class MoboTextField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(
-            fontFamily:
-                GoogleFonts.manrope(fontWeight: FontWeight.w400).fontFamily,
+            fontFamily: GoogleFonts.manrope(
+              fontWeight: FontWeight.w400,
+            ).fontFamily,
             color: hintColor,
             fontStyle: FontStyle.italic,
             fontSize: 14,
@@ -167,8 +170,10 @@ class MoboTextField extends StatelessWidget {
           suffixIcon: suffixIcon,
           filled: true,
           fillColor: fillColor,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           border: borderOf(restingBorder, 2),
           enabledBorder: borderOf(restingBorder, 1),
           focusedBorder: borderOf(primary, 1),
@@ -181,11 +186,7 @@ class MoboTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RequiredLabel(
-          label!,
-          isRequired: isRequired,
-          color: labelColor,
-        ),
+        RequiredLabel(label!, isRequired: isRequired, color: labelColor),
         const SizedBox(height: 8),
         field,
       ],
@@ -213,13 +214,13 @@ class RequiredLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = color ?? (isDark ? Colors.white70 : const Color(0xff7F7F7F));
+    final baseColor =
+        color ?? (isDark ? Colors.white70 : const Color(0xff7F7F7F));
     return RichText(
       text: TextSpan(
         text: label,
         style: TextStyle(
-          fontFamily:
-              GoogleFonts.manrope(fontWeight: fontWeight).fontFamily,
+          fontFamily: GoogleFonts.manrope(fontWeight: fontWeight).fontFamily,
           color: baseColor,
           fontSize: fontSize,
           fontWeight: fontWeight,

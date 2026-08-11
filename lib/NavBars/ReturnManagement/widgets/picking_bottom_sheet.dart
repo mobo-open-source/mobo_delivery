@@ -74,10 +74,10 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
   /// True when at least one line has a return quantity > 0. The Return
   /// button stays disabled until then.
   bool get _hasReturnQty => moveItems.any((item) {
-        final c = item['qtyController'] as TextEditingController?;
-        final qty = double.tryParse(c?.text ?? '0') ?? 0;
-        return qty > 0;
-      });
+    final c = item['qtyController'] as TextEditingController?;
+    final qty = double.tryParse(c?.text ?? '0') ?? 0;
+    return qty > 0;
+  });
 
   @override
   void initState() {
@@ -180,51 +180,54 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                   ),
                 )
               : Flexible(
-            child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: moveItems.length,
-            itemBuilder: (context, index) {
-              final move = moveItems[index];
-              final controller = move['qtyController'] as TextEditingController;
-              final qtyHint = move['qtyHint'] as String? ?? '0';
-              final productName = move['product_id'] is List
-                  ? (move['product_id'][1] ?? 'Unnamed')
-                  : 'Unnamed';
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _productField(productName, move['image'] as String?, isDark),
-                    const SizedBox(height: 12),
-                    MoboTextField(
-                      controller: controller,
-                      label: 'Qty',
-                      hintText: qtyHint,
-                      showShadow: false,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      onChanged: (_) {
-                        setState(() => _inlineError = null);
-                      },
-                    ),
-                  ],
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: moveItems.length,
+                    itemBuilder: (context, index) {
+                      final move = moveItems[index];
+                      final controller =
+                          move['qtyController'] as TextEditingController;
+                      final qtyHint = move['qtyHint'] as String? ?? '0';
+                      final productName = move['product_id'] is List
+                          ? (move['product_id'][1] ?? 'Unnamed')
+                          : 'Unnamed';
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _productField(
+                              productName,
+                              move['image'] as String?,
+                              isDark,
+                            ),
+                            const SizedBox(height: 12),
+                            MoboTextField(
+                              controller: controller,
+                              label: 'Qty',
+                              hintText: qtyHint,
+                              showShadow: false,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              onChanged: (_) {
+                                setState(() => _inlineError = null);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              );
-            },
-          ),
-          ),
           const SizedBox(height: 20),
 
           if (_inlineError != null)
             Container(
               width: double.infinity,
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: isDark
                     ? Colors.red.withOpacity(0.15)
@@ -277,8 +280,9 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
   /// package icon). Used as the top layer of each return line
   /// (name → quantity → button).
   Widget _productField(String name, String? imageBase64, bool isDark) {
-    final Color fillColor =
-        isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB);
+    final Color fillColor = isDark
+        ? const Color(0xFF2A2A2A)
+        : const Color(0xffF8FAFB);
     final Color textColor = isDark ? Colors.white : const Color(0xff000000);
 
     return Column(
@@ -325,23 +329,21 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
     );
 
     Widget fallback() => Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppStyle.primaryColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: border,
-          ),
-          child: const Icon(
-            HugeIcons.strokeRoundedPackage,
-            color: AppStyle.primaryColor,
-            size: 22,
-          ),
-        );
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppStyle.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: border,
+      ),
+      child: const Icon(
+        HugeIcons.strokeRoundedPackage,
+        color: AppStyle.primaryColor,
+        size: 22,
+      ),
+    );
 
-    if (imageBase64 == null ||
-        imageBase64.isEmpty ||
-        imageBase64 == 'false') {
+    if (imageBase64 == null || imageBase64.isEmpty || imageBase64 == 'false') {
       return fallback();
     }
 
@@ -396,11 +398,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
           return [
             0,
             0,
-            {
-              'product_id': productId,
-              'quantity': quantity,
-              'move_id': moveId,
-            },
+            {'product_id': productId, 'quantity': quantity, 'move_id': moveId},
           ];
         })
         .toList();
@@ -456,9 +454,8 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
               ),
           transitionDuration: const Duration(milliseconds: 300),
           reverseTransitionDuration: const Duration(milliseconds: 300),
-          transitionsBuilder:
-              (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
           },
         ),
       );
@@ -478,8 +475,7 @@ return FadeTransition(opacity: animation, child: child);
     if (raw.contains('No quantity specified')) {
       return 'Enter a quantity greater than 0 for at least one product.';
     }
-    if (raw.contains('Session expired') ||
-        raw.contains('SessionExpired')) {
+    if (raw.contains('Session expired') || raw.contains('SessionExpired')) {
       return 'Session expired. Please log in again to create a return.';
     }
     return 'Failed to create return. Please try again.';

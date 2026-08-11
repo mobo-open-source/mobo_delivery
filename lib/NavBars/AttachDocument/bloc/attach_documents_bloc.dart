@@ -14,7 +14,8 @@ import '../services/odoo_attach_service.dart';
 ///   - Filtering, searching, grouping
 ///   - Uploading files/signatures to Odoo chatter/attachments
 ///   - Error handling and loading states
-class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsState> {
+class AttachDocumentsBloc
+    extends Bloc<AttachDocumentsEvent, AttachDocumentsState> {
   final OdooAttachService _odooService;
   final HiveService _hiveService;
   final int itemsPerPage;
@@ -27,9 +28,9 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
     required OdooAttachService odooService,
     required HiveService hiveService,
     this.itemsPerPage = 40,
-  })  : _odooService = odooService,
-        _hiveService = hiveService,
-        super(AttachDocumentsInitial()) {
+  }) : _odooService = odooService,
+       _hiveService = hiveService,
+       super(AttachDocumentsInitial()) {
     on<InitializeAttachDocuments>(_onInitialize);
     on<FetchDocumentStockPickings>(_onFetchDocumentStockPickings);
     on<UploadFile>(_onUploadFile);
@@ -47,9 +48,9 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
   ///
   /// Falls back to cached data on initialization failure.
   Future<void> _onInitialize(
-      InitializeAttachDocuments event,
-      Emitter<AttachDocumentsState> emit,
-      ) async {
+    InitializeAttachDocuments event,
+    Emitter<AttachDocumentsState> emit,
+  ) async {
     emit(AttachDocumentsLoading());
     try {
       await _odooService.initializeClient();
@@ -61,13 +62,17 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
       totalCount = await _odooService.StockCount();
 
       if (cachedPickings.isNotEmpty) {
-        final pickings = cachedPickings.map((p) => p.toJson() as Map<String, dynamic>).toList();
-        emit(AttachDocumentsLoaded(
-          pickings: pickings,
-          currentPage: 0,
-          displayedCount: totalCount > itemsPerPage ? pickings.length.clamp(0, itemsPerPage) : totalCount,
-          totalCount: totalCount,
-        ));
+        final pickings = cachedPickings.map((p) => p.toJson()).toList();
+        emit(
+          AttachDocumentsLoaded(
+            pickings: pickings,
+            currentPage: 0,
+            displayedCount: totalCount > itemsPerPage
+                ? pickings.length.clamp(0, itemsPerPage)
+                : totalCount,
+            totalCount: totalCount,
+          ),
+        );
       }
 
       add(FetchDocumentStockPickings(0, itemsPerPage));
@@ -75,12 +80,14 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
       int totalCount = await _hiveService.getTotalCount();
       final cachedPickings = await _hiveService.getPickings();
       if (cachedPickings.isNotEmpty) {
-        final pickings = cachedPickings.map((p) => p.toJson() as Map<String, dynamic>).toList();
-        emit(AttachDocumentsLoaded(
-          pickings: pickings,
-          totalCount: totalCount,
-          currentPage: 0,
-        ));
+        final pickings = cachedPickings.map((p) => p.toJson()).toList();
+        emit(
+          AttachDocumentsLoaded(
+            pickings: pickings,
+            totalCount: totalCount,
+            currentPage: 0,
+          ),
+        );
       }
     }
   }
@@ -90,15 +97,17 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
   /// Used when user navigates pages while offline and cached data exists.
   /// Directly emits loaded state with provided pickings, page, and total count.
   Future<void> _onLoadOfflineDocuments(
-      LoadOfflineDocuments event,
-      Emitter<AttachDocumentsState> emit,
-      ) async {
-    emit(AttachDocumentsLoaded(
-      pickings: event.pickings,
-      currentPage: event.currentPage,
-      displayedCount: event.pickings.length,
-      totalCount: event.totalCount,
-    ));
+    LoadOfflineDocuments event,
+    Emitter<AttachDocumentsState> emit,
+  ) async {
+    emit(
+      AttachDocumentsLoaded(
+        pickings: event.pickings,
+        currentPage: event.currentPage,
+        displayedCount: event.pickings.length,
+        totalCount: event.totalCount,
+      ),
+    );
   }
 
   /// Capitalizes the first letter of a string (used for group keys).
@@ -117,7 +126,7 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
     final value = item[field];
 
     if (field == 'state') {
-      return capitalizeFirstLetter(value) ?? value ?? 'Unknown';
+      return capitalizeFirstLetter(value);
     }
     if (field == 'partner_id' && value is List && value.length > 1) {
       return value[1].toString();
@@ -143,13 +152,12 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
   ///
   /// On error: emits error state while preserving previous pickings
   Future<void> _onFetchDocumentStockPickings(
-      FetchDocumentStockPickings event,
-      Emitter<AttachDocumentsState> emit,
-      ) async {
+    FetchDocumentStockPickings event,
+    Emitter<AttachDocumentsState> emit,
+  ) async {
     searchQuery = event.searchQuery;
 
     try {
-
       emit(AttachDocumentsLoading());
 
       final totalCount = await _odooService.StockCount(
@@ -158,17 +166,19 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
       );
       await _hiveService.saveTotalCount(totalCount);
 
-      final newPickingsDynamic = await _odooService.fetchAttachmentStockPickings(
-        event.page,
-        event.itemsPerPage,
-        searchQuery: event.searchQuery,
-        filters: event.filters,
-        groupBy: event.groupBy,
-      );
+      final newPickingsDynamic = await _odooService
+          .fetchAttachmentStockPickings(
+            event.page,
+            event.itemsPerPage,
+            searchQuery: event.searchQuery,
+            filters: event.filters,
+            groupBy: event.groupBy,
+          );
 
-      final newPickings = newPickingsDynamic.map((item) => item as Map<String, dynamic>).toList();
+      final newPickings = newPickingsDynamic.toList();
 
-      final displayedCount = (event.page * itemsPerPage + newPickings.length).clamp(0, totalCount);
+      final displayedCount = (event.page * itemsPerPage + newPickings.length)
+          .clamp(0, totalCount);
 
       await _hiveService.savePickings(newPickings);
       Map<String, List<Map<String, dynamic>>> grouped = {};
@@ -180,41 +190,45 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
         }
       }
 
-      emit(AttachDocumentsLoaded(
-        pickings: newPickings,
-        currentPage: event.page,
-        isFetchingMore: false,
-        displayedCount: displayedCount,
-        totalCount: totalCount,
-        groupedPickings: grouped,
-      ));
+      emit(
+        AttachDocumentsLoaded(
+          pickings: newPickings,
+          currentPage: event.page,
+          isFetchingMore: false,
+          displayedCount: displayedCount,
+          totalCount: totalCount,
+          groupedPickings: grouped,
+        ),
+      );
     } catch (e) {
-      emit(AttachDocumentsError(
-        'Failed to fetch pickings: $e',
-        pickings: state is AttachDocumentsLoaded
-            ? (state as AttachDocumentsLoaded).pickings
-            : state is AttachDocumentsFileUploaded
-            ? (state as AttachDocumentsFileUploaded).pickings
-            : state is AttachDocumentsError
-            ? (state as AttachDocumentsError).pickings
-            : [],
-        isFetchingMore: false,
-        currentPage: event.page,
-        displayedCount: state is AttachDocumentsLoaded
-            ? (state as AttachDocumentsLoaded).displayedCount
-            : state is AttachDocumentsFileUploaded
-            ? (state as AttachDocumentsFileUploaded).displayedCount
-            : state is AttachDocumentsError
-            ? (state as AttachDocumentsError).displayedCount
-            : 0,
-        totalCount: state is AttachDocumentsLoaded
-            ? (state as AttachDocumentsLoaded).totalCount
-            : state is AttachDocumentsFileUploaded
-            ? (state as AttachDocumentsFileUploaded).totalCount
-            : state is AttachDocumentsError
-            ? (state as AttachDocumentsError).totalCount
-            : 0,
-      ));
+      emit(
+        AttachDocumentsError(
+          'Failed to fetch pickings: $e',
+          pickings: state is AttachDocumentsLoaded
+              ? (state as AttachDocumentsLoaded).pickings
+              : state is AttachDocumentsFileUploaded
+              ? (state as AttachDocumentsFileUploaded).pickings
+              : state is AttachDocumentsError
+              ? (state as AttachDocumentsError).pickings
+              : [],
+          isFetchingMore: false,
+          currentPage: event.page,
+          displayedCount: state is AttachDocumentsLoaded
+              ? (state as AttachDocumentsLoaded).displayedCount
+              : state is AttachDocumentsFileUploaded
+              ? (state as AttachDocumentsFileUploaded).displayedCount
+              : state is AttachDocumentsError
+              ? (state as AttachDocumentsError).displayedCount
+              : 0,
+          totalCount: state is AttachDocumentsLoaded
+              ? (state as AttachDocumentsLoaded).totalCount
+              : state is AttachDocumentsFileUploaded
+              ? (state as AttachDocumentsFileUploaded).totalCount
+              : state is AttachDocumentsError
+              ? (state as AttachDocumentsError).totalCount
+              : 0,
+        ),
+      );
     }
   }
 
@@ -225,9 +239,9 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
   /// On failure → emits Error state with preserved list
   /// Also tracks the event via ReviewService for analytics.
   Future<void> _onUploadFile(
-      UploadFile event,
-      Emitter<AttachDocumentsState> emit,
-      ) async {
+    UploadFile event,
+    Emitter<AttachDocumentsState> emit,
+  ) async {
     final currentState = state;
     final isFetchingMore = currentState is AttachDocumentsLoaded
         ? currentState.isFetchingMore
@@ -237,11 +251,11 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
         ? currentState.isFetchingMore
         : false;
     final pickings = currentState is AttachDocumentsLoaded
-        ? (currentState as AttachDocumentsLoaded).pickings
+        ? currentState.pickings
         : currentState is AttachDocumentsFileUploaded
-        ? (currentState as AttachDocumentsFileUploaded).pickings
+        ? currentState.pickings
         : currentState is AttachDocumentsError
-        ? (currentState as AttachDocumentsError).pickings
+        ? currentState.pickings
         : <Map<String, dynamic>>[];
     final displayedCount = currentState is AttachDocumentsLoaded
         ? currentState.displayedCount
@@ -275,15 +289,17 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
           fileName: event.fileName,
         ),
       );
-      emit(AttachDocumentsFileUploaded(
-        success: true,
-        message: 'Saved offline — will upload when back online',
-        pickings: pickings,
-        isFetchingMore: isFetchingMore,
-        currentPage: currentPage,
-        displayedCount: displayedCount,
-        totalCount: totalCount,
-      ));
+      emit(
+        AttachDocumentsFileUploaded(
+          success: true,
+          message: 'Saved offline — will upload when back online',
+          pickings: pickings,
+          isFetchingMore: isFetchingMore,
+          currentPage: currentPage,
+          displayedCount: displayedCount,
+          totalCount: totalCount,
+        ),
+      );
       return;
     }
 
@@ -294,25 +310,29 @@ class AttachDocumentsBloc extends Bloc<AttachDocumentsEvent, AttachDocumentsStat
         event.pickingId,
         event.fileName,
       );
-      emit(AttachDocumentsFileUploaded(
-        success: true,
-        message: 'File uploaded successfully',
-        pickings: pickings,
-        isFetchingMore: isFetchingMore,
-        currentPage: currentPage,
-        displayedCount: displayedCount,
-        totalCount: totalCount,
-      ));
+      emit(
+        AttachDocumentsFileUploaded(
+          success: true,
+          message: 'File uploaded successfully',
+          pickings: pickings,
+          isFetchingMore: isFetchingMore,
+          currentPage: currentPage,
+          displayedCount: displayedCount,
+          totalCount: totalCount,
+        ),
+      );
       ReviewService().trackSignificantEvent();
     } catch (e) {
-      emit(AttachDocumentsError(
-        'Failed to upload file: $e',
-        pickings: pickings,
-        isFetchingMore: isFetchingMore,
-        currentPage: currentPage,
-        displayedCount: displayedCount,
-        totalCount: totalCount,
-      ));
+      emit(
+        AttachDocumentsError(
+          'Failed to upload file: $e',
+          pickings: pickings,
+          isFetchingMore: isFetchingMore,
+          currentPage: currentPage,
+          displayedCount: displayedCount,
+          totalCount: totalCount,
+        ),
+      );
     }
   }
 }

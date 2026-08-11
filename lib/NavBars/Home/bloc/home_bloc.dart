@@ -26,8 +26,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   StreamSubscription<void>? _companySub;
 
   HomeBloc({HomeService? service})
-      : _service = service ?? HomeService(),
-        super(const HomeState.initial()) {
+    : _service = service ?? HomeService(),
+      super(const HomeState.initial()) {
     on<LoadHome>(_onLoad);
     on<ConnectivityChanged>(_onConnectivityChanged);
 
@@ -49,22 +49,25 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       final counts = results[0] as HomeCounts;
       final rows = results[1] as List;
 
-      emit(state.copyWith(
-        status: HomeStatus.loaded,
-        counts: counts,
-        attention: rows.cast(),
-        clearError: true,
-      ));
+      emit(
+        state.copyWith(
+          status: HomeStatus.loaded,
+          counts: counts,
+          attention: rows.cast(),
+          clearError: true,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: HomeStatus.error,
-        errorMessage: 'Could not load dashboard: $e',
-      ));
+      emit(
+        state.copyWith(status: HomeStatus.error, errorMessage: e.toString()),
+      );
     }
   }
 
   void _onConnectivityChanged(
-      ConnectivityChanged event, Emitter<HomeState> emit) {
+    ConnectivityChanged event,
+    Emitter<HomeState> emit,
+  ) {
     if (state.online == event.online) return;
     emit(state.copyWith(online: event.online));
 

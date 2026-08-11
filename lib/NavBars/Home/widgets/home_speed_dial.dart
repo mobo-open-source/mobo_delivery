@@ -8,6 +8,7 @@ import '../../../Dashboard/screens/dashboard/bloc/dashboard_bloc.dart';
 import '../../../Dashboard/screens/dashboard/bloc/dashboard_event.dart';
 import '../../../shared/theme/mobo_home_theme.dart';
 import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/dialogs/loading_dialog.dart';
 import '../../MapBox/services/route_plan_bus.dart';
 import '../../Pickings/CreateNewPicking/pages/create_picking_page.dart';
 import '../../Pickings/PickingListPage/services/picking_service.dart';
@@ -29,8 +30,9 @@ class HomeSpeedDial extends StatelessWidget {
 
     const triggerBg = AppStyle.primaryColor;
     const triggerFg = Colors.white;
-    final childBg = isDark ? home.surface : AppStyle.primaryColor;
+    final childBg = isDark ? Colors.grey[800]! : AppStyle.primaryColor;
     const childFg = Colors.white;
+    final labelBg = isDark ? Colors.grey[800]! : home.surface;
     final labelFg = isDark ? Colors.white : home.textPrimary;
 
     return SpeedDial(
@@ -43,12 +45,12 @@ class HomeSpeedDial extends StatelessWidget {
       overlayColor: Colors.black,
       overlayOpacity: isDark ? 0.30 : 0.20,
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       direction: SpeedDialDirection.up,
       spacing: 8,
       spaceBetweenChildren: 8,
       childPadding: const EdgeInsets.all(6),
-      childMargin: const EdgeInsets.symmetric(horizontal: 8),
+      childMargin: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       closeManually: false,
       useRotationAnimation: true,
       animationCurve: Curves.easeOutCubic,
@@ -61,7 +63,7 @@ class HomeSpeedDial extends StatelessWidget {
           label: 'New picking',
           childBg: childBg,
           childFg: childFg,
-          labelBg: home.surface,
+          labelBg: labelBg,
           labelFg: labelFg,
           onTap: () => _newPicking(context),
         ),
@@ -70,12 +72,13 @@ class HomeSpeedDial extends StatelessWidget {
           label: 'Plan route',
           childBg: childBg,
           childFg: childFg,
-          labelBg: home.surface,
+          labelBg: labelBg,
           labelFg: labelFg,
           onTap: () {
             context.read<DashboardBloc>().add(const ChangeTab(_kRouteTabIndex));
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => RoutePlanBus.request());
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => RoutePlanBus.request(),
+            );
           },
         ),
         _child(
@@ -83,11 +86,11 @@ class HomeSpeedDial extends StatelessWidget {
           label: 'Attach doc',
           childBg: childBg,
           childFg: childFg,
-          labelBg: home.surface,
+          labelBg: labelBg,
           labelFg: labelFg,
-          onTap: () => context
-              .read<DashboardBloc>()
-              .add(const ChangeTab(_kDocumentsTabIndex)),
+          onTap: () => context.read<DashboardBloc>().add(
+            const ChangeTab(_kDocumentsTabIndex),
+          ),
         ),
       ],
     );
@@ -120,11 +123,12 @@ class HomeSpeedDial extends StatelessWidget {
   /// Opens the create-picking flow, then refreshes Home.
   Future<void> _newPicking(BuildContext context) async {
     final homeBloc = context.read<HomeBloc>();
+    LoadingDialog.show(context);
     final service = PickingService();
     await service.initializeOdooClient();
-
     await service.checkNetworkConnectivity();
     if (!context.mounted) return;
+    LoadingDialog.hide(context);
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => CreatePickingPage(url: service.url)),

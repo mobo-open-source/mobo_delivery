@@ -10,17 +10,16 @@ import '../../../shared/utils/globals.dart';
 class NavigationHeader extends StatelessWidget {
   final VoidCallback onClose;
 
-  const NavigationHeader({
-    super.key,
-    required this.onClose,
-  });
+  const NavigationHeader({super.key, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1C1C2E) : Colors.white;
     final primary = isDark ? Colors.white : const Color(0xFF202124);
-    final secondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF70757A);
+    final secondary = isDark
+        ? const Color(0xFFAAAAAA)
+        : const Color(0xFF70757A);
     final accent = AppStyle.primaryColor;
 
     const modeIcon = HugeIcons.strokeRoundedShippingTruck02;
@@ -69,7 +68,11 @@ class NavigationHeader extends StatelessWidget {
                 color: isDark ? Colors.white12 : Colors.grey[100],
                 shape: BoxShape.circle,
               ),
-              child: Icon(HugeIcons.strokeRoundedCancel01, size: 16, color: secondary),
+              child: Icon(
+                HugeIcons.strokeRoundedCancel01,
+                size: 16,
+                color: secondary,
+              ),
             ),
           ),
         ],

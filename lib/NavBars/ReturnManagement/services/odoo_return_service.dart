@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/company/session/company_session_manager.dart';
@@ -82,11 +81,20 @@ class OdooReturnManagementService {
           break;
 
         case 'late':
-          final now = DateTime.now().toUtc().toString().replaceFirst('Z', '').trim();
+          final now = DateTime.now()
+              .toUtc()
+              .toString()
+              .replaceFirst('Z', '')
+              .trim();
           domain.addAll([
             '&',
-            ['state', 'in', ['assigned', 'waiting', 'confirmed']],
-            '|', '|',
+            [
+              'state',
+              'in',
+              ['assigned', 'waiting', 'confirmed'],
+            ],
+            '|',
+            '|',
             ['has_deadline_issue', '=', true],
             ['date_deadline', '<', now],
             ['scheduled_date', '<', now],
@@ -94,13 +102,21 @@ class OdooReturnManagementService {
           break;
 
         case 'planning_issue':
-          final now = DateTime.now().toUtc().toString().replaceFirst('Z', '').trim();
+          final now = DateTime.now()
+              .toUtc()
+              .toString()
+              .replaceFirst('Z', '')
+              .trim();
           domain.addAll([
             '|',
             ['delay_alert_date', '!=', false],
             '&',
             ['scheduled_date', '<', now],
-            ['state', 'in', ['assigned', 'waiting', 'confirmed']],
+            [
+              'state',
+              'in',
+              ['assigned', 'waiting', 'confirmed'],
+            ],
           ]);
           break;
 
@@ -214,9 +230,7 @@ class OdooReturnManagementService {
   ///
   /// Returns line maps shaped as `{id, product_id, quantity, move_id, uom_id}`.
   /// Throws on failure.
-  Future<List<Map<String, dynamic>>> fetchReturnableMoves(
-    int pickingId,
-  ) async {
+  Future<List<Map<String, dynamic>>> fetchReturnableMoves(int pickingId) async {
     try {
       final createResult = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.return.picking',
@@ -225,10 +239,7 @@ class OdooReturnManagementService {
           {'picking_id': pickingId},
         ],
         'kwargs': {
-          'context': {
-            'active_id': pickingId,
-            'active_model': 'stock.picking',
-          },
+          'context': {'active_id': pickingId, 'active_model': 'stock.picking'},
         },
       });
 
@@ -261,7 +272,9 @@ class OdooReturnManagementService {
       if (wizardRows is! List || wizardRows.isEmpty) return [];
       final firstRow = wizardRows.first;
       if (firstRow is! Map) return [];
-      final lineIds = (firstRow as Map<String, dynamic>)['product_return_moves'] as List? ?? const [];
+      final lineIds =
+          (firstRow as Map<String, dynamic>)['product_return_moves'] as List? ??
+          const [];
       if (lineIds.isEmpty) return [];
 
       final lines = await CompanySessionManager.callKwWithCompany({
@@ -278,7 +291,8 @@ class OdooReturnManagementService {
 
       final productIds = <int>{
         for (final line in result)
-          if (line['product_id'] is List && (line['product_id'] as List).isNotEmpty)
+          if (line['product_id'] is List &&
+              (line['product_id'] as List).isNotEmpty)
             (line['product_id'] as List).first as int,
       }.toList();
 
@@ -310,9 +324,7 @@ class OdooReturnManagementService {
               }
             }
           }
-        } catch (_) {
-
-        }
+        } catch (_) {}
       }
 
       return result;
@@ -370,10 +382,7 @@ class OdooReturnManagementService {
         {'picking_id': pickingId},
       ],
       'kwargs': {
-        'context': {
-          'active_id': pickingId,
-          'active_model': 'stock.picking',
-        },
+        'context': {'active_id': pickingId, 'active_model': 'stock.picking'},
       },
     });
 

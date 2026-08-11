@@ -69,7 +69,9 @@ class _DashboardState extends State<Dashboard> {
           context,
           'Synced ${result.succeeded} offline '
           '${result.succeeded == 1 ? "change" : "changes"}'
-          '${result.failed > 0 ? " — ${result.failed} pending retry" : ""}.',
+          '${result.failed > 0 ? " — ${result.failed} pending retry" : ""}.'
+          '${result.droppedLines > 0 ? ' ${result.droppedLines} invalid product '
+                    'line${result.droppedLines == 1 ? "" : "s"} skipped.' : ""}',
         );
       }
     });
@@ -100,180 +102,200 @@ class _DashboardState extends State<Dashboard> {
           builder: (context, state) {
             final bloc = context.read<DashboardBloc>();
 
-          final currentPage = state.pages[state.currentIndex];
+            final currentPage = state.pages[state.currentIndex];
 
-          return ValueListenableBuilder<bool>(
-            valueListenable: RouteNavigationBus.isNavigating,
-            builder: (context, isNavigating, _) {
-              final hideAppBar =
-                  isNavigating && currentPage['title'] == 'Route';
-              return WillPopScope(
-            onWillPop: () async {
-              final bloc = context.read<DashboardBloc>();
-              if (state.currentIndex != 0) {
-                bloc.add(ChangeTab(0));
-                return false;
-              }
-              SystemNavigator.pop();
-              return false;
-            },
-            child: Scaffold(
-              backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-              appBar: hideAppBar ? null : AppBar(
-                      forceMaterialTransparency: true,
-                      title: Text(
-                        currentPage['title'],
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      automaticallyImplyLeading: false,
-                      backgroundColor: isDark
-                          ? Colors.grey[900]
-                          : Colors.grey[50],
-                      actions: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ValueListenableBuilder<int>(
-                              valueListenable:
-                                  PendingSyncService.instance.pendingCount,
-                              builder: (context, count, _) {
-                                if (count <= 0) return const SizedBox.shrink();
-                                return IconButton(
-                                  tooltip: 'Offline sync ($count pending)',
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const SyncCenterPage(),
-                                      ),
-                                    ).then((_) => PendingSyncService.instance
-                                        .refreshCount());
-                                  },
-                                  icon: Badge(
-                                    label: Text('$count'),
-                                    backgroundColor: AppStyle.primaryColor,
-                                    child: Icon(
-                                      HugeIcons.strokeRoundedCloudUpload,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            CompanySelectorWidget(
-                              onCompanyChanged: () async {
-                                if (!context.mounted) return;
-                                final provider = context.read<CompanyProvider>();
-                                final companyName =
-                                    provider.selectedCompany?['name']
-                                        ?.toString() ??
-                                    'company';
-                                bloc.add(RefreshUserProfile());
-                                CompanyRefreshBus.notify();
-
-                                CustomSnackbar.showSuccess(
-                                  context,
-                                  'Switched to $companyName',
-                                );
-                              },
-                            ),
-                            Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              child: IconButton(
-                                icon: OdooAvatar(
-                                  key: ValueKey(
-                                    'avatar_${state.profilePicBytes != null ? "image" : "placeholder"}',
-                                  ),
-                                  imageBytes: state.profilePicBytes,
-                                  size: 32,
-                                  iconSize: 18,
-                                  borderRadius: BorderRadius.circular(16),
-                                  placeholderColor: isDark
-                                      ? Colors.grey[800]
-                                      : Colors.grey[300],
-                                  iconColor: isDark ? Colors.white70 : Colors.black54,
-                                ),
-                                onPressed: () async {
-                                  await Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (_, __, ___) => Configuration(
-                                        profileImageBytes: state.profilePicBytes,
-                                        userName: state.userName,
-                                        mail: state.mail,
-                                      ),
-                                      transitionDuration: const Duration(milliseconds: 300),
-                                      reverseTransitionDuration:
-                                          const Duration(milliseconds: 300),
-                                      transitionsBuilder:
-                                          (
-                                            context,
-                                            animation,
-                                            secondaryAnimation,
-                                            child,
-                                          ) {
-return FadeTransition(
-                                              opacity: animation,
-                                              child: child,
-                                            );
-                                          },
-                                    ),
-                                  ).then((_) {
-                                    bloc.add(RefreshUserProfile());
-                                  });
-                                },
+            return ValueListenableBuilder<bool>(
+              valueListenable: RouteNavigationBus.isNavigating,
+              builder: (context, isNavigating, _) {
+                final hideAppBar =
+                    isNavigating && currentPage['title'] == 'Route';
+                return WillPopScope(
+                  onWillPop: () async {
+                    final bloc = context.read<DashboardBloc>();
+                    if (state.currentIndex != 0) {
+                      bloc.add(ChangeTab(0));
+                      return false;
+                    }
+                    SystemNavigator.pop();
+                    return false;
+                  },
+                  child: Scaffold(
+                    backgroundColor: isDark
+                        ? Colors.grey[900]
+                        : Colors.grey[50],
+                    appBar: hideAppBar
+                        ? null
+                        : AppBar(
+                            forceMaterialTransparency: true,
+                            title: Text(
+                              currentPage['title'],
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
-                          ],
+                            automaticallyImplyLeading: false,
+                            backgroundColor: isDark
+                                ? Colors.grey[900]
+                                : Colors.grey[50],
+                            actions: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ValueListenableBuilder<int>(
+                                    valueListenable: PendingSyncService
+                                        .instance
+                                        .pendingCount,
+                                    builder: (context, count, _) {
+                                      if (count <= 0)
+                                        return const SizedBox.shrink();
+                                      return IconButton(
+                                        tooltip:
+                                            'Offline sync ($count pending)',
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const SyncCenterPage(),
+                                            ),
+                                          ).then(
+                                            (_) => PendingSyncService.instance
+                                                .refreshCount(),
+                                          );
+                                        },
+                                        icon: Badge(
+                                          label: Text('$count'),
+                                          backgroundColor:
+                                              AppStyle.primaryColor,
+                                          child: Icon(
+                                            HugeIcons.strokeRoundedCloudUpload,
+                                            color: isDark
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  CompanySelectorWidget(
+                                    onCompanyChanged: () async {
+                                      if (!context.mounted) return;
+                                      final provider = context
+                                          .read<CompanyProvider>();
+                                      final companyName =
+                                          provider.selectedCompany?['name']
+                                              ?.toString() ??
+                                          'company';
+                                      bloc.add(RefreshUserProfile());
+                                      CompanyRefreshBus.notify();
+
+                                      CustomSnackbar.showSuccess(
+                                        context,
+                                        'Switched to $companyName',
+                                      );
+                                    },
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.only(right: 8),
+                                    child: IconButton(
+                                      icon: OdooAvatar(
+                                        key: ValueKey(
+                                          'avatar_${state.profilePicBytes != null ? "image" : "placeholder"}',
+                                        ),
+                                        imageBytes: state.profilePicBytes,
+                                        size: 32,
+                                        iconSize: 18,
+                                        borderRadius: BorderRadius.circular(16),
+                                        placeholderColor: isDark
+                                            ? Colors.grey[800]
+                                            : Colors.grey[300],
+                                        iconColor: isDark
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                      ),
+                                      onPressed: () async {
+                                        await Navigator.push(
+                                          context,
+                                          PageRouteBuilder(
+                                            pageBuilder: (_, __, ___) =>
+                                                Configuration(
+                                                  profileImageBytes:
+                                                      state.profilePicBytes,
+                                                  userName: state.userName,
+                                                  mail: state.mail,
+                                                ),
+                                            transitionDuration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            reverseTransitionDuration:
+                                                const Duration(
+                                                  milliseconds: 300,
+                                                ),
+                                            transitionsBuilder:
+                                                (
+                                                  context,
+                                                  animation,
+                                                  secondaryAnimation,
+                                                  child,
+                                                ) {
+                                                  return FadeTransition(
+                                                    opacity: animation,
+                                                    child: child,
+                                                  );
+                                                },
+                                          ),
+                                        ).then((_) {
+                                          bloc.add(RefreshUserProfile());
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                    body: Column(
+                      children: [
+                        if (!state.isServerReachable)
+                          _OfflineBanner(
+                            onRetry: () => bloc.add(RefreshUserProfile()),
+                          ),
+                        Expanded(
+                          child: state.isLoading
+                              ? const SizedBox.expand()
+                              : IndexedStack(
+                                  index: state.currentIndex,
+                                  children: state.pages
+                                      .map<Widget>(
+                                        (p) =>
+                                            p['route'] as Widget? ??
+                                            const SizedBox.shrink(),
+                                      )
+                                      .toList(),
+                                ),
                         ),
                       ],
                     ),
 
-              body: Column(
-                children: [
-                  if (!state.isServerReachable)
-                    _OfflineBanner(
-                      onRetry: () => bloc.add(RefreshUserProfile()),
+                    bottomNavigationBar: DashboardBottomNavBar(
+                      currentIndex: state.currentIndex,
+                      pages: state.pages,
+                      onTap: (index) {
+                        context.read<DashboardBloc>().add(ChangeTab(index));
+                      },
                     ),
-                  Expanded(
-
-                    child: state.isLoading
-                        ? const SizedBox.expand()
-                        : IndexedStack(
-                            index: state.currentIndex,
-                            children: state.pages
-                                .map<Widget>(
-                                  (p) => p['route'] as Widget? ??
-                                      const SizedBox.shrink(),
-                                )
-                                .toList(),
-                          ),
                   ),
-                ],
-              ),
-
-              bottomNavigationBar: DashboardBottomNavBar(
-                currentIndex: state.currentIndex,
-                pages: state.pages,
-                onTap: (index) {
-                  context.read<DashboardBloc>().add(ChangeTab(index));
-                },
-              ),
-            ),
-          );
-            },
-          );
-        },
+                );
+              },
+            );
+          },
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 /// Slim banner shown at the top of Dashboard body when the server is unreachable.
@@ -320,8 +342,9 @@ class _OfflineBanner extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: isDark ? Colors.orange[300] : Colors.orange[800],
                   decoration: TextDecoration.underline,
-                  decorationColor:
-                      isDark ? Colors.orange[300] : Colors.orange[800],
+                  decorationColor: isDark
+                      ? Colors.orange[300]
+                      : Colors.orange[800],
                 ),
               ),
             ),

@@ -70,6 +70,8 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
 
   static const _primary = AppStyle.primaryColor;
 
+  static const _readyBlue = Color(0xFF2196F3);
+
   /// Light variant. Maroon slots use the app's canonical primary (#C03355);
   /// remaining values follow the Mobo Home design tokens.
   static final MoboHomeTheme light = MoboHomeTheme(
@@ -81,8 +83,8 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     textMuted: const Color(0xFF9C9C95),
     skeletonBase: const Color(0xFFEDEDF0),
     skeletonHighlight: const Color(0xFFE2E2E6),
-    readyFg: _primary,
-    readyBg: _primary.withValues(alpha: 0.10),
+    readyFg: _readyBlue,
+    readyBg: _readyBlue.withValues(alpha: 0.1),
     waitFg: const Color(0xFFB27400),
     waitBg: const Color(0xFFFBEFD5),
     lateFg: const Color(0xFFC73E3E),
@@ -120,8 +122,8 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     skeletonBase: const Color(0xFF242428),
     skeletonHighlight: const Color(0xFF2E2E33),
 
-    readyFg: _primary,
-    readyBg: const Color(0x33C03355),
+    readyFg: _readyBlue,
+    readyBg: _readyBlue.withValues(alpha: 0.2),
     waitFg: const Color(0xFFE4B75A),
     waitBg: const Color(0x2EC58B17),
     lateFg: const Color(0xFFEF4444),
@@ -209,8 +211,11 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       skeletonBase: Color.lerp(skeletonBase, other.skeletonBase, t)!,
-      skeletonHighlight:
-          Color.lerp(skeletonHighlight, other.skeletonHighlight, t)!,
+      skeletonHighlight: Color.lerp(
+        skeletonHighlight,
+        other.skeletonHighlight,
+        t,
+      )!,
       readyFg: Color.lerp(readyFg, other.readyFg, t)!,
       readyBg: Color.lerp(readyBg, other.readyBg, t)!,
       waitFg: Color.lerp(waitFg, other.waitFg, t)!,
@@ -224,8 +229,11 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
       chipBorder: Color.lerp(chipBorder, other.chipBorder, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
       syncOfflineBg: Color.lerp(syncOfflineBg, other.syncOfflineBg, t)!,
-      syncOfflineBorder:
-          Color.lerp(syncOfflineBorder, other.syncOfflineBorder, t)!,
+      syncOfflineBorder: Color.lerp(
+        syncOfflineBorder,
+        other.syncOfflineBorder,
+        t,
+      )!,
       cardShadow: t < 0.5 ? cardShadow : other.cardShadow,
     );
   }

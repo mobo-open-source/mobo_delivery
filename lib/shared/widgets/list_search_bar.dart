@@ -61,12 +61,12 @@ class _ListSearchBarState extends State<ListSearchBar> {
         : const Color(0xFF99A1AF);
     // Search icon + hint text share the muted #99A1AF tone in light mode
     // (Figma spec); dark mode lifts to a translucent white for visibility.
-    final iconColor =
-        isDark ? Colors.white.withValues(alpha: 0.70) : const Color(0xFF99A1AF);
+    final iconColor = isDark
+        ? Colors.white.withValues(alpha: 0.70)
+        : const Color(0xFF99A1AF);
     // Filter icon renders in its Figma stroke color (#1A1A1A) so the glyph
     // reads as designed; dark mode flips to plain white.
-    final filterIconColor =
-        isDark ? Colors.white : const Color(0xFF1A1A1A);
+    final filterIconColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -75,7 +75,14 @@ class _ListSearchBarState extends State<ListSearchBar> {
         children: [
           Row(
             children: [
-              Expanded(child: _buildSearchField(surface, textColor, hintColor, iconColor)),
+              Expanded(
+                child: _buildSearchField(
+                  surface,
+                  textColor,
+                  hintColor,
+                  iconColor,
+                ),
+              ),
               const SizedBox(width: 10),
               _buildFilterButton(surface, filterIconColor),
             ],
@@ -90,7 +97,11 @@ class _ListSearchBarState extends State<ListSearchBar> {
   }
 
   Widget _buildSearchField(
-      Color surface, Color textColor, Color hintColor, Color iconColor) {
+    Color surface,
+    Color textColor,
+    Color hintColor,
+    Color iconColor,
+  ) {
     return Container(
       height: _height,
       decoration: BoxDecoration(
@@ -107,8 +118,10 @@ class _ListSearchBarState extends State<ListSearchBar> {
         style: TextStyle(fontSize: 14, color: textColor),
         decoration: InputDecoration(
           isCollapsed: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 14,
+          ),
           hintText: widget.hintText,
           hintStyle: TextStyle(
             color: hintColor,
@@ -124,8 +137,10 @@ class _ListSearchBarState extends State<ListSearchBar> {
               colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
             ),
           ),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
           suffixIcon: widget.controller.text.isNotEmpty
               ? IconButton(
                   splashRadius: 18,
@@ -143,8 +158,10 @@ class _ListSearchBarState extends State<ListSearchBar> {
                   },
                 )
               : null,
-          suffixIconConstraints:
-              const BoxConstraints(minWidth: 40, minHeight: 40),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,

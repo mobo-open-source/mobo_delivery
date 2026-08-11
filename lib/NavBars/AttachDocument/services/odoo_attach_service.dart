@@ -41,8 +41,9 @@ class OdooAttachService {
       var host = (prefs.getString('url') ?? '').trim();
       host = host.replaceFirst(RegExp(r'^https?://'), '').split('/').first;
       if (host.isEmpty) host = 'example.com';
-      final result = await InternetAddress.lookup(host)
-          .timeout(const Duration(seconds: 3));
+      final result = await InternetAddress.lookup(
+        host,
+      ).timeout(const Duration(seconds: 3));
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } on SocketException {
       return false;
@@ -142,10 +143,18 @@ class OdooAttachService {
           break;
 
         case 'late':
-          final now = DateTime.now().toUtc().toString().replaceFirst('Z', '').trim();
+          final now = DateTime.now()
+              .toUtc()
+              .toString()
+              .replaceFirst('Z', '')
+              .trim();
           domain.addAll([
             '&',
-            ['state', 'in', ['assigned', 'waiting', 'confirmed']],
+            [
+              'state',
+              'in',
+              ['assigned', 'waiting', 'confirmed'],
+            ],
             '|',
             '|',
             ['has_deadline_issue', '=', true],
@@ -155,13 +164,21 @@ class OdooAttachService {
           break;
 
         case 'planning_issue':
-          final now = DateTime.now().toUtc().toString().replaceFirst('Z', '').trim();
+          final now = DateTime.now()
+              .toUtc()
+              .toString()
+              .replaceFirst('Z', '')
+              .trim();
           domain.addAll([
             '|',
             ['delay_alert_date', '!=', false],
             '&',
             ['scheduled_date', '<', now],
-            ['state', 'in', ['assigned', 'waiting', 'confirmed']],
+            [
+              'state',
+              'in',
+              ['assigned', 'waiting', 'confirmed'],
+            ],
           ]);
           break;
 
@@ -266,13 +283,7 @@ class OdooAttachService {
           ],
         ],
         'kwargs': {
-          'fields': [
-            'id',
-            'name',
-            'mimetype',
-            'file_size',
-            'create_date',
-          ],
+          'fields': ['id', 'name', 'mimetype', 'file_size', 'create_date'],
           'order': 'create_date desc',
         },
       });

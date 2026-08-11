@@ -75,10 +75,13 @@ class _InfoRowState extends State<InfoRow> {
     }
 
     if (widget.isEditing && widget.controller != null) {
-      if (widget.controller!.text == "None" || widget.controller!.text == "false") {
+      if (widget.controller!.text == "None" ||
+          widget.controller!.text == "false") {
         widget.controller!.text = "";
       }
-    } else if (!widget.isEditing && widget.controller != null && widget.controller!.text != displayValue) {
+    } else if (!widget.isEditing &&
+        widget.controller != null &&
+        widget.controller!.text != displayValue) {
       widget.controller!.text = displayValue;
     }
     return Padding(
@@ -122,8 +125,9 @@ class _InfoRowState extends State<InfoRow> {
                           popupProps: PopupProps.menu(
                             onDismissed: () => setState(() => _isOpen = false),
                             menuProps: MenuProps(
-                              backgroundColor:
-                                  isDark ? Colors.grey[900] : Colors.white,
+                              backgroundColor: isDark
+                                  ? Colors.grey[900]
+                                  : Colors.white,
                               elevation: 8,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -210,8 +214,9 @@ class _InfoRowState extends State<InfoRow> {
                               focusedBorder: InputBorder.none,
                             ),
                           ),
-                          validator: (value) =>
-                              value == null ? 'Please select ${widget.label}' : null,
+                          validator: (value) => value == null
+                              ? 'Please select ${widget.label}'
+                              : null,
                         ),
                       ),
                     ],
@@ -308,7 +313,6 @@ class _InfoRowState extends State<InfoRow> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-
                   SizedBox(
                     width: 130,
                     child: Text(

@@ -56,13 +56,7 @@ class CommonDialog extends StatelessWidget {
 
     final stack = primaryLabel.length > 12 || secondaryLabel!.length > 12;
     if (stack) {
-      return Column(
-        children: [
-          secondary,
-          const SizedBox(height: 10),
-          primary,
-        ],
-      );
+      return Column(children: [secondary, const SizedBox(height: 10), primary]);
     }
     return Row(
       children: [
@@ -98,11 +92,7 @@ class CommonDialog extends StatelessWidget {
                       color: primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    child: _buildIcon(
-                      icon,
-                      primary,
-                      28,
-                    ),
+                    child: _buildIcon(icon, primary, 28),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -139,11 +129,7 @@ class CommonDialog extends StatelessWidget {
                         color: primary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: _buildIcon(
-                        icon,
-                        primary,
-                        22,
-                      ),
+                      child: _buildIcon(icon, primary, 22),
                     ),
                     const SizedBox(width: 14),
                   ],
@@ -181,10 +167,15 @@ class CommonDialog extends StatelessWidget {
                   hintText: inputHint ?? 'Enter text...',
                   filled: true,
                   fillColor: isDark ? Colors.grey[850] : Colors.grey[50],
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),

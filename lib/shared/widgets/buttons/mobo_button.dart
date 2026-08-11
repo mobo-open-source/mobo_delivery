@@ -129,7 +129,6 @@ class MoboButton extends StatelessWidget {
     late final Color enabledBorder;
     switch (variant) {
       case MoboButtonVariant.primary:
-
         enabledBg = AppStyle.primaryColor;
         enabledFg = Colors.white;
         enabledBorder = Colors.transparent;
@@ -143,8 +142,9 @@ class MoboButton extends StatelessWidget {
         enabledBorder = enabledFg;
         break;
       case MoboButtonVariant.danger:
-        enabledBg =
-            isDark ? Colors.red[700]! : Theme.of(context).colorScheme.error;
+        enabledBg = isDark
+            ? Colors.red[700]!
+            : Theme.of(context).colorScheme.error;
         enabledFg = Colors.white;
         enabledBorder = Colors.transparent;
         break;
@@ -203,10 +203,7 @@ class MoboButton extends StatelessWidget {
                 loadingLabel!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: fg,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, color: fg),
               ),
             ),
             const SizedBox(width: 12),

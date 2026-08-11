@@ -108,8 +108,9 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                       popupProps: PopupProps.menu(
                         onDismissed: () => setState(() => _isOpen = false),
                         menuProps: MenuProps(
-                          backgroundColor:
-                              isDark ? Colors.grey[900] : Colors.white,
+                          backgroundColor: isDark
+                              ? Colors.grey[900]
+                              : Colors.white,
                           elevation: 8,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -136,8 +137,9 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                               color: isDark ? Colors.white54 : Colors.grey[500],
                             ),
                             filled: true,
-                            fillColor:
-                                isDark ? Colors.grey[850] : Colors.grey[100],
+                            fillColor: isDark
+                                ? Colors.grey[850]
+                                : Colors.grey[100],
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,
@@ -161,7 +163,9 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                         ),
                       ),
                       items: widget.dropdownItems!,
-                      itemAsString: widget.itemAsString ?? (item) => (item as dynamic).name ?? '',
+                      itemAsString:
+                          widget.itemAsString ??
+                          (item) => (item as dynamic).name ?? '',
                       selectedItem: widget.selectedId != null
                           ? widget.dropdownItems!.firstWhere(
                               (element) =>
@@ -185,20 +189,21 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                           ),
                           prefixIcon: widget.prefixIcon != null
                               ? Icon(
-                            widget.prefixIcon,
-                            size: 20,
-                            color: isDark
-                                ? Colors.white70
-                                : const Color(0xff7F7F7F),
-                          )
+                                  widget.prefixIcon,
+                                  size: 20,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xff7F7F7F),
+                                )
                               : null,
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                         ),
                       ),
-                      validator: (value) =>
-                          value == null ? 'Please select ${widget.label}' : null,
+                      validator: (value) => value == null
+                          ? 'Please select ${widget.label}'
+                          : null,
                     ),
                   )
                 : Container(
@@ -233,11 +238,11 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                         ),
                         prefixIcon: widget.prefixIcon != null
                             ? Icon(
-                          widget.prefixIcon,
-                          color: isDark
-                              ? Colors.white70
-                              : const Color(0xff7F7F7F),
-                        )
+                                widget.prefixIcon,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xff7F7F7F),
+                              )
                             : null,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -268,9 +273,7 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: isDark
-                        ? Colors.white60
-                        : const Color(0xff7F7F7F),
+                    color: isDark ? Colors.white60 : const Color(0xff7F7F7F),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -280,7 +283,9 @@ class _InfoRowState<T> extends State<InfoRow<T>> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: widget.color ?? (isDark ? Colors.white : Colors.black87),
+                      color:
+                          widget.color ??
+                          (isDark ? Colors.white : Colors.black87),
                     ),
                     textAlign: TextAlign.end,
                     overflow: TextOverflow.ellipsis,

@@ -15,10 +15,15 @@ class SyncResult {
   final int failed;
   final bool skipped;
 
+  /// Product lines discarded because they could never be sent (missing
+  /// product or non-positive quantity). Surfaced so the drop isn't silent.
+  final int droppedLines;
+
   const SyncResult({
     this.succeeded = 0,
     this.failed = 0,
     this.skipped = false,
+    this.droppedLines = 0,
   });
 
   bool get isEmpty => succeeded == 0 && failed == 0;
@@ -38,6 +43,11 @@ class PendingSyncService {
 
   final ValueNotifier<int> pendingCount = ValueNotifier<int>(0);
 
+  /// Pickings created offline and not yet pushed to Odoo. Tracked separately
+  /// so the Pickings list can show them — they exist only in Hive and never
+  /// appear in a server-backed list.
+  final ValueNotifier<int> pendingCreateCount = ValueNotifier<int>(0);
+
   Future<int> countPending() async {
     await _hive.initialize();
     final results = await Future.wait([
@@ -48,6 +58,7 @@ class PendingSyncService {
       _hive.getPendingCancellations(),
       _hive.getPendingAttachments(),
     ]);
+    pendingCreateCount.value = results.first.length;
     return results.fold<int>(0, (sum, list) => sum + list.length);
   }
 
@@ -89,98 +100,143 @@ class PendingSyncService {
 
       int succeeded = 0;
       int failed = 0;
+      int droppedLines = 0;
 
-      succeeded += await _drainCreates(onFail: () => failed++);
+      succeeded += await _drainCreates(
+        onFail: () => failed++,
+        onDropped: (n) => droppedLines += n,
+      );
       succeeded += await _drainUpdates(onFail: () => failed++);
       succeeded += await _drainProductUpdates(onFail: () => failed++);
       succeeded += await _drainValidations(onFail: () => failed++);
       succeeded += await _drainCancellations(onFail: () => failed++);
       succeeded += await _drainAttachments(onFail: () => failed++);
 
-      return SyncResult(succeeded: succeeded, failed: failed);
+      return SyncResult(
+        succeeded: succeeded,
+        failed: failed,
+        droppedLines: droppedLines,
+      );
     } finally {
       _running = false;
       await refreshCount();
     }
   }
 
-  Future<int> _drainCreates({required void Function() onFail}) async {
+  /// Drains queued offline creates.
+  ///
+  /// The remote id is persisted the moment Odoo assigns it, and each product
+  /// line is removed from the payload as it lands, so any interruption
+  /// resumes where it stopped rather than creating a duplicate picking.
+  Future<int> _drainCreates({
+    required void Function() onFail,
+    required void Function(int) onDropped,
+  }) async {
     final creates = await _hive.getPendingCreates();
     if (creates.isEmpty) return 0;
     final createService = await _createServiceWithUrl();
     int ok = 0;
     for (final c in creates) {
       try {
-        final data = c.pickingData;
-        final partnerId = _asInt(data['partnerId']);
-        final operationTypeId = _asInt(data['operationTypeId']);
-        if (partnerId == null || operationTypeId == null) {
-          onFail();
-          continue;
+        final data = Map<String, dynamic>.from(c.pickingData);
+
+        int? remoteId = _asInt(data['remotePickingId']);
+        if (remoteId == null) {
+          final partnerId = _asInt(data['partnerId']);
+          final operationTypeId = _asInt(data['operationTypeId']);
+          if (partnerId == null || operationTypeId == null) {
+            onFail();
+            continue;
+          }
+          remoteId = await createService.createPicking(
+            partnerId: partnerId,
+            operationTypeId: operationTypeId,
+            scheduledDate: data['scheduledDate']?.toString() ?? '',
+            origin: data['origin']?.toString(),
+            moveType: data['moveType']?.toString() ?? 'direct',
+            userId: _asInt(data['userId']),
+            note: data['note']?.toString(),
+          );
+
+          data['remotePickingId'] = remoteId;
+          await _hive.updatePendingCreateData(c.pickingId, data);
+          await _hive.remapPendingAttachmentsPickingId(c.pickingId, remoteId);
         }
-        final newPickingId = await createService.createPicking(
-          partnerId: partnerId,
-          operationTypeId: operationTypeId,
-          scheduledDate: data['scheduledDate']?.toString() ?? '',
-          origin: data['origin']?.toString(),
-          moveType: data['moveType']?.toString() ?? 'direct',
-          userId: _asInt(data['userId']),
-          note: data['note']?.toString(),
+
+        final pickingCompanyId = await createService.getPickingCompanyId(
+          remoteId,
         );
 
-        await _hive.remapPendingAttachmentsPickingId(c.pickingId, newPickingId);
+        final rawProducts = data['products'];
+        final queued = rawProducts is List
+            ? rawProducts.whereType<Map>().toList()
+            : const <Map>[];
 
-        final products = data['products'];
-        bool hasProducts = false;
-        final pickingCompanyId =
-            await createService.getPickingCompanyId(newPickingId);
-        if (products is List && products.isNotEmpty) {
-          int? locationId = _asInt(
-            (products.first is Map) ? products.first['defaultLocationSrcId'] : null,
-          );
-          int? locationDestId = _asInt(
-            (products.first is Map) ? products.first['defaultLocationDestId'] : null,
-          );
+        int dropped = 0;
+        bool anyLine = false;
+        bool needsConfirm = data['needsConfirm'] == true;
+
+        if (queued.isNotEmpty) {
+          int? locationId = _asInt(queued.first['defaultLocationSrcId']);
+          int? locationDestId = _asInt(queued.first['defaultLocationDestId']);
           if (locationId == null || locationDestId == null) {
-            final locations =
-                await createService.getPickingLocations(newPickingId);
+            final locations = await createService.getPickingLocations(remoteId);
             locationId ??= locations['location_id'] as int?;
             locationDestId ??= locations['location_dest_id'] as int?;
           }
-          if (locationId != null && locationDestId != null) {
-            for (final raw in products) {
-              if (raw is! Map) continue;
-              final productId = _asInt(raw['productId']);
-              final uomId = _asInt(raw['productUomId']) ?? 1;
-              final qty = _asDouble(raw['productUomQty']) ?? 0.0;
-              final name = raw['productName']?.toString() ?? 'Product';
-              if (productId == null || qty <= 0) continue;
+
+          if (locationId == null || locationDestId == null) {
+            onFail();
+            continue;
+          }
+
+          final remaining = <Map>[];
+          for (final raw in queued) {
+            final productId = _asInt(raw['productId']);
+            final qty = _asDouble(raw['productUomQty']) ?? 0.0;
+            if (productId == null || qty <= 0) {
+              dropped++;
+              continue;
+            }
+            try {
               await createService.createStockMove(
-                name: name,
+                name: raw['productName']?.toString() ?? 'Product',
                 productId: productId,
                 productUomQty: qty,
-                productUomId: uomId,
-                pickingId: newPickingId,
+                productUomId: _asInt(raw['productUomId']) ?? 1,
+                pickingId: remoteId,
                 locationId: locationId,
                 locationDestId: locationDestId,
                 companyId: pickingCompanyId,
               );
-              hasProducts = true;
+              anyLine = true;
+            } catch (_) {
+              remaining.add(raw);
             }
+          }
+
+          if (anyLine) needsConfirm = true;
+          data['products'] = remaining;
+          data['needsConfirm'] = needsConfirm;
+          await _hive.updatePendingCreateData(c.pickingId, data);
+
+          if (remaining.isNotEmpty) {
+            onFail();
+            continue;
           }
         }
 
-        if (hasProducts) {
+        if (needsConfirm) {
           try {
             await createService.confirmPicking(
-              newPickingId,
+              remoteId,
               companyId: pickingCompanyId,
             );
-          } catch (_) {
-          }
+          } catch (_) {}
         }
 
         await _hive.clearPendingCreates(c.pickingId);
+        if (dropped > 0) onDropped(dropped);
         ok++;
       } catch (_) {
         onFail();
@@ -201,8 +257,7 @@ class PendingSyncService {
 
         updatesMap.removeWhere((_, value) => value == null);
 
-        final success =
-            await _formService.saveChanges(u.pickingId, updatesMap);
+        final success = await _formService.saveChanges(u.pickingId, updatesMap);
         if (success) {
           await _hive.clearPendingUpdates(u.pickingId);
           ok++;
@@ -216,9 +271,7 @@ class PendingSyncService {
     return ok;
   }
 
-  Future<int> _drainProductUpdates({
-    required void Function() onFail,
-  }) async {
+  Future<int> _drainProductUpdates({required void Function() onFail}) async {
     final entries = await _hive.getPendingProductUpdates();
     int ok = 0;
     for (final p in entries) {
@@ -246,26 +299,23 @@ class PendingSyncService {
           await _hive.clearPendingProductUpdates(p.pickingId);
           ok++;
         } else {
-          final locations =
-              await _formService.getPickingLocations(p.pickingId);
+          final locations = await _formService.getPickingLocations(p.pickingId);
           final src = locations.locationId;
           final dst = locations.locationDestId;
           if (src == null || dst == null) {
             onFail();
             continue;
           }
-          final productName =
-              (productIdRaw is List && productIdRaw.length > 1)
-                  ? productIdRaw[1].toString()
-                  : (p.pickingName ?? 'Product');
+          final productName = (productIdRaw is List && productIdRaw.length > 1)
+              ? productIdRaw[1].toString()
+              : (p.pickingName ?? 'Product');
           final uomId =
               _asInt(move['product_uom']) ?? _asInt(move['uom_id']) ?? 1;
           String? pickingState;
           try {
             final loaded = await _formService.loadPickings(p.pickingId);
             if (loaded.isNotEmpty) pickingState = loaded.first.state;
-          } catch (_) {
-          }
+          } catch (_) {}
           await _formService.addProductToLine(
             p.pickingId,
             productId,
@@ -294,8 +344,7 @@ class PendingSyncService {
   bool _isWizardAction(dynamic result) {
     if (result is! Map) return false;
     final type = result['type'];
-    return type == 'ir.actions.act_window' ||
-        type == 'ir.actions.client';
+    return type == 'ir.actions.act_window' || type == 'ir.actions.client';
   }
 
   Future<int> _drainValidations({required void Function() onFail}) async {
@@ -319,9 +368,7 @@ class PendingSyncService {
     return ok;
   }
 
-  Future<int> _drainCancellations({
-    required void Function() onFail,
-  }) async {
+  Future<int> _drainCancellations({required void Function() onFail}) async {
     final pending = await _hive.getPendingCancellations();
     int ok = 0;
     for (final c in pending) {

@@ -19,8 +19,5 @@ class PendingValidation extends HiveObject {
   @HiveField(1)
   final Map<String, dynamic> pickingData;
 
-  PendingValidation({
-    required this.pickingId,
-    required this.pickingData,
-  });
+  PendingValidation({required this.pickingId, required this.pickingData});
 }

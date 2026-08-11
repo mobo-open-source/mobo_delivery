@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
+import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/dialogs/common_dialog.dart';
-import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -141,7 +141,11 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
       if (result != null && result.files.single.bytes != null) {
         final fileBytes = result.files.single.bytes!;
         final fileName = result.files.single.name;
-        _stageDocument(Utils.getMimeType(fileName), base64Encode(fileBytes), fileName);
+        _stageDocument(
+          Utils.getMimeType(fileName),
+          base64Encode(fileBytes),
+          fileName,
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -228,11 +232,12 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                                 ? null
                                 : () => Navigator.of(ctx).pop('discard'),
                             style: OutlinedButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               side: BorderSide(
-                                  color: AppStyle.primaryColor
-                                      .withValues(alpha: 0.5)),
+                                color: AppStyle.primaryColor.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                               foregroundColor: AppStyle.primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
@@ -258,8 +263,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppStyle.primaryColor,
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
@@ -272,13 +276,15 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.2,
                                       valueColor: AlwaysStoppedAnimation(
-                                          Colors.white),
+                                        Colors.white,
+                                      ),
                                     ),
                                   )
                                 : const Text(
                                     'Save',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.w600),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                           ),
                         ),
@@ -345,11 +351,21 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                tile(HugeIcons.strokeRoundedSignature, 'Signature', _addSignature),
-                tile(HugeIcons.strokeRoundedUploadSquare02, 'Upload Image or PDF',
-                    () => _pickFile(['jpg', 'jpeg', 'png', 'pdf'])),
-                tile(HugeIcons.strokeRoundedLink01, 'Attach Document',
-                    () => _pickFile(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'])),
+                tile(
+                  HugeIcons.strokeRoundedSignature,
+                  'Signature',
+                  _addSignature,
+                ),
+                tile(
+                  HugeIcons.strokeRoundedUploadSquare02,
+                  'Upload Image or PDF',
+                  () => _pickFile(['jpg', 'jpeg', 'png', 'pdf']),
+                ),
+                tile(
+                  HugeIcons.strokeRoundedLink01,
+                  'Attach Document',
+                  () => _pickFile(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt']),
+                ),
                 const SizedBox(height: 4),
               ],
             ),
@@ -506,7 +522,8 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     final (statusLabel, statusColor) = _statusInfo(state);
     final scheduled = _formatDate(widget.picking['scheduled_date']);
     final origin = widget.picking['origin'];
-    final hasOrigin = origin != null &&
+    final hasOrigin =
+        origin != null &&
         origin != false &&
         origin.toString().isNotEmpty &&
         origin.toString() != 'false';
@@ -574,7 +591,10 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                     color: statusColor.withValues(alpha: isDark ? 0.20 : 0.12),
                     borderRadius: BorderRadius.circular(18),
                     border: isDark
-                        ? Border.all(color: statusColor.withValues(alpha: 0.35), width: 0.8)
+                        ? Border.all(
+                            color: statusColor.withValues(alpha: 0.35),
+                            width: 0.8,
+                          )
                         : null,
                   ),
                   child: Text(
@@ -582,7 +602,9 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? statusColor.withValues(alpha: 0.95) : statusColor,
+                      color: isDark
+                          ? statusColor.withValues(alpha: 0.95)
+                          : statusColor,
                       letterSpacing: 0.1,
                     ),
                   ),
@@ -660,31 +682,13 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          OutlinedButton.icon(
+          MoboButton.primary(
+            label: 'Add Document',
+            icon: HugeIcons.strokeRoundedAdd01,
+            height: 42,
+            borderRadius: 10,
+            fullWidth: false,
             onPressed: _busy ? null : _showAddOptions,
-            icon: Icon(
-              HugeIcons.strokeRoundedAdd01,
-              size: 16,
-              color: AppStyle.primaryColor,
-            ),
-            label: Text(
-              'Add Document',
-              style: TextStyle(
-                color: AppStyle.primaryColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: AppStyle.primaryColor,
-                width: 1.5,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
           ),
         ],
       ),
@@ -777,10 +781,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
             IconButton(
               onPressed: () => _confirmRemovePending(p, fileName),
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-              ),
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               splashRadius: 20,
               icon: Icon(
                 HugeIcons.strokeRoundedDelete02,
@@ -859,10 +860,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
               IconButton(
                 onPressed: () => _confirmDeleteAttachment(a),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 40,
-                ),
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                 splashRadius: 20,
                 icon: Icon(
                   HugeIcons.strokeRoundedDelete02,
@@ -886,7 +884,11 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
         color: AppStyle.primaryColor.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(_iconFor(mimetype, name), color: AppStyle.primaryColor, size: 22),
+      child: Icon(
+        _iconFor(mimetype, name),
+        color: AppStyle.primaryColor,
+        size: 22,
+      ),
     );
   }
 

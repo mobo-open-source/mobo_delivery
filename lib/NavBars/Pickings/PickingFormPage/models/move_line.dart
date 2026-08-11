@@ -31,21 +31,13 @@ class MoveLine extends HiveObject {
   @HiveField(2)
   final Map<String, dynamic> data;
 
-  MoveLine({
-    required this.id,
-    required this.pickingId,
-    required this.data,
-  });
+  MoveLine({required this.id, required this.pickingId, required this.data});
 
   /// Converts this move line to a JSON-compatible map for serialization
   ///
   /// Merges `id` and `picking_id` with the raw `data` map.
   /// Useful when sending pending updates back to Odoo or saving to other storage.
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'picking_id': pickingId,
-    ...data,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'picking_id': pickingId, ...data};
 
   /// Creates a `MoveLine` instance from a JSON map (usually from cache or API)
   ///

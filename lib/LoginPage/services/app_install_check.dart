@@ -1,11 +1,7 @@
 import '../../core/company/session/company_session_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum AccessCheckStatus {
-  ok,
-  moduleMissing,
-  noInventoryAccess,
-}
+enum AccessCheckStatus { ok, moduleMissing, noInventoryAccess }
 
 class AppInstallCheck {
   static const _stockUserGroups = <String>[

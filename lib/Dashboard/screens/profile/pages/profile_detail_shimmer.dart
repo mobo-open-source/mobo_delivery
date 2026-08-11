@@ -13,7 +13,16 @@ class ProfileDetailShimmer extends StatelessWidget {
   const ProfileDetailShimmer({super.key});
 
   static const List<double> _labelWidths = [
-    80, 50, 50, 55, 65, 65, 75, 130, 155, 65,
+    80,
+    50,
+    50,
+    55,
+    65,
+    65,
+    75,
+    130,
+    155,
+    65,
   ];
 
   @override
@@ -33,7 +42,6 @@ class ProfileDetailShimmer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Center(
               child: Column(
                 children: [
@@ -82,13 +90,17 @@ class ProfileDetailShimmer extends StatelessWidget {
     );
   }
 
-  Widget _fieldRow(int index, double labelWidth, Color placeholderColor, Color fieldBg) {
+  Widget _fieldRow(
+    int index,
+    double labelWidth,
+    Color placeholderColor,
+    Color fieldBg,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Container(
             height: 12,
             width: labelWidth,
@@ -107,7 +119,6 @@ class ProfileDetailShimmer extends StatelessWidget {
             ),
             child: Row(
               children: [
-
                 Container(
                   width: 20,
                   height: 20,

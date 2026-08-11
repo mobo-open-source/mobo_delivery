@@ -149,9 +149,10 @@ class OdooDropdownTile extends StatelessWidget {
               width: MediaQuery.of(context).size.width * .35,
               child: DropdownButton<String>(
                 isExpanded: true,
-                value: effectiveOptions.any(
-                  (option) => option[valueKey] == selectedValue,
-                )
+                value:
+                    effectiveOptions.any(
+                      (option) => option[valueKey] == selectedValue,
+                    )
                     ? selectedValue
                     : null,
                 onChanged: onChanged,

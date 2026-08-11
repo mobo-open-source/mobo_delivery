@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../shared/theme/mobo_home_theme.dart';
 import '../../../shared/widgets/loaders/shimmer_skeleton.dart';
 import 'mobo_card.dart';
 
 /// One of the 2×2 stat tiles on the Home screen (Ready, Waiting, Late, Done
-/// today). `prominent` styles the Late variant with a red-accent value and a
-/// filled PRIORITY pill.
+/// today).
 class StatTile extends StatelessWidget {
   final IconData icon;
   final int value;
   final String label;
+  final String subtitle;
 
-  /// Accent foreground / background pair from [MoboHomeTheme].
   final Color accentFg;
   final Color accentBg;
 
@@ -27,6 +24,7 @@ class StatTile extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.label,
+    required this.subtitle,
     required this.accentFg,
     required this.accentBg,
     this.prominent = false,
@@ -35,74 +33,71 @@ class StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final home = Theme.of(context).extension<MoboHomeTheme>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final valueColor = prominent ? accentFg : home.textPrimary;
-    final labelColor = home.textSecondary;
+    final valueColor = prominent
+        ? accentFg
+        : (isDark ? Colors.white : Colors.black87);
+    final labelColor = isDark ? Colors.grey[300] : Colors.grey[700];
+    final subtitleColor = isDark ? Colors.grey[400] : Colors.grey[600];
 
     return MoboCard(
       onTap: onTap,
+      radius: 12,
       padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _IconSquare(icon: icon, fg: accentFg, bg: accentBg),
-              if (prominent) _PriorityPill(accentFg: accentFg),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '$value',
-            style: GoogleFonts.manrope(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              height: 1,
-              letterSpacing: -0.5,
-              color: valueColor,
+      boxShadow: [
+        BoxShadow(
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.15)
+              : accentFg.withValues(alpha: 0.08),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$value',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: valueColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: labelColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: subtitleColor),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: prominent ? FontWeight.w600 : FontWeight.w400,
-              color: labelColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Filled "PRIORITY" pill shown on the Late tile.
-class _PriorityPill extends StatelessWidget {
-  final Color accentFg;
-  const _PriorityPill({required this.accentFg});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: accentFg.withValues(alpha: isDark ? 0.7 : 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        'PRIORITY',
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-          height: 1.1,
-          color: isDark ? Colors.white : accentFg,
+            _IconSquare(icon: icon, fg: accentFg, bg: accentBg),
+          ],
         ),
       ),
     );
@@ -119,47 +114,50 @@ class _IconSquare extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final squareBg = isDark ? fg.withValues(alpha: 0.7) : bg;
+    final squareBg = isDark ? fg.withValues(alpha: 0.6) : bg;
     final iconColor = isDark ? Colors.white : fg;
     return Container(
-      width: 34,
-      height: 34,
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: squareBg,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, size: 19, color: iconColor),
+      child: Icon(icon, size: 20, color: iconColor),
     );
   }
 }
 
 /// Skeleton placeholder for a stat tile.
-///
-/// Mirrors [StatTile]'s content: a 34×34 icon square (10px radius, matching
-/// the real `_IconSquare`), the two-digit value bar (28px tall like the real
-/// value text), and a wider label bar (12.5px tall like the real label). Same
-/// [MoboCard] wrapper + padding as the real tile so the layout doesn't shift
-/// when data arrives.
 class StatTileSkeleton extends StatelessWidget {
   const StatTileSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MoboCard(
+      radius: 12,
       padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                SkeletonLine(width: 40, height: 22),
+                SizedBox(height: 6),
+                SkeletonLine(width: 96, height: 15),
+                SizedBox(height: 6),
+                SkeletonLine(width: 120, height: 11),
+              ],
+            ),
+          ),
           SkeletonBox(
-            width: 34,
-            height: 34,
+            width: 36,
+            height: 36,
             borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(height: 10),
-          const SkeletonLine(width: 46, height: 28),
-          const SizedBox(height: 6),
-          const SkeletonLine(width: 96, height: 12),
         ],
       ),
     );

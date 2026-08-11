@@ -59,7 +59,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   List<String> _selectedFilters = [];
   String? _selectedGroupBy;
   Map<String, bool> _groupExpanded = {};
-  bool _allGroupsExpanded = true;
   bool hasFilters = false;
   bool hasGroupBy = false;
 
@@ -144,7 +143,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           for (final key in groupKeys) {
             _groupExpanded[key] = target;
           }
-          _allGroupsExpanded = target;
         });
       },
       icon: Icon(
@@ -213,96 +211,135 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
           final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
           final groupMap = groupTechnicalNames;
 
-          return Container(
-            height: MediaQuery.of(sheetContext).size.height * 0.8,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF232323) : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          return SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: Container(
+              height: MediaQuery.of(sheetContext).size.height * 0.8,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF232323) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
-            ),
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Filter & Group By',
-                            style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Filter & Group By',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(sheetContext).pop(),
-                          icon: Icon(
-                            HugeIcons.strokeRoundedCancel01,
-                            color: isDark ? Colors.white : Colors.black54,
+                          IconButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: Icon(
+                              HugeIcons.strokeRoundedCancel01,
+                              color: isDark ? Colors.white : Colors.black54,
+                            ),
+                            splashRadius: 20,
                           ),
-                          splashRadius: 20,
+                        ],
+                      ),
+                    ),
+
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        indicator: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2A2A2A)
+                              : AppStyle.primaryColor,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
+                        indicatorPadding: const EdgeInsets.all(4),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        overlayColor: WidgetStateProperty.all(
+                          Colors.transparent,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: isDark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        tabs: const [
+                          Tab(height: 48, text: "Filter"),
+                          Tab(height: 48, text: "Group By"),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
 
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TabBar(
-                      indicator: BoxDecoration(
-                        color: isDark ? const Color(0xFF2A2A2A) : AppStyle.primaryColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      indicatorPadding: const EdgeInsets.all(4),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      overlayColor: WidgetStateProperty.all(Colors.transparent),
-                      splashFactory: NoSplash.splashFactory,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: isDark
-                          ? Colors.grey[400]
-                          : Colors.grey[600],
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                      tabs: const [
-                        Tab(height: 48, text: "Filter"),
-                        Tab(height: 48, text: "Group By"),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (tempFilters.isNotEmpty) ...[
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (tempFilters.isNotEmpty) ...[
+                                  Text(
+                                    'Active Filters',
+                                    style: TextStyle(
+                                      color: AppStyle.primaryColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: filterTechnicalNames.entries
+                                        .where(
+                                          (e) => tempFilters.contains(e.value),
+                                        )
+                                        .map(
+                                          (e) => _buildActiveFilterChip(
+                                            isDark,
+                                            e.key,
+                                            () => setDialogState(
+                                              () => tempFilters.remove(e.value),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                  const SizedBox(height: 18),
+                                ],
                                 Text(
-                                  'Active Filters',
+                                  'Filters',
                                   style: TextStyle(
-                                    color: AppStyle.primaryColor,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -311,206 +348,183 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: filterTechnicalNames.entries
-                                      .where((e) =>
-                                          tempFilters.contains(e.value))
-                                      .map(
-                                        (e) => _buildActiveFilterChip(
-                                          isDark,
-                                          e.key,
-                                          () => setDialogState(
-                                            () => tempFilters.remove(e.value),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                                const SizedBox(height: 18),
-                              ],
-                              Text(
-                                'Filters',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: filterTechnicalNames.keys.map((label) {
-                                  final tech = filterTechnicalNames[label]!;
-                                  final selected = tempFilters.contains(tech);
+                                  children: filterTechnicalNames.keys.map((
+                                    label,
+                                  ) {
+                                    final tech = filterTechnicalNames[label]!;
+                                    final selected = tempFilters.contains(tech);
 
-                                  return ChoiceChip(
-                                label: Text(
-                                  label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                    color: selected
-                                        ? Colors.white
-                                        : (isDark
+                                    return ChoiceChip(
+                                      label: Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: selected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: selected
                                               ? Colors.white
-                                              : Colors.black87),
-                                  ),
+                                              : (isDark
+                                                    ? Colors.white
+                                                    : Colors.black87),
+                                        ),
+                                      ),
+                                      selected: selected,
+                                      selectedColor: AppStyle.primaryColor,
+                                      backgroundColor: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : AppStyle.primaryColor.withValues(
+                                              alpha: 0.08,
+                                            ),
+                                      elevation: 0,
+                                      pressElevation: 0,
+                                      shadowColor: Colors.transparent,
+                                      surfaceTintColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? Colors.grey[600]!
+                                              : Colors.grey[300]!,
+                                        ),
+                                      ),
+                                      onSelected: (val) {
+                                        setDialogState(() {
+                                          if (val) {
+                                            tempFilters.add(tech);
+                                          } else {
+                                            tempFilters.remove(tech);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
                                 ),
-                                selected: selected,
-                                selectedColor: AppStyle.primaryColor,
-                                backgroundColor: isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : AppStyle.primaryColor
-                                        .withValues(alpha: 0.08),
-                                elevation: 0,
-                                pressElevation: 0,
-                                shadowColor: Colors.transparent,
-                                surfaceTintColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? Colors.grey[600]!
-                                        : Colors.grey[300]!,
-                                  ),
-                                ),
-                                onSelected: (val) {
-                                  setDialogState(() {
-                                    if (val) {
-                                      tempFilters.add(tech);
-                                    } else {
-                                      tempFilters.remove(tech);
-                                    }
-                                  });
-                                },
-                              );
-                                }).toList(),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
 
-                        ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                'Group documents by',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                          ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'Group documents by',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            _buildGroupOption(
-                              isDark: isDark,
-                              label: 'None',
-                              subtitle: 'Display as a simple list',
-                              isSelected: tempGroupBy == null,
-                              onTap: () =>
-                                  setDialogState(() => tempGroupBy = null),
-                            ),
-                            Divider(
-                              height: 1,
-                              color: isDark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[200],
-                            ),
-                            for (final entry in groupMap.entries)
                               _buildGroupOption(
                                 isDark: isDark,
-                                label: entry.key,
-                                subtitle: 'Group by ${entry.key.toLowerCase()}',
-                                isSelected: tempGroupBy == entry.value,
-                                onTap: () => setDialogState(
-                                  () => tempGroupBy = entry.value,
-                                ),
+                                label: 'None',
+                                subtitle: 'Display as a simple list',
+                                isSelected: tempGroupBy == null,
+                                onTap: () =>
+                                    setDialogState(() => tempGroupBy = null),
                               ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF232323) : Colors.white,
-                      border: Border(
-                        top: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                        ),
+                              Divider(
+                                height: 1,
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[200],
+                              ),
+                              for (final entry in groupMap.entries)
+                                _buildGroupOption(
+                                  isDark: isDark,
+                                  label: entry.key,
+                                  subtitle:
+                                      'Group by ${entry.key.toLowerCase()}',
+                                  isSelected: tempGroupBy == entry.value,
+                                  onTap: () => setDialogState(
+                                    () => tempGroupBy = entry.value,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: MoboButton.secondary(
-                            label: 'Clear All',
-                            borderRadius: 8,
-                            onPressed: () {
-                              setState(() {
-                                _selectedFilters.clear();
-                                _selectedGroupBy = null;
-                                hasFilters = false;
-                                hasGroupBy = false;
-                                _groupExpanded.clear();
-                              });
-                              pageContext.read<AttachDocumentsBloc>().add(
-                                FetchDocumentStockPickings(
-                                  0,
-                                  pageContext
-                                      .read<AttachDocumentsBloc>()
-                                      .itemsPerPage,
-                                  searchQuery: _searchController.text,
-                                  filters: _selectedFilters,
-                                  groupBy: _selectedGroupBy,
-                                ),
-                              );
-                              Navigator.pop(sheetContext);
-                            },
+
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF232323) : Colors.white,
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[200]!,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: MoboButton.primary(
-                            label: 'Apply',
-                            borderRadius: 8,
-                            onPressed: () {
-                              setState(() {
-                                _selectedFilters = List.from(tempFilters);
-                                _selectedGroupBy = tempGroupBy;
-                                hasFilters = _selectedFilters.isNotEmpty;
-                                hasGroupBy = _selectedGroupBy != null;
-                                _groupExpanded.clear();
-                              });
-                              pageContext.read<AttachDocumentsBloc>().add(
-                                FetchDocumentStockPickings(
-                                  0,
-                                  pageContext
-                                      .read<AttachDocumentsBloc>()
-                                      .itemsPerPage,
-                                  searchQuery: _searchController.text,
-                                  filters: _selectedFilters,
-                                  groupBy: _selectedGroupBy,
-                                ),
-                              );
-                              Navigator.pop(sheetContext);
-                            },
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: MoboButton.secondary(
+                              label: 'Clear All',
+                              borderRadius: 8,
+                              onPressed: () {
+                                setState(() {
+                                  _selectedFilters.clear();
+                                  _selectedGroupBy = null;
+                                  hasFilters = false;
+                                  hasGroupBy = false;
+                                  _groupExpanded.clear();
+                                });
+                                pageContext.read<AttachDocumentsBloc>().add(
+                                  FetchDocumentStockPickings(
+                                    0,
+                                    pageContext
+                                        .read<AttachDocumentsBloc>()
+                                        .itemsPerPage,
+                                    searchQuery: _searchController.text,
+                                    filters: _selectedFilters,
+                                    groupBy: _selectedGroupBy,
+                                  ),
+                                );
+                                Navigator.pop(sheetContext);
+                              },
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: MoboButton.primary(
+                              label: 'Apply',
+                              borderRadius: 8,
+                              onPressed: () {
+                                setState(() {
+                                  _selectedFilters = List.from(tempFilters);
+                                  _selectedGroupBy = tempGroupBy;
+                                  hasFilters = _selectedFilters.isNotEmpty;
+                                  hasGroupBy = _selectedGroupBy != null;
+                                  _groupExpanded.clear();
+                                });
+                                pageContext.read<AttachDocumentsBloc>().add(
+                                  FetchDocumentStockPickings(
+                                    0,
+                                    pageContext
+                                        .read<AttachDocumentsBloc>()
+                                        .itemsPerPage,
+                                    searchQuery: _searchController.text,
+                                    filters: _selectedFilters,
+                                    groupBy: _selectedGroupBy,
+                                  ),
+                                );
+                                Navigator.pop(sheetContext);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -531,9 +545,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
       decoration: BoxDecoration(
         color: AppStyle.primaryColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppStyle.primaryColor.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: AppStyle.primaryColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -713,7 +725,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   ) {
     final scheduledDateRaw = picking['scheduled_date'];
     final dateInfo = Utils.getFormattedDateInfo(
-      scheduledDateRaw is String && scheduledDateRaw.isNotEmpty &&
+      scheduledDateRaw is String &&
+              scheduledDateRaw.isNotEmpty &&
               scheduledDateRaw != 'false'
           ? scheduledDateRaw
           : '',
@@ -772,7 +785,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                       TextSpan(
                         text: '${dateInfo['label']}',
                         style: TextStyle(
-                          color: dateInfo['color'] as Color? ??
+                          color:
+                              dateInfo['color'] as Color? ??
                               (isDark ? Colors.grey[400] : Colors.grey[600]),
                           fontWeight: dateInfo['color'] != null
                               ? FontWeight.w600
@@ -791,7 +805,6 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
-
             color: isDark
                 ? Colors.white.withValues(alpha: 0.15)
                 : statusColor.withValues(alpha: 0.10),
@@ -848,9 +861,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                       blocContext.read<AttachDocumentsBloc>().add(
                         FetchDocumentStockPickings(
                           0,
-                          blocContext
-                              .read<AttachDocumentsBloc>()
-                              .itemsPerPage,
+                          blocContext.read<AttachDocumentsBloc>().itemsPerPage,
                           searchQuery: value,
                           filters: _selectedFilters,
                         ),
@@ -876,7 +887,9 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             children: [
                               PaginationBarShimmer(),
                               Expanded(
-                                child: AttachmentPickingListShimmer(itemCount: 8),
+                                child: AttachmentPickingListShimmer(
+                                  itemCount: 8,
+                                ),
                               ),
                             ],
                           );
@@ -885,11 +898,11 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                         if (state is AttachDocumentsError &&
                             state.pickings.isEmpty) {
                           return ErrorStateWidget(
-                            title: 'Something went wrong',
-                            message: state.message,
-                            errorType: ErrorType.general,
+                            errorMessage: state.message,
                             onRetry: () async {
-                              await context.read<CompanyProvider>().initialize();
+                              await context
+                                  .read<CompanyProvider>()
+                                  .initialize();
                               ProfileRefreshBus.notifyProfileRefresh();
                               CompanyRefreshBus.notify();
                             },
@@ -928,126 +941,195 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             ? state.totalCount
                             : 0;
 
-                        final groupedNow = hasGroupBy &&
+                        final groupedNow =
+                            hasGroupBy &&
                             state is AttachDocumentsLoaded &&
                             state.groupedPickings.isNotEmpty;
                         return Column(
                           children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildFilterIndicator(
-                                        isDark,
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                12,
+                                16,
+                                12,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildFilterIndicator(
+                                    isDark,
 
-                                        _selectedFilters.length,
-                                      ),
-                                      if (groupedNow)
-                                        _buildGroupToggle(
-                                          isDark,
-                                          (state as AttachDocumentsLoaded)
-                                              .groupedPickings
-                                              .keys
-                                              .toList(),
-                                        )
-                                      else
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 6,
+                                    _selectedFilters.length,
+                                  ),
+                                  if (groupedNow)
+                                    _buildGroupToggle(
+                                      isDark,
+                                      state.groupedPickings.keys.toList(),
+                                    )
+                                  else
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white10
+                                                : Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
                                             ),
-                                            decoration: BoxDecoration(
+                                            border: Border.all(
                                               color: isDark
-                                                  ? Colors.white10
-                                                  : Colors.grey.shade100,
-                                              borderRadius: BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: isDark
-                                                    ? Colors.white24
-                                                    : Colors.grey.shade300,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  (state is AttachDocumentsLoaded)
-                                                      ? state.pageRange
-                                                      : '',
-                                                  style: TextStyle(
-                                                    color: isDark ? Colors.white70 : Colors.black87,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.normal,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '/',
-                                                  style: TextStyle(
-                                                    color: isDark ? Colors.white70 : Colors.black87,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.normal,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '$totalCount',
-                                                  style: TextStyle(
-                                                    color: isDark ? Colors.white70 : Colors.black87,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.normal,
-                                                  ),
-                                                ),
-                                              ],
+                                                  ? Colors.white24
+                                                  : Colors.grey.shade300,
                                             ),
                                           ),
-                                          if (totalCount > context.read<AttachDocumentsBloc>().itemsPerPage) ...[
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                (state is AttachDocumentsLoaded)
+                                                    ? state.pageRange
+                                                    : '',
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : Colors.black87,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.normal,
+                                                ),
+                                              ),
+                                              Text(
+                                                '/',
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : Colors.black87,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.normal,
+                                                ),
+                                              ),
+                                              Text(
+                                                '$totalCount',
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : Colors.black87,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.normal,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (totalCount >
+                                            context
+                                                .read<AttachDocumentsBloc>()
+                                                .itemsPerPage) ...[
                                           IconButton(
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
                                             icon: Icon(
-                                              HugeIcons.strokeRoundedArrowLeft01,
+                                              HugeIcons
+                                                  .strokeRoundedArrowLeft01,
                                               size: 25,
                                               color: currentPage > 0
-                                                  ? (isDark ? Colors.white70 : Colors.black87)
-                                                  : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.7)),
+                                                  ? (isDark
+                                                        ? Colors.white70
+                                                        : Colors.black87)
+                                                  : (isDark
+                                                        ? Colors.grey[800]
+                                                        : Colors.grey
+                                                              .withValues(
+                                                                alpha: 0.7,
+                                                              )),
                                             ),
-                                            onPressed: currentPage > 0 && !isFetchingMore
+                                            onPressed:
+                                                currentPage > 0 &&
+                                                    !isFetchingMore
                                                 ? () async {
                                                     if (isOnline) {
                                                       context.read<AttachDocumentsBloc>().add(
                                                         FetchDocumentStockPickings(
                                                           currentPage - 1,
-                                                          context.read<AttachDocumentsBloc>().itemsPerPage,
-                                                          searchQuery: _searchController.text,
-                                                          filters: _selectedFilters,
-                                                          groupBy: _selectedGroupBy,
+                                                          context
+                                                              .read<
+                                                                AttachDocumentsBloc
+                                                              >()
+                                                              .itemsPerPage,
+                                                          searchQuery:
+                                                              _searchController
+                                                                  .text,
+                                                          filters:
+                                                              _selectedFilters,
+                                                          groupBy:
+                                                              _selectedGroupBy,
                                                         ),
                                                       );
                                                     } else {
-                                                      final bloc = context.read<AttachDocumentsBloc>();
-                                                      final hiveService = HiveService();
-                                                      final cachedPickings = await hiveService.getPickings();
+                                                      final bloc = context
+                                                          .read<
+                                                            AttachDocumentsBloc
+                                                          >();
+                                                      final hiveService =
+                                                          HiveService();
+                                                      final cachedPickings =
+                                                          await hiveService
+                                                              .getPickings();
                                                       if (!mounted) return;
-                                                      if (cachedPickings.isNotEmpty) {
-                                                        final itemsPerPage = bloc.itemsPerPage;
-                                                        final start = (currentPage - 1) * itemsPerPage;
-                                                        final end = start + itemsPerPage;
+                                                      if (cachedPickings
+                                                          .isNotEmpty) {
+                                                        final itemsPerPage =
+                                                            bloc.itemsPerPage;
+                                                        final start =
+                                                            (currentPage - 1) *
+                                                            itemsPerPage;
+                                                        final end =
+                                                            start +
+                                                            itemsPerPage;
                                                         final offlinePickings = cachedPickings
-                                                            .sublist(start.clamp(0, cachedPickings.length).toInt(), end.clamp(0, cachedPickings.length).toInt())
-                                                            .map((p) => p.toJson())
+                                                            .sublist(
+                                                              start
+                                                                  .clamp(
+                                                                    0,
+                                                                    cachedPickings
+                                                                        .length,
+                                                                  )
+                                                                  .toInt(),
+                                                              end
+                                                                  .clamp(
+                                                                    0,
+                                                                    cachedPickings
+                                                                        .length,
+                                                                  )
+                                                                  .toInt(),
+                                                            )
+                                                            .map(
+                                                              (p) => p.toJson(),
+                                                            )
                                                             .toList();
                                                         bloc.add(
                                                           LoadOfflineDocuments(
-                                                            pickings: offlinePickings,
-                                                            currentPage: currentPage - 1,
-                                                            totalCount: cachedPickings.length,
+                                                            pickings:
+                                                                offlinePickings,
+                                                            currentPage:
+                                                                currentPage - 1,
+                                                            totalCount:
+                                                                cachedPickings
+                                                                    .length,
                                                           ),
                                                         );
                                                       } else {
-                                                        CustomSnackbar.showError(this.context, "No cached data available offline.");
+                                                        CustomSnackbar.showError(
+                                                          this.context,
+                                                          "No cached data available offline.",
+                                                        );
                                                       }
                                                     }
                                                   }
@@ -1057,322 +1139,413 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
                                             icon: Icon(
-                                              HugeIcons.strokeRoundedArrowRight01,
+                                              HugeIcons
+                                                  .strokeRoundedArrowRight01,
                                               size: 25,
-                                              color: (currentPage + 1) * context.read<AttachDocumentsBloc>().itemsPerPage < totalCount
-                                                  ? (isDark ? Colors.white70 : Colors.black87)
-                                                  : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.7)),
+                                              color:
+                                                  (currentPage + 1) *
+                                                          context
+                                                              .read<
+                                                                AttachDocumentsBloc
+                                                              >()
+                                                              .itemsPerPage <
+                                                      totalCount
+                                                  ? (isDark
+                                                        ? Colors.white70
+                                                        : Colors.black87)
+                                                  : (isDark
+                                                        ? Colors.grey[800]
+                                                        : Colors.grey
+                                                              .withValues(
+                                                                alpha: 0.7,
+                                                              )),
                                             ),
-                                            onPressed: (currentPage + 1) * context.read<AttachDocumentsBloc>().itemsPerPage < totalCount && !isFetchingMore
+                                            onPressed:
+                                                (currentPage + 1) *
+                                                            context
+                                                                .read<
+                                                                  AttachDocumentsBloc
+                                                                >()
+                                                                .itemsPerPage <
+                                                        totalCount &&
+                                                    !isFetchingMore
                                                 ? () {
-                                                    context.read<AttachDocumentsBloc>().add(
-                                                      FetchDocumentStockPickings(
-                                                        currentPage + 1,
-                                                        context.read<AttachDocumentsBloc>().itemsPerPage,
-                                                        searchQuery: _searchController.text,
-                                                        filters: _selectedFilters,
-                                                        groupBy: _selectedGroupBy,
-                                                      ),
-                                                    );
+                                                    context
+                                                        .read<
+                                                          AttachDocumentsBloc
+                                                        >()
+                                                        .add(
+                                                          FetchDocumentStockPickings(
+                                                            currentPage + 1,
+                                                            context
+                                                                .read<
+                                                                  AttachDocumentsBloc
+                                                                >()
+                                                                .itemsPerPage,
+                                                            searchQuery:
+                                                                _searchController
+                                                                    .text,
+                                                            filters:
+                                                                _selectedFilters,
+                                                            groupBy:
+                                                                _selectedGroupBy,
+                                                          ),
+                                                        );
                                                   }
                                                 : null,
                                           ),
-                                          ],
                                         ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                pickings.isEmpty
-                                    ? Expanded(
-                                        child: Builder(
-                                          builder: (ctx) {
-                                            final searchTerm =
-                                                _searchController.text.trim();
-                                            final hasSearch =
-                                                searchTerm.isNotEmpty;
-                                            final hasActiveFilters =
-                                                hasFilters || hasGroupBy;
-                                            final searchOnly = hasSearch &&
-                                                !hasActiveFilters;
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                            pickings.isEmpty
+                                ? Expanded(
+                                    child: Builder(
+                                      builder: (ctx) {
+                                        final searchTerm = _searchController
+                                            .text
+                                            .trim();
+                                        final hasSearch = searchTerm.isNotEmpty;
+                                        final hasActiveFilters =
+                                            hasFilters || hasGroupBy;
+                                        final searchOnly =
+                                            hasSearch && !hasActiveFilters;
 
-                                            String title;
-                                            String subtitle;
-                                            String? actionLabel;
-                                            VoidCallback? onAction;
+                                        String title;
+                                        String subtitle;
+                                        String? actionLabel;
+                                        VoidCallback? onAction;
 
-                                            if (searchOnly) {
-                                              title =
-                                                  'No results for "$searchTerm"';
-                                              subtitle =
-                                                  'Try a different search term.';
-                                              actionLabel = 'Clear Search';
-                                              onAction = () {
-                                                setState(() =>
-                                                    _searchController.clear());
-                                                context
-                                                    .read<AttachDocumentsBloc>()
-                                                    .add(
-                                                      FetchDocumentStockPickings(
-                                                        0,
-                                                        context
-                                                            .read<
-                                                                AttachDocumentsBloc>()
-                                                            .itemsPerPage,
-                                                        searchQuery: '',
-                                                        filters:
-                                                            _selectedFilters,
-                                                        groupBy:
-                                                            _selectedGroupBy,
-                                                      ),
-                                                    );
-                                              };
-                                            } else if (hasActiveFilters) {
-                                              title = 'No attachments found';
-                                              subtitle =
-                                                  'Try adjusting your filters or search term.';
-                                              actionLabel = 'Clear All Filters';
-                                              onAction = () {
-                                                setState(() {
-                                                  _selectedFilters.clear();
-                                                  _selectedGroupBy = null;
-                                                  hasFilters = false;
-                                                  hasGroupBy = false;
-                                                  _groupExpanded.clear();
-                                                  _searchController.clear();
-                                                });
-                                                context
-                                                    .read<AttachDocumentsBloc>()
-                                                    .add(
-                                                      FetchDocumentStockPickings(
-                                                        0,
-                                                        context
-                                                            .read<
-                                                                AttachDocumentsBloc>()
-                                                            .itemsPerPage,
-                                                        searchQuery: '',
-                                                        filters: const [],
-                                                        groupBy: null,
-                                                      ),
-                                                    );
-                                              };
-                                            } else {
-                                              title = 'No attachments found';
-                                              subtitle =
-                                                  'There are no attachments available.';
-                                            }
-
-                                            return EmptyState(
-                                              title: title,
-                                              subtitle: subtitle,
-                                              actionLabel: actionLabel,
-                                              onAction: onAction,
+                                        if (searchOnly) {
+                                          title =
+                                              'No results for "$searchTerm"';
+                                          subtitle =
+                                              'Try a different search term.';
+                                          actionLabel = 'Clear Search';
+                                          onAction = () {
+                                            setState(
+                                              () => _searchController.clear(),
                                             );
-                                          },
+                                            context
+                                                .read<AttachDocumentsBloc>()
+                                                .add(
+                                                  FetchDocumentStockPickings(
+                                                    0,
+                                                    context
+                                                        .read<
+                                                          AttachDocumentsBloc
+                                                        >()
+                                                        .itemsPerPage,
+                                                    searchQuery: '',
+                                                    filters: _selectedFilters,
+                                                    groupBy: _selectedGroupBy,
+                                                  ),
+                                                );
+                                          };
+                                        } else if (hasActiveFilters) {
+                                          title = 'No attachments found';
+                                          subtitle =
+                                              'Try adjusting your filters or search term.';
+                                          actionLabel = 'Clear All Filters';
+                                          onAction = () {
+                                            setState(() {
+                                              _selectedFilters.clear();
+                                              _selectedGroupBy = null;
+                                              hasFilters = false;
+                                              hasGroupBy = false;
+                                              _groupExpanded.clear();
+                                              _searchController.clear();
+                                            });
+                                            context
+                                                .read<AttachDocumentsBloc>()
+                                                .add(
+                                                  FetchDocumentStockPickings(
+                                                    0,
+                                                    context
+                                                        .read<
+                                                          AttachDocumentsBloc
+                                                        >()
+                                                        .itemsPerPage,
+                                                    searchQuery: '',
+                                                    filters: const [],
+                                                    groupBy: null,
+                                                  ),
+                                                );
+                                          };
+                                        } else {
+                                          title = 'No attachments found';
+                                          subtitle =
+                                              'There are no attachments available.';
+                                        }
+
+                                        return EmptyState(
+                                          title: title,
+                                          subtitle: subtitle,
+                                          actionLabel: actionLabel,
+                                          onAction: onAction,
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : hasGroupBy && state.groupedPickings.isNotEmpty
+                                ? Expanded(
+                                    child: _buildGroupedView(state, isDark),
+                                  )
+                                : Expanded(
+                                    child: RefreshIndicator(
+                                      onRefresh: () async {
+                                        context.read<AttachDocumentsBloc>().add(
+                                          FetchDocumentStockPickings(
+                                            0,
+                                            context
+                                                .read<AttachDocumentsBloc>()
+                                                .itemsPerPage,
+                                            searchQuery: _searchController.text,
+                                            filters: _selectedFilters,
+                                          ),
+                                        );
+                                      },
+                                      child: ListView.builder(
+                                        physics:
+                                            const AlwaysScrollableScrollPhysics(),
+                                        padding: const EdgeInsets.only(
+                                          top: 4,
+                                          bottom: 16,
                                         ),
-                                      )
-                                    : hasGroupBy &&
-                                          state.groupedPickings.isNotEmpty
-                                    ? Expanded(
-                                        child: _buildGroupedView(state, isDark),
-                                      )
-                                    : Expanded(
-                                        child: RefreshIndicator(
-                                          onRefresh: () async {
-                                            context.read<AttachDocumentsBloc>().add(
-                                              FetchDocumentStockPickings(
-                                                0,
-                                                context.read<AttachDocumentsBloc>().itemsPerPage,
-                                                searchQuery: _searchController.text,
-                                                filters: _selectedFilters,
+                                        itemCount:
+                                            pickings.length +
+                                            (isFetchingMore ? 1 : 0),
+                                        itemBuilder: (context, index) {
+                                          if (index == pickings.length) {
+                                            return Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 14,
+                                                  ),
+                                              child: Center(
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const LoadingWidget(
+                                                      size: 26,
+                                                      variant: LoadingVariant
+                                                          .staggeredDots,
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Text(
+                                                      'Loading more documents...',
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: isDark
+                                                            ? Colors.white70
+                                                            : Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             );
-                                          },
-                                          child: ListView.builder(
-                                            physics: const AlwaysScrollableScrollPhysics(),
-                                            padding: const EdgeInsets.only(
-                                              top: 4,
-                                              bottom: 16,
+                                          }
+                                          final picking = pickings[index];
+                                          final scheduledDateRaw2 =
+                                              picking['scheduled_date'];
+                                          final dateInfo =
+                                              Utils.getFormattedDateInfo(
+                                                scheduledDateRaw2 is String &&
+                                                        scheduledDateRaw2
+                                                            .isNotEmpty &&
+                                                        scheduledDateRaw2 !=
+                                                            'false'
+                                                    ? scheduledDateRaw2
+                                                    : '',
+                                              );
+                                          final rawState =
+                                              picking['state'] ?? 'unknown';
+                                          final readableState =
+                                              AppConstants
+                                                  .stateLabels[rawState] ??
+                                              rawState;
+                                          final statusColor =
+                                              AppConstants
+                                                  .stateColors[rawState] ??
+                                              Colors.black;
+
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
                                             ),
-                                            itemCount: pickings.length + (isFetchingMore ? 1 : 0),
-                                            itemBuilder: (context, index) {
-                                              if (index == pickings.length) {
-                                                return Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                                  child: Center(
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        const LoadingWidget(
-                                                          size: 26,
-                                                          variant: LoadingVariant.staggeredDots,
+                                            child: Container(
+                                              margin: const EdgeInsets.only(
+                                                bottom: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? Colors.grey[850]
+                                                    : Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? Colors.grey[850]!
+                                                      : Colors.grey[200]!,
+                                                  width: 0.5,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: const Color(
+                                                      0xFF000000,
+                                                    ).withOpacity(0.04),
+                                                    offset: const Offset(0, 2),
+                                                    blurRadius: 8,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                clipBehavior: Clip.antiAlias,
+                                                child: ListTile(
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 14,
+                                                        vertical: 2,
+                                                      ),
+                                                  title: Text(
+                                                    picking['name'] ??
+                                                        'Unnamed Picking',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 15,
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : AppStyle
+                                                                .primaryColor,
+                                                    ),
+                                                  ),
+                                                  subtitle: Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          top: 2,
                                                         ),
-                                                        const SizedBox(width: 10),
-                                                        Text(
-                                                          'Loading more documents...',
-                                                          style: TextStyle(
-                                                            fontSize: 13,
-                                                            color: isDark ? Colors.white70 : Colors.grey[600],
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          HugeIcons
+                                                              .strokeRoundedCalendar03,
+                                                          size: 13,
+                                                          color: isDark
+                                                              ? Colors.grey[400]
+                                                              : Colors
+                                                                    .grey[600],
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text.rich(
+                                                            TextSpan(
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: isDark
+                                                                    ? Colors
+                                                                          .grey[400]
+                                                                    : Colors
+                                                                          .grey[600],
+                                                              ),
+                                                              children: [
+                                                                const TextSpan(
+                                                                  text:
+                                                                      'Scheduled: ',
+                                                                ),
+                                                                TextSpan(
+                                                                  text:
+                                                                      '${dateInfo['label']}',
+                                                                  style: TextStyle(
+                                                                    color:
+                                                                        dateInfo['color']
+                                                                            as Color? ??
+                                                                        (isDark
+                                                                            ? Colors.grey[400]
+                                                                            : Colors.grey[600]),
+                                                                    fontWeight:
+                                                                        dateInfo['color'] !=
+                                                                            null
+                                                                        ? FontWeight
+                                                                              .w600
+                                                                        : FontWeight
+                                                                              .w400,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
                                                           ),
                                                         ),
                                                       ],
                                                     ),
                                                   ),
-                                                );
-                                              }
-                                              final picking = pickings[index];
-                                              final scheduledDateRaw2 =
-                                                  picking['scheduled_date'];
-                                              final dateInfo =
-                                                  Utils.getFormattedDateInfo(
-                                                    scheduledDateRaw2 is String &&
-                                                            scheduledDateRaw2
-                                                                .isNotEmpty &&
-                                                            scheduledDateRaw2 !=
-                                                                'false'
-                                                        ? scheduledDateRaw2
-                                                        : '',
-                                                  );
-                                              final rawState =
-                                                  picking['state'] ?? 'unknown';
-                                              final readableState =
-                                                  AppConstants
-                                                      .stateLabels[rawState] ??
-                                                  rawState;
-                                              final statusColor =
-                                                  AppConstants
-                                                      .stateColors[rawState] ??
-                                                  Colors.black;
-
-                                              return Padding(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                    ),
-                                                    child: Container(
-                                                      margin: const EdgeInsets.only(bottom: 12),
-                                                      decoration: BoxDecoration(
-                                                        color: isDark ? Colors.grey[850] : Colors.white,
-                                                        borderRadius: BorderRadius.circular(12),
-                                                        border: Border.all(
-                                                          color: isDark ? Colors.grey[850]! : Colors.grey[200]!,
-                                                          width: 0.5,
+                                                  trailing: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 9,
+                                                          vertical: 4,
                                                         ),
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            color: const Color(0xFF000000).withOpacity(0.04),
-                                                            offset: const Offset(0, 2),
-                                                            blurRadius: 8,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: Material(
-                                                        color: Colors.transparent,
-                                                        borderRadius: BorderRadius.circular(12),
-                                                        clipBehavior: Clip.antiAlias,
-                                                        child: ListTile(
-                                                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                                                        title: Text(
-                                                          picking['name'] ??
-                                                              'Unnamed Picking',
-                                                          style: TextStyle(
-                                                            fontWeight: FontWeight.w600,
-                                                            fontSize: 15,
-                                                            color: isDark
-                                                                ? Colors.white
-                                                                : AppStyle.primaryColor,
-                                                          ),
-                                                        ),
-                                                        subtitle: Padding(
-                                                          padding: const EdgeInsets.only(top: 2),
-                                                          child: Row(
-                                                            children: [
-                                                              Icon(
-                                                                HugeIcons.strokeRoundedCalendar03,
-                                                                size: 13,
-                                                                color: isDark
-                                                                    ? Colors.grey[400]
-                                                                    : Colors.grey[600],
-                                                              ),
-                                                              const SizedBox(width: 6),
-                                                              Expanded(
-                                                                child: Text.rich(
-                                                                  TextSpan(
-                                                                    style: TextStyle(
-                                                                      fontSize: 12,
-                                                                      color: isDark
-                                                                          ? Colors.grey[400]
-                                                                          : Colors.grey[600],
-                                                                    ),
-                                                                    children: [
-                                                                      const TextSpan(text: 'Scheduled: '),
-                                                                      TextSpan(
-                                                                        text: '${dateInfo['label']}',
-                                                                        style: TextStyle(
-
-                                                                          color: dateInfo['color'] as Color? ??
-                                                                              (isDark
-                                                                                  ? Colors.grey[400]
-                                                                                  : Colors.grey[600]),
-                                                                          fontWeight: dateInfo['color'] != null
-                                                                              ? FontWeight.w600
-                                                                              : FontWeight.w400,
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                  maxLines: 1,
-                                                                  overflow: TextOverflow.ellipsis,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark
+                                                          ? Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.15,
+                                                                )
+                                                          : statusColor
+                                                                .withValues(
+                                                                  alpha: 0.10,
                                                                 ),
-                                                              ),
-                                                            ],
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
                                                           ),
-                                                        ),
-                                                        trailing: Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 9,
-                                                                vertical: 4,
-                                                              ),
-                                                          decoration: BoxDecoration(
-
-                                                            color: isDark
-                                                                ? Colors.white.withValues(alpha: 0.15)
-                                                                : statusColor.withValues(alpha: 0.10),
-                                                            borderRadius:
-                                                                BorderRadius.circular(12),
-                                                          ),
-                                                          child: Text(
-                                                            readableState,
-                                                            style: TextStyle(
-                                                              fontWeight:
-                                                                  FontWeight.w600,
-                                                              color: isDark ? Colors.white : statusColor,
-                                                              fontSize: 11,
-                                                              letterSpacing: 0.1,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        onTap: () {
-                                                          Navigator.of(context)
-                                                              .push(
-                                                            MaterialPageRoute(
-                                                              builder: (_) =>
-                                                                  PickingDocumentsPage(
-                                                                picking: picking,
-                                                              ),
-                                                            ),
-                                                          );
-                                                        },
-                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      readableState,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : statusColor,
+                                                        fontSize: 11,
+                                                        letterSpacing: 0.1,
                                                       ),
                                                     ),
-                                                  );
-                                            },
-                                          ),
-                                        ),
+                                                  ),
+                                                  onTap: () {
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            PickingDocumentsPage(
+                                                              picking: picking,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
-                              ],
-                            );
+                                    ),
+                                  ),
+                          ],
+                        );
                       },
                     ),
                   ),

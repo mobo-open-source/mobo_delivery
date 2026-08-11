@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../utils/globals.dart';
-
 /// A specialized dropdown field specifically for string values, featuring a label and optional border.
 class CustomDropdownField extends StatelessWidget {
   final String? value;
@@ -95,7 +93,10 @@ class CustomDropdownField extends StatelessWidget {
             fillColor: isDark
                 ? const Color(0xFF1E1E1E)
                 : const Color(0xffF8FAFB),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
           ),
           style: GoogleFonts.manrope(
             fontWeight: FontWeight.w600,

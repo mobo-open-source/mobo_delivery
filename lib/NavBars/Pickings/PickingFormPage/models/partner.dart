@@ -49,9 +49,6 @@ class Partner {
   /// - serializing for UI dropdowns
   /// - saving back to Hive or preparing data for other operations
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-    };
+    return {'id': id, 'name': name};
   }
 }

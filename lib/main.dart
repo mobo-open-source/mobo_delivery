@@ -7,7 +7,6 @@ import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'Dashboard/models/profile.dart';
 import 'Dashboard/services/settings_storage_service.dart';
 import 'Dashboard/services/storage_service.dart';
 import 'LoginPage/views/login_screen.dart';
@@ -44,7 +43,6 @@ void main() async {
   await Hive.initFlutter();
 
   Hive.registerAdapter(PickingAdapter());
-  Hive.registerAdapter(ProfileAdapter());
   Hive.registerAdapter(MoveLineAdapter());
   Hive.registerAdapter(ReturnPickingAdapter());
 

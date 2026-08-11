@@ -8,8 +8,8 @@ import 'package:http/io_client.dart';
 /// It accepts all SSL certificates including invalid or self-signed ones.
 HttpClient _getHttpClient() {
   final client = HttpClient()
-    ..badCertificateCallback =
-        (X509Certificate cert, String host, int port) => true;
+    ..badCertificateCallback = (X509Certificate cert, String host, int port) =>
+        true;
   return client;
 }
 

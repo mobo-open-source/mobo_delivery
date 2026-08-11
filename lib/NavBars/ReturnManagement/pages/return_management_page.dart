@@ -51,7 +51,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   List<String> _selectedFilters = [];
   String? _selectedGroupBy;
   Map<String, bool> _groupExpanded = {};
-  bool _allGroupsExpanded = true;
 
   bool hasFilters = false;
   bool hasGroupBy = false;
@@ -129,98 +128,137 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
           final groupMap = groupTechnicalNames;
 
-          return Container(
-            height: MediaQuery.of(sheetContext).size.height * 0.8,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF232323) : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+          return SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            child: Container(
+              height: MediaQuery.of(sheetContext).size.height * 0.8,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF232323) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
-            ),
-            child: DefaultTabController(
-              length: 2,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Filter & Group By',
-                            style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black87,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Filter & Group By',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(sheetContext).pop(),
-                          icon: Icon(
-                            HugeIcons.strokeRoundedCancel01,
-                            color: isDark ? Colors.white : Colors.black54,
+                          IconButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: Icon(
+                              HugeIcons.strokeRoundedCancel01,
+                              color: isDark ? Colors.white : Colors.black54,
+                            ),
+                            splashRadius: 20,
                           ),
-                          splashRadius: 20,
+                        ],
+                      ),
+                    ),
+
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        indicator: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2A2A2A)
+                              : Theme.of(sheetContext).primaryColor,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
+                        indicatorPadding: const EdgeInsets.all(4),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        overlayColor: WidgetStateProperty.all(
+                          Colors.transparent,
+                        ),
+                        splashFactory: NoSplash.splashFactory,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: isDark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        tabs: const [
+                          Tab(height: 48, text: "Filter"),
+                          Tab(height: 48, text: "Group By"),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
 
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TabBar(
-                      indicator: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF2A2A2A)
-                            : Theme.of(sheetContext).primaryColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      indicatorPadding: const EdgeInsets.all(4),
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      overlayColor: WidgetStateProperty.all(Colors.transparent),
-                      splashFactory: NoSplash.splashFactory,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: isDark
-                          ? Colors.grey[400]
-                          : Colors.grey[600],
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                      tabs: const [
-                        Tab(height: 48, text: "Filter"),
-                        Tab(height: 48, text: "Group By"),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (tempFilters.isNotEmpty) ...[
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (tempFilters.isNotEmpty) ...[
+                                  Text(
+                                    'Active Filters',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        sheetContext,
+                                      ).primaryColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: filterTechnicalNames.entries
+                                        .where(
+                                          (e) => tempFilters.contains(e.value),
+                                        )
+                                        .map(
+                                          (e) => _buildActiveFilterChip(
+                                            isDark,
+                                            e.key,
+                                            () => setDialogState(
+                                              () => tempFilters.remove(e.value),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                  const SizedBox(height: 18),
+                                ],
                                 Text(
-                                  'Active Filters',
+                                  'Filters',
                                   style: TextStyle(
-                                    color: Theme.of(sheetContext).primaryColor,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -229,200 +267,176 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
-                                  children: filterTechnicalNames.entries
-                                      .where((e) =>
-                                          tempFilters.contains(e.value))
-                                      .map(
-                                        (e) => _buildActiveFilterChip(
-                                          isDark,
-                                          e.key,
-                                          () => setDialogState(
-                                            () => tempFilters.remove(e.value),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                                const SizedBox(height: 18),
-                              ],
-                              Text(
-                                'Filters',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: filterTechnicalNames.keys.map((label) {
-                                  final tech = filterTechnicalNames[label]!;
-                                  final selected = tempFilters.contains(tech);
+                                  children: filterTechnicalNames.keys.map((
+                                    label,
+                                  ) {
+                                    final tech = filterTechnicalNames[label]!;
+                                    final selected = tempFilters.contains(tech);
 
-                                  return ChoiceChip(
-                                label: Text(
-                                  label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                    color: selected
-                                        ? Colors.white
-                                        : (isDark
+                                    return ChoiceChip(
+                                      label: Text(
+                                        label,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: selected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: selected
                                               ? Colors.white
-                                              : Colors.black87),
-                                  ),
+                                              : (isDark
+                                                    ? Colors.white
+                                                    : Colors.black87),
+                                        ),
+                                      ),
+                                      selected: selected,
+                                      selectedColor: Theme.of(
+                                        sheetContext,
+                                      ).primaryColor,
+                                      backgroundColor: isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Theme.of(sheetContext).primaryColor
+                                                .withValues(alpha: 0.08),
+                                      elevation: 0,
+                                      pressElevation: 0,
+                                      shadowColor: Colors.transparent,
+                                      surfaceTintColor: Colors.transparent,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? Colors.grey[600]!
+                                              : Colors.grey[300]!,
+                                        ),
+                                      ),
+                                      onSelected: (val) {
+                                        setDialogState(() {
+                                          if (val) {
+                                            tempFilters.add(tech);
+                                          } else {
+                                            tempFilters.remove(tech);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
                                 ),
-                                selected: selected,
-                                selectedColor:
-                                    Theme.of(sheetContext).primaryColor,
-                                backgroundColor: isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Theme.of(sheetContext)
-                                        .primaryColor
-                                        .withValues(alpha: 0.08),
-                                elevation: 0,
-                                pressElevation: 0,
-                                shadowColor: Colors.transparent,
-                                surfaceTintColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? Colors.grey[600]!
-                                        : Colors.grey[300]!,
-                                  ),
-                                ),
-                                onSelected: (val) {
-                                  setDialogState(() {
-                                    if (val) {
-                                      tempFilters.add(tech);
-                                    } else {
-                                      tempFilters.remove(tech);
-                                    }
-                                  });
-                                },
-                              );
-                                }).toList(),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
 
-                        ListView(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                'Group returns by',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                          ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'Group returns by',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            _buildGroupOption(
-                              isDark: isDark,
-                              label: 'None',
-                              subtitle: 'Display as a simple list',
-                              isSelected: tempGroupBy == null,
-                              onTap: () =>
-                                  setDialogState(() => tempGroupBy = null),
-                            ),
-                            Divider(
-                              height: 1,
-                              color: isDark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[200],
-                            ),
-                            for (final entry in groupMap.entries)
                               _buildGroupOption(
                                 isDark: isDark,
-                                label: entry.key,
-                                subtitle: 'Group by ${entry.key.toLowerCase()}',
-                                isSelected: tempGroupBy == entry.value,
-                                onTap: () => setDialogState(
-                                  () => tempGroupBy = entry.value,
-                                ),
+                                label: 'None',
+                                subtitle: 'Display as a simple list',
+                                isSelected: tempGroupBy == null,
+                                onTap: () =>
+                                    setDialogState(() => tempGroupBy = null),
                               ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF232323) : Colors.white,
-                      border: Border(
-                        top: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                        ),
+                              Divider(
+                                height: 1,
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[200],
+                              ),
+                              for (final entry in groupMap.entries)
+                                _buildGroupOption(
+                                  isDark: isDark,
+                                  label: entry.key,
+                                  subtitle:
+                                      'Group by ${entry.key.toLowerCase()}',
+                                  isSelected: tempGroupBy == entry.value,
+                                  onTap: () => setDialogState(
+                                    () => tempGroupBy = entry.value,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: MoboButton.secondary(
-                            label: 'Clear All',
-                            borderRadius: 8,
-                            onPressed: () {
-                              setState(() {
-                                _selectedFilters.clear();
-                                _selectedGroupBy = null;
-                                hasFilters = false;
-                                hasGroupBy = false;
-                                _groupExpanded.clear();
-                              });
-                              pageContext.read<ReturnManagementBloc>().add(
-                                FetchStockPickings(0),
-                              );
-                              Navigator.pop(sheetContext);
-                            },
+
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF232323) : Colors.white,
+                        border: Border(
+                          top: BorderSide(
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[200]!,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: MoboButton.primary(
-                            label: 'Apply',
-                            borderRadius: 8,
-                            onPressed: () {
-                              setState(() {
-                                _selectedFilters = List.from(tempFilters);
-                                _selectedGroupBy = tempGroupBy;
-                                hasFilters = _selectedFilters.isNotEmpty;
-                                hasGroupBy = _selectedGroupBy != null;
-                                _groupExpanded.clear();
-                              });
-                              pageContext.read<ReturnManagementBloc>().add(
-                                FetchStockPickings(
-                                  0,
-                                  searchText:
-                                      _searchController.text.trim().isNotEmpty
-                                      ? _searchController.text.trim()
-                                      : null,
-                                  filters: _selectedFilters,
-                                  groupBy: _selectedGroupBy,
-                                ),
-                              );
-                              Navigator.pop(sheetContext);
-                            },
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: MoboButton.secondary(
+                              label: 'Clear All',
+                              borderRadius: 8,
+                              onPressed: () {
+                                setState(() {
+                                  _selectedFilters.clear();
+                                  _selectedGroupBy = null;
+                                  hasFilters = false;
+                                  hasGroupBy = false;
+                                  _groupExpanded.clear();
+                                });
+                                pageContext.read<ReturnManagementBloc>().add(
+                                  FetchStockPickings(0),
+                                );
+                                Navigator.pop(sheetContext);
+                              },
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: MoboButton.primary(
+                              label: 'Apply',
+                              borderRadius: 8,
+                              onPressed: () {
+                                setState(() {
+                                  _selectedFilters = List.from(tempFilters);
+                                  _selectedGroupBy = tempGroupBy;
+                                  hasFilters = _selectedFilters.isNotEmpty;
+                                  hasGroupBy = _selectedGroupBy != null;
+                                  _groupExpanded.clear();
+                                });
+                                pageContext.read<ReturnManagementBloc>().add(
+                                  FetchStockPickings(
+                                    0,
+                                    searchText:
+                                        _searchController.text.trim().isNotEmpty
+                                        ? _searchController.text.trim()
+                                        : null,
+                                    filters: _selectedFilters,
+                                    groupBy: _selectedGroupBy,
+                                  ),
+                                );
+                                Navigator.pop(sheetContext);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -459,7 +473,11 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           const SizedBox(width: 6),
           GestureDetector(
             onTap: onRemove,
-            child: Icon(HugeIcons.strokeRoundedCancel01, size: 16, color: primary),
+            child: Icon(
+              HugeIcons.strokeRoundedCancel01,
+              size: 16,
+              color: primary,
+            ),
           ),
         ],
       ),
@@ -541,7 +559,12 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         itemCount: state.groupedPickings.length,
         itemBuilder: (context, index) {
           final groupNameRaw = state.groupedPickings.keys.elementAt(index);
-          final groupName = (groupNameRaw == 'false' || groupNameRaw == 'None' || groupNameRaw.isEmpty) ? 'None' : groupNameRaw;
+          final groupName =
+              (groupNameRaw == 'false' ||
+                  groupNameRaw == 'None' ||
+                  groupNameRaw.isEmpty)
+              ? 'None'
+              : groupNameRaw;
           final groupPickings = state.groupedPickings[groupNameRaw]!;
           final isExpanded = _groupExpanded[groupName] ?? true;
 
@@ -608,7 +631,9 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                           ),
                         ),
                         Icon(
-                          isExpanded ? HugeIcons.strokeRoundedArrowUp01 : HugeIcons.strokeRoundedArrowDown01,
+                          isExpanded
+                              ? HugeIcons.strokeRoundedArrowUp01
+                              : HugeIcons.strokeRoundedArrowDown01,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ],
@@ -638,19 +663,20 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     bool isDark,
     BuildContext context,
   ) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
     final reference = picking['name'] ?? 'Return #${picking['id']}';
     final state = picking['state'] ?? 'unknown';
     final rawOrigin = picking['origin'];
     final hasOrigin =
-        rawOrigin != null && rawOrigin != false && rawOrigin.toString().trim().isNotEmpty;
+        rawOrigin != null &&
+        rawOrigin != false &&
+        rawOrigin.toString().trim().isNotEmpty;
     final origin = hasOrigin ? rawOrigin.toString() : 'None';
     String partnerName = 'None';
     if (picking['partner_id'] is List && picking['partner_id'].length > 1) {
       partnerName = picking['partner_id'][1].toString();
     }
-    final scheduledDate = (picking['scheduled_date'] == null ||
+    final scheduledDate =
+        (picking['scheduled_date'] == null ||
             picking['scheduled_date'] == false ||
             picking['scheduled_date'].toString() == 'false' ||
             picking['scheduled_date'].toString().trim().isEmpty)
@@ -676,8 +702,10 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         builder: (ctx) => Dialog(
           backgroundColor: isDark ? Colors.grey[900] : Colors.white,
           surfaceTintColor: Colors.transparent,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -724,86 +752,90 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           onTap: handleTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      reference,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppStyle.accentOf(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        reference,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppStyle.accentOf(context),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildStatusBadge(state, isDark, statusColor),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              _buildDetailRow(
-                hasOrigin ? 'Return of:' : 'Origin:',
-                origin,
-                labelColor,
-                valueColor,
-              ),
-              const SizedBox(height: 4),
-
-              _buildDetailRow(
-                'Partner:',
-                partnerName,
-                labelColor,
-                valueColor,
-              ),
-              const SizedBox(height: 6),
-
-              Row(
-                children: [
-                  Icon(
-                    HugeIcons.strokeRoundedCalendar03,
-                    size: 14,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Scheduled: $scheduledDate',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (hasOrigin) ...[
                     const SizedBox(width: 8),
+                    _buildStatusBadge(state, isDark, statusColor),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                _buildDetailRow(
+                  hasOrigin ? 'Return of:' : 'Origin:',
+                  origin,
+                  labelColor,
+                  valueColor,
+                ),
+                const SizedBox(height: 4),
+
+                _buildDetailRow(
+                  'Partner:',
+                  partnerName,
+                  labelColor,
+                  valueColor,
+                ),
+                const SizedBox(height: 6),
+
+                Row(
+                  children: [
                     Icon(
-                      HugeIcons.strokeRoundedArrowTurnBackward,
-                      size: 13,
-                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                      HugeIcons.strokeRoundedCalendar03,
+                      size: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Return',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Scheduled: $scheduledDate',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    if (hasOrigin) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        HugeIcons.strokeRoundedArrowTurnBackward,
+                        size: 13,
+                        color: isDark
+                            ? Colors.amber.shade200
+                            : Colors.amber.shade900,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Return',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? Colors.amber.shade200
+                              : Colors.amber.shade900,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -900,7 +932,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   /// grouping is active — swaps the count text and the range badge for a
   /// single "Expand/Collapse All (N)" pill matching the pickings list style.
   Widget _buildGroupToggle(bool isDark, List<String> groupKeys) {
-
     final expanded = groupKeys.every((k) => _groupExpanded[k] ?? true);
     return TextButton.icon(
       onPressed: () {
@@ -909,7 +940,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           for (final key in groupKeys) {
             _groupExpanded[key] = target;
           }
-          _allGroupsExpanded = target;
         });
       },
       icon: Icon(
@@ -949,13 +979,13 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       onAction = () {
         setState(() => _searchController.clear());
         context.read<ReturnManagementBloc>().add(
-              FetchStockPickings(
-                0,
-                searchText: null,
-                filters: _selectedFilters,
-                groupBy: _selectedGroupBy,
-              ),
-            );
+          FetchStockPickings(
+            0,
+            searchText: null,
+            filters: _selectedFilters,
+            groupBy: _selectedGroupBy,
+          ),
+        );
       };
     } else if (hasActiveFilters) {
       title = 'No returns found';
@@ -971,9 +1001,13 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           _searchController.clear();
         });
         context.read<ReturnManagementBloc>().add(
-              FetchStockPickings(0,
-                  searchText: null, filters: const [], groupBy: null),
-            );
+          FetchStockPickings(
+            0,
+            searchText: null,
+            filters: const [],
+            groupBy: null,
+          ),
+        );
       };
     } else {
       title = 'No returns found';
@@ -988,12 +1022,9 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     );
   }
 
-  Widget _buildErrorState(bool isDark, BuildContext context) {
+  Widget _buildErrorState(bool isDark, BuildContext context, String? error) {
     return ErrorStateWidget(
-      title: 'Something went wrong',
-      message:
-          'Unable to load returns. Please check your connection or try again.',
-      errorType: ErrorType.general,
+      errorMessage: error,
       onRetry: () async {
         await context.read<CompanyProvider>().initialize();
         ProfileRefreshBus.notifyProfileRefresh();
@@ -1060,11 +1091,11 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                       if (state.isLoading)
                         const Expanded(child: ReturnListShimmer(itemCount: 6))
                       else if (showFullPageError)
-                        Expanded(child: _buildErrorState(isDark, context))
-                      else if (displayedPickings.isEmpty)
                         Expanded(
-                          child: _buildEmptyState(isDark, context),
+                          child: _buildErrorState(isDark, context, state.error),
                         )
+                      else if (displayedPickings.isEmpty)
+                        Expanded(child: _buildEmptyState(isDark, context))
                       else ...[
                         hasGroupBy && state.groupedPickings.isNotEmpty
                             ? Expanded(child: _buildGroupedView(state, isDark))
@@ -1123,7 +1154,6 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     bool isDark,
     BuildContext context,
   ) {
-
     final filterCount = _selectedFilters.length;
     final canGoPrev = state.currentPage > 0;
     final canGoNext =
@@ -1134,8 +1164,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     final needsPageArrows =
         state.totalCount > ReturnManagementState.itemsPerPage;
 
-    final grouped =
-        hasGroupBy && state.groupedPickings.isNotEmpty;
+    final grouped = hasGroupBy && state.groupedPickings.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -1151,7 +1180,10 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark ? Colors.white10 : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(20),
@@ -1190,56 +1222,62 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                   ),
                 ),
                 if (needsPageArrows) ...[
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    HugeIcons.strokeRoundedArrowLeft01,
-                    size: 25,
-                    color: canGoPrev
-                        ? (isDark ? Colors.white70 : Colors.black87)
-                        : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      HugeIcons.strokeRoundedArrowLeft01,
+                      size: 25,
+                      color: canGoPrev
+                          ? (isDark ? Colors.white70 : Colors.black87)
+                          : (isDark
+                                ? Colors.grey[800]
+                                : Colors.grey.withValues(alpha: 0.4)),
+                    ),
+                    onPressed: canGoPrev
+                        ? () {
+                            context.read<ReturnManagementBloc>().add(
+                              FetchStockPickings(
+                                state.currentPage - 1,
+                                searchText:
+                                    _searchController.text.trim().isNotEmpty
+                                    ? _searchController.text.trim()
+                                    : null,
+                                filters: _selectedFilters,
+                                groupBy: _selectedGroupBy,
+                              ),
+                            );
+                          }
+                        : null,
                   ),
-                  onPressed: canGoPrev
-                      ? () {
-                          context.read<ReturnManagementBloc>().add(
-                            FetchStockPickings(
-                              state.currentPage - 1,
-                              searchText: _searchController.text.trim().isNotEmpty
-                                  ? _searchController.text.trim()
-                                  : null,
-                              filters: _selectedFilters,
-                              groupBy: _selectedGroupBy,
-                            ),
-                          );
-                        }
-                      : null,
-                ),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: Icon(
-                    HugeIcons.strokeRoundedArrowRight01,
-                    size: 25,
-                    color: canGoNext
-                        ? (isDark ? Colors.white70 : Colors.black87)
-                        : (isDark ? Colors.grey[800] : Colors.grey.withValues(alpha: 0.4)),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      HugeIcons.strokeRoundedArrowRight01,
+                      size: 25,
+                      color: canGoNext
+                          ? (isDark ? Colors.white70 : Colors.black87)
+                          : (isDark
+                                ? Colors.grey[800]
+                                : Colors.grey.withValues(alpha: 0.4)),
+                    ),
+                    onPressed: canGoNext
+                        ? () {
+                            context.read<ReturnManagementBloc>().add(
+                              FetchStockPickings(
+                                state.currentPage + 1,
+                                searchText:
+                                    _searchController.text.trim().isNotEmpty
+                                    ? _searchController.text.trim()
+                                    : null,
+                                filters: _selectedFilters,
+                                groupBy: _selectedGroupBy,
+                              ),
+                            );
+                          }
+                        : null,
                   ),
-                  onPressed: canGoNext
-                      ? () {
-                          context.read<ReturnManagementBloc>().add(
-                            FetchStockPickings(
-                              state.currentPage + 1,
-                              searchText: _searchController.text.trim().isNotEmpty
-                                  ? _searchController.text.trim()
-                                  : null,
-                              filters: _selectedFilters,
-                              groupBy: _selectedGroupBy,
-                            ),
-                          );
-                        }
-                      : null,
-                ),
                 ],
               ],
             ),

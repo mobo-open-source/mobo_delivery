@@ -64,8 +64,9 @@ class OdooPickingFormService {
       if (!connectivityResult.any((r) => r != ConnectivityResult.none)) {
         return false;
       }
-      final result = await InternetAddress.lookup('example.com')
-          .timeout(const Duration(seconds: 3));
+      final result = await InternetAddress.lookup(
+        'example.com',
+      ).timeout(const Duration(seconds: 3));
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } on SocketException {
       return false;
@@ -196,7 +197,8 @@ class OdooPickingFormService {
         },
       });
 
-      final rows = (result as List?)?.cast<Map<String, dynamic>>() ??
+      final rows =
+          (result as List?)?.cast<Map<String, dynamic>>() ??
           const <Map<String, dynamic>>[];
 
       int? extractId(dynamic raw) {
@@ -214,17 +216,21 @@ class OdooPickingFormService {
           'name': display,
           'default_location_src_id': row['default_location_src_id'],
           'default_location_dest_id': row['default_location_dest_id'],
-          'default_location_src_id_int':
-              extractId(row['default_location_src_id']),
-          'default_location_dest_id_int':
-              extractId(row['default_location_dest_id']),
+          'default_location_src_id_int': extractId(
+            row['default_location_src_id'],
+          ),
+          'default_location_dest_id_int': extractId(
+            row['default_location_dest_id'],
+          ),
         };
       }).toList();
 
       if (normalised.isNotEmpty) {
         await _hiveService.saveOperationTypes(normalised);
       }
-      return normalised.isNotEmpty ? normalised : await loadOperationTypesFromCache();
+      return normalised.isNotEmpty
+          ? normalised
+          : await loadOperationTypesFromCache();
     } catch (e) {
       debugPrint('loadOperationTypes error: $e');
       return await loadOperationTypesFromCache();
@@ -236,12 +242,14 @@ class OdooPickingFormService {
   Future<List<Map<String, dynamic>>> loadOperationTypesFromCache() async {
     final cached = await _hiveService.getOperationTypes();
     return cached
-        .map<Map<String, dynamic>>((o) => {
-              'id': o.id,
-              'name': o.name,
-              'default_location_src_id_int': o.defaultLocationSrcId,
-              'default_location_dest_id_int': o.defaultLocationDestId,
-            })
+        .map<Map<String, dynamic>>(
+          (o) => {
+            'id': o.id,
+            'name': o.name,
+            'default_location_src_id_int': o.defaultLocationSrcId,
+            'default_location_dest_id_int': o.defaultLocationDestId,
+          },
+        )
         .toList();
   }
 
@@ -424,8 +432,10 @@ class OdooPickingFormService {
       }
       return [];
     } catch (e, st) {
-      debugPrint('[OdooPickingFormService.loadProductMoves] '
-          'picking=$pickingId ERROR: $e\n$st');
+      debugPrint(
+        '[OdooPickingFormService.loadProductMoves] '
+        'picking=$pickingId ERROR: $e\n$st',
+      );
       rethrow;
     }
   }
@@ -525,10 +535,7 @@ class OdooPickingFormService {
       'method': 'write',
       'args': [
         [moveId],
-        {
-          'product_id': productId,
-          'quantity': quantity,
-        },
+        {'product_id': productId, 'quantity': quantity},
       ],
       'kwargs': {},
     });
@@ -699,6 +706,7 @@ class OdooPickingFormService {
         }
         return null;
       }
+
       freshCompanyId = extractId(row['company_id']);
       freshLocationId = extractId(row['location_id']) ?? locationId;
       freshLocationDestId =
@@ -716,19 +724,18 @@ class OdooPickingFormService {
       if (freshCompanyId != null) 'company_id': freshCompanyId,
     };
 
-    final createMove = await CompanySessionManager.callKwWithCompany(
-      {
-        'model': 'stock.move',
-        'method': 'create',
-        'args': [payload],
-        'kwargs': {},
-      },
-      companyId: freshCompanyId,
-    );
+    final createMove = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move',
+      'method': 'create',
+      'args': [payload],
+      'kwargs': {},
+    }, companyId: freshCompanyId);
 
     int? newMoveId;
     if (createMove is int) newMoveId = createMove;
-    if (createMove is List && createMove.isNotEmpty && createMove.first is int) {
+    if (createMove is List &&
+        createMove.isNotEmpty &&
+        createMove.first is int) {
       newMoveId = createMove.first as int;
     }
     if (newMoveId == null) {
@@ -737,20 +744,22 @@ class OdooPickingFormService {
       );
     }
 
-    const stateNeedsConfirm = {'confirmed', 'waiting', 'partially_available', 'assigned'};
+    const stateNeedsConfirm = {
+      'confirmed',
+      'waiting',
+      'partially_available',
+      'assigned',
+    };
     if (pickingState != null && stateNeedsConfirm.contains(pickingState)) {
       try {
-        await CompanySessionManager.callKwWithCompany(
-          {
-            'model': 'stock.picking',
-            'method': 'action_confirm',
-            'args': [
-              [pickingId],
-            ],
-            'kwargs': {},
-          },
-          companyId: freshCompanyId,
-        );
+        await CompanySessionManager.callKwWithCompany({
+          'model': 'stock.picking',
+          'method': 'action_confirm',
+          'args': [
+            [pickingId],
+          ],
+          'kwargs': {},
+        }, companyId: freshCompanyId);
       } catch (e) {
         debugPrint(
           '[addProductToLine] action_confirm failed for picking=$pickingId: $e',
@@ -813,9 +822,7 @@ class OdooPickingFormService {
         ],
         'kwargs': {},
       });
-      debugPrint(
-        '[PickingForm.saveChanges] id=$pickingId response=$response',
-      );
+      debugPrint('[PickingForm.saveChanges] id=$pickingId response=$response');
       return response == true;
     } catch (e, st) {
       debugPrint('[PickingForm.saveChanges] id=$pickingId ERROR: $e\n$st');

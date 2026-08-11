@@ -25,51 +25,26 @@ void main() {
 
   group('Picking Actions', () {
     /// POSITIVE CASE - UPDATE PRODUCT – ONLINE
-    test(
-      'update product ONLINE → calls updateProductMove and returns true',
-      () async {
-        when(
-          () => mockOdooService.checkNetworkConnectivity(),
-        ).thenAnswer((_) async => true);
+    test('update product ONLINE → calls updateProductMove', () async {
+      when(
+        () => mockOdooService.checkNetworkConnectivity(),
+      ).thenAnswer((_) async => true);
 
-        when(
-          () => mockOdooService.updateProductMove(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-          ),
-        ).thenAnswer((_) async => true);
+      when(
+        () => mockOdooService.updateProductMove(any(), any(), any()),
+      ).thenAnswer((_) async {});
 
-        final isOnline = await mockOdooService.checkNetworkConnectivity();
-        bool success = false;
+      final isOnline = await mockOdooService.checkNetworkConnectivity();
+      bool updated = false;
 
-        if (isOnline) {
-          success = await mockOdooService.updateProductMove(
-            10,
-            100,
-            'Test Product',
-            5.0,
-            1,
-            2,
-          );
-        }
-        expect(success, true);
+      if (isOnline) {
+        await mockOdooService.updateProductMove(10, 100, 5.0);
+        updated = true;
+      }
+      expect(updated, true);
 
-        verify(
-          () => mockOdooService.updateProductMove(
-            10,
-            100,
-            'Test Product',
-            5.0,
-            1,
-            2,
-          ),
-        ).called(1);
-      },
-    );
+      verify(() => mockOdooService.updateProductMove(10, 100, 5.0)).called(1);
+    });
 
     /// UPDATE PRODUCT – OFFLINE
     test(
@@ -107,14 +82,7 @@ void main() {
         ).called(1);
 
         verifyNever(
-          () => mockOdooService.updateProductMove(
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-            any(),
-          ),
+          () => mockOdooService.updateProductMove(any(), any(), any()),
         );
       },
     );

@@ -371,7 +371,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                     : Colors.black54,
               ),
               suffixIcon: _emailHasError
-                  ? Icon(HugeIcons.strokeRoundedAlert02, color: Colors.red, size: 20)
+                  ? Icon(
+                      HugeIcons.strokeRoundedAlert02,
+                      color: Colors.red,
+                      size: 20,
+                    )
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

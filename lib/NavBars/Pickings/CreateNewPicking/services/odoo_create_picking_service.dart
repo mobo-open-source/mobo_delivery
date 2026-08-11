@@ -63,11 +63,15 @@ class OdooCreatePickingService {
         return items.map((item) => ProductModel.fromJson(item)).toList();
       }
       final cached = await HiveService().getProducts();
-      return cached.map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id)).toList();
+      return cached
+          .map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id))
+          .toList();
     } catch (e) {
       debugPrint('loadProducts error: $e');
       final cached = await HiveService().getProducts();
-      return cached.map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id)).toList();
+      return cached
+          .map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id))
+          .toList();
     }
   }
 
@@ -127,7 +131,9 @@ class OdooCreatePickingService {
         'model': 'stock.picking.type',
         'method': 'search_read',
         'args': [
-          [['active', '=', true]],
+          [
+            ['active', '=', true],
+          ],
         ],
         'kwargs': {
           'fields': [
@@ -141,17 +147,23 @@ class OdooCreatePickingService {
       });
 
       final list = (operationTypeItems as List)
-          .map((item) => OperationTypeModel.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => OperationTypeModel.fromJson(item as Map<String, dynamic>),
+          )
           .toList();
 
       if (list.isNotEmpty) {
         await HiveService().saveOperationTypes(
-          list.map((o) => {
-            'id': o.id,
-            'name': o.name,
-            'default_location_src_id': o.defaultLocationSrcId,
-            'default_location_dest_id': o.defaultLocationDestId,
-          }).toList(),
+          list
+              .map(
+                (o) => {
+                  'id': o.id,
+                  'name': o.name,
+                  'default_location_src_id': o.defaultLocationSrcId,
+                  'default_location_dest_id': o.defaultLocationDestId,
+                },
+              )
+              .toList(),
         );
       }
       return list;
@@ -263,15 +275,12 @@ class OdooCreatePickingService {
       if (companyId != null) 'company_id': companyId,
     };
 
-    await CompanySessionManager.callKwWithCompany(
-      {
-        'model': 'stock.move',
-        'method': 'create',
-        'args': [payload],
-        'kwargs': {},
-      },
-      companyId: companyId,
-    );
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move',
+      'method': 'create',
+      'args': [payload],
+      'kwargs': {},
+    }, companyId: companyId);
   }
 
   /// Reads the picking's `company_id` so freshly-created moves can be
@@ -302,17 +311,14 @@ class OdooCreatePickingService {
   }
 
   Future<void> confirmPicking(int pickingId, {int? companyId}) async {
-    await CompanySessionManager.callKwWithCompany(
-      {
-        'model': 'stock.picking',
-        'method': 'action_confirm',
-        'args': [
-          [pickingId],
-        ],
-        'kwargs': {},
-      },
-      companyId: companyId,
-    );
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'action_confirm',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    }, companyId: companyId);
   }
 
   /// Fetches detailed information about a newly created picking using `search_read`

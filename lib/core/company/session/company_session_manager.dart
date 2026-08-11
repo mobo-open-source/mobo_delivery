@@ -526,7 +526,7 @@ class CompanySessionManager {
     if (selectedCompany != null) {
       ctx['company_id'] = selectedCompany;
 
-      List<int> finalAllowed = [...(allowed ?? [])];
+      List<int> finalAllowed = [...allowed];
       if (!finalAllowed.contains(selectedCompany)) {
         finalAllowed.add(selectedCompany);
       }

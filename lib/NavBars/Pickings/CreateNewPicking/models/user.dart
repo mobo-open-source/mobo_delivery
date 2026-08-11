@@ -12,10 +12,7 @@ class UserModel extends Equatable {
   final int id;
   final String name;
 
-  const UserModel({
-    required this.id,
-    required this.name,
-  });
+  const UserModel({required this.id, required this.name});
 
   /// Creates a `UserModel` instance from Odoo `search_read` response data.
   ///

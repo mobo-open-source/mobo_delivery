@@ -39,8 +39,9 @@ class OdooDashboardService {
       if (!connectivityResults.any((r) => r != ConnectivityResult.none)) {
         return false;
       }
-      final result = await InternetAddress.lookup('example.com')
-          .timeout(const Duration(seconds: 3));
+      final result = await InternetAddress.lookup(
+        'example.com',
+      ).timeout(const Duration(seconds: 3));
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } on SocketException {
       return false;
@@ -116,8 +117,7 @@ class OdooDashboardService {
             data['state_id'] = pd['state_id'];
             data['country_id'] = pd['country_id'];
           }
-        } catch (_) {
-        }
+        } catch (_) {}
       }
 
       return data;
@@ -225,8 +225,7 @@ class OdooDashboardService {
         ],
         'kwargs': {},
       });
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Fetches active languages from `res.lang`.
@@ -382,8 +381,8 @@ class OdooDashboardService {
         'method': 'search_read',
         'args': [
           [
-            ['country_id', '=', countryId]
-          ]
+            ['country_id', '=', countryId],
+          ],
         ],
         'kwargs': {
           'fields': ['id', 'name'],

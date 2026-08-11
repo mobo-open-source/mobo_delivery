@@ -43,18 +43,26 @@ class HiveService {
   static void Function()? onPendingQueueChanged;
 
   Future<void> initialize() async {
-    if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(PickingFormAdapter());
+    if (!Hive.isAdapterRegistered(1))
+      Hive.registerAdapter(PickingFormAdapter());
     if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(ProductAdapter());
     if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(PartnerAdapter());
     if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(UserAdapter());
     if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(StockMoveAdapter());
-    if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(PendingValidationAdapter());
-    if (!Hive.isAdapterRegistered(7)) Hive.registerAdapter(PendingUpdatesAdapter());
-    if (!Hive.isAdapterRegistered(8)) Hive.registerAdapter(PendingCreatesAdapter());
-    if (!Hive.isAdapterRegistered(9)) Hive.registerAdapter(ProductUpdatesAdapter());
-    if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(OperationTypeAdapter());
-    if (!Hive.isAdapterRegistered(12)) Hive.registerAdapter(PartnerDetailsAdapter());
-    if (!Hive.isAdapterRegistered(11)) Hive.registerAdapter(PendingAttachmentAdapter());
+    if (!Hive.isAdapterRegistered(6))
+      Hive.registerAdapter(PendingValidationAdapter());
+    if (!Hive.isAdapterRegistered(7))
+      Hive.registerAdapter(PendingUpdatesAdapter());
+    if (!Hive.isAdapterRegistered(8))
+      Hive.registerAdapter(PendingCreatesAdapter());
+    if (!Hive.isAdapterRegistered(9))
+      Hive.registerAdapter(ProductUpdatesAdapter());
+    if (!Hive.isAdapterRegistered(10))
+      Hive.registerAdapter(OperationTypeAdapter());
+    if (!Hive.isAdapterRegistered(12))
+      Hive.registerAdapter(PartnerDetailsAdapter());
+    if (!Hive.isAdapterRegistered(11))
+      Hive.registerAdapter(PendingAttachmentAdapter());
 
     await Hive.openBox<PickingForm>(_pickingBoxName);
     await Hive.openBox<PickingForm>(_pickingReturnBoxName);
@@ -81,7 +89,10 @@ class HiveService {
   int getTotalCount() => _totalCountBox.get('total') ?? 0;
 
   /// Queues a picking validation to be executed when online
-  Future<void> savePendingValidation(int pickingId, Map<String, dynamic> pickingData) async {
+  Future<void> savePendingValidation(
+    int pickingId,
+    Map<String, dynamic> pickingData,
+  ) async {
     final box = Hive.box<PendingValidation>(_pendingValidationsBox);
     final pendingValidation = PendingValidation(
       pickingId: pickingId,
@@ -109,9 +120,15 @@ class HiveService {
     await box.clear();
   }
 
-  Future<void> savePendingCancellation(int pickingId, Map<String, dynamic> pickingData) async {
+  Future<void> savePendingCancellation(
+    int pickingId,
+    Map<String, dynamic> pickingData,
+  ) async {
     final box = Hive.box<PendingValidation>(_pendingCancellationsBox);
-    final pendingCancellation = PendingValidation(pickingId: pickingId, pickingData: pickingData);
+    final pendingCancellation = PendingValidation(
+      pickingId: pickingId,
+      pickingData: pickingData,
+    );
     await box.put('pending_cancellation_$pickingId', pendingCancellation);
     onPendingQueueChanged?.call();
   }
@@ -134,9 +151,13 @@ class HiveService {
     await box.clear();
   }
 
-  Future<void> savePendingUpdates(int pickingId, Map<String, dynamic> pickingData) async {
+  Future<void> savePendingUpdates(
+    int pickingId,
+    Map<String, dynamic> pickingData,
+  ) async {
     final box = Hive.box<PendingUpdates>(_pendingUpdatesBox);
-    final pendingUpdates = PendingUpdates(pickingId: pickingId,
+    final pendingUpdates = PendingUpdates(
+      pickingId: pickingId,
       pickingData: pickingData,
     );
     await box.put('pending_updates_$pickingId', pendingUpdates);
@@ -163,6 +184,10 @@ class HiveService {
 
   static const String _pendingCreatesCounterBox = 'pending_creates_counter';
 
+  /// Allocates a local id for an offline-created picking.
+  ///
+  /// Negative by design: real Odoo picking ids are always positive, so a local
+  /// id can never be mistaken for a server one.
   Future<int> _getNextPendingCreateId() async {
     final counterBox = await Hive.openBox<int>(_pendingCreatesCounterBox);
 
@@ -171,7 +196,7 @@ class HiveService {
 
     await counterBox.put('counter', nextId);
 
-    return nextId;
+    return -nextId;
   }
 
   /// Saves a new picking creation request for offline queuing
@@ -197,9 +222,29 @@ class HiveService {
     return box.values.whereType<PendingCreates>().toList();
   }
 
+  /// Overwrites the stored payload of a queued create, used by the sync
+  /// service to record partial progress so a retry resumes instead of
+  /// creating the picking a second time.
+  Future<void> updatePendingCreateData(
+    int pickingId,
+    Map<String, dynamic> pickingData,
+  ) async {
+    if (!Hive.isBoxOpen(_pendingCreatesBox)) {
+      await Hive.openBox<PendingCreates>(_pendingCreatesBox);
+    }
+    final box = Hive.box<PendingCreates>(_pendingCreatesBox);
+    final key = 'pending_creates_$pickingId';
+    if (!box.containsKey(key)) return;
+    await box.put(
+      key,
+      PendingCreates(pickingId: pickingId, pickingData: pickingData),
+    );
+  }
+
   Future<void> clearPendingCreates(int pickingId) async {
     final box = Hive.box<PendingCreates>(_pendingCreatesBox);
     await box.delete('pending_creates_$pickingId');
+    onPendingQueueChanged?.call();
   }
 
   Future<void> clearAllPendingCreates() async {
@@ -207,7 +252,11 @@ class HiveService {
     await box.clear();
   }
 
-  Future<void> savePendingProductUpdates(int localId, Map<String, dynamic> productData, String PickingName) async {
+  Future<void> savePendingProductUpdates(
+    int localId,
+    Map<String, dynamic> productData,
+    String PickingName,
+  ) async {
     final box = await Hive.openBox<ProductUpdates>(_productUpdatesBox);
 
     final productUpdates = ProductUpdates(
@@ -249,7 +298,11 @@ class HiveService {
     onPendingQueueChanged?.call();
   }
 
+  /// Repoints attachments queued against a local (negative) picking id to the
+  /// real id assigned by Odoo. Non-negative ids are already real server ids
+  /// and must never be remapped.
   Future<void> remapPendingAttachmentsPickingId(int oldId, int newId) async {
+    if (oldId >= 0) return;
     if (!Hive.isBoxOpen(_pendingAttachmentsBox)) {
       await Hive.openBox<PendingAttachment>(_pendingAttachmentsBox);
     }
@@ -370,11 +423,16 @@ class HiveService {
     return box.values.toList();
   }
 
-  Future<void> saveOperationTypes(List<Map<String, dynamic>> operationTypes) async {
+  Future<void> saveOperationTypes(
+    List<Map<String, dynamic>> operationTypes,
+  ) async {
     final box = Hive.box<OperationType>(_operationTypeBoxName);
     await box.clear();
     for (var operationType in operationTypes) {
-      await box.put('operationType_${operationType['id']}', OperationType.fromJson(operationType));
+      await box.put(
+        'operationType_${operationType['id']}',
+        OperationType.fromJson(operationType),
+      );
     }
   }
 
@@ -395,7 +453,9 @@ class HiveService {
     final box = Hive.box<StockMove>(_moveBoxName);
     if (pickingId != null) {
       return box.values
-          .where((move) => move.pickingId != null && move.pickingId![0] == pickingId)
+          .where(
+            (move) => move.pickingId != null && move.pickingId![0] == pickingId,
+          )
           .toList();
     }
     return box.values.toList();

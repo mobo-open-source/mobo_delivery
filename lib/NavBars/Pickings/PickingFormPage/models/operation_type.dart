@@ -50,10 +50,16 @@ class OperationType {
     return OperationType(
       id: json['id'],
       name: json['name'],
-      defaultLocationSrcId: (json['default_location_src_id'] != null && json['default_location_src_id'] is List && json['default_location_src_id'].isNotEmpty)
+      defaultLocationSrcId:
+          (json['default_location_src_id'] != null &&
+              json['default_location_src_id'] is List &&
+              json['default_location_src_id'].isNotEmpty)
           ? json['default_location_src_id'][0]
           : null,
-      defaultLocationDestId: (json['default_location_dest_id'] != null && json['default_location_dest_id'] is List && json['default_location_dest_id'].isNotEmpty)
+      defaultLocationDestId:
+          (json['default_location_dest_id'] != null &&
+              json['default_location_dest_id'] is List &&
+              json['default_location_dest_id'].isNotEmpty)
           ? json['default_location_dest_id'][0]
           : null,
     );

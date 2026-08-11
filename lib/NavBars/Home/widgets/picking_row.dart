@@ -56,8 +56,8 @@ class PickingRow extends StatelessWidget {
                 kind: row.isLate
                     ? StatusChipKind.late_
                     : row.state == 'assigned'
-                        ? StatusChipKind.ready
-                        : StatusChipKind.waiting,
+                    ? StatusChipKind.ready
+                    : StatusChipKind.waiting,
                 label: row.statusLabel,
               ),
             ],
@@ -108,8 +108,8 @@ class PickingRow extends StatelessWidget {
       final overdue = diff.inDays > 0
           ? '${diff.inDays}d overdue'
           : diff.inHours > 0
-              ? '${diff.inHours}h overdue'
-              : '${diff.inMinutes.clamp(1, 59)}m overdue';
+          ? '${diff.inHours}h overdue'
+          : '${diff.inMinutes.clamp(1, 59)}m overdue';
       return Text.rich(
         TextSpan(
           style: baseStyle,
@@ -129,10 +129,10 @@ class PickingRow extends StatelessWidget {
     final label = delta == 0
         ? 'Today · $time'
         : delta == 1
-            ? 'Tomorrow · $time'
-            : 'Scheduled: '
-                '${local.year}-${local.month.toString().padLeft(2, '0')}-'
-                '${local.day.toString().padLeft(2, '0')} $time';
+        ? 'Tomorrow · $time'
+        : 'Scheduled: '
+              '${local.year}-${local.month.toString().padLeft(2, '0')}-'
+              '${local.day.toString().padLeft(2, '0')} $time';
     return Text(label, style: baseStyle);
   }
 }
@@ -181,11 +181,7 @@ class _TileShell extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
 
-  const _TileShell({
-    required this.radius,
-    required this.child,
-    this.onTap,
-  });
+  const _TileShell({required this.radius, required this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -202,10 +198,7 @@ class _TileShell extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: radius,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: child,
-          ),
+          child: Padding(padding: const EdgeInsets.all(18), child: child),
         ),
       ),
     );

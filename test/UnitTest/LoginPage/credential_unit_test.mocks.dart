@@ -114,12 +114,14 @@ class MockAppInstallCheck extends _i1.Mock implements _i6.AppInstallCheck {
   }
 
   @override
-  _i3.Future<bool> isModuleInstalled(String? moduleName) =>
+  _i3.Future<_i6.AccessCheckStatus> evaluateAccess() =>
       (super.noSuchMethod(
-            Invocation.method(#isModuleInstalled, [moduleName]),
-            returnValue: _i3.Future<bool>.value(false),
+            Invocation.method(#evaluateAccess, []),
+            returnValue: _i3.Future<_i6.AccessCheckStatus>.value(
+              _i6.AccessCheckStatus.ok,
+            ),
           )
-          as _i3.Future<bool>);
+          as _i3.Future<_i6.AccessCheckStatus>);
 
   @override
   _i3.Future<bool> checkRequiredModules() =>
@@ -173,4 +175,13 @@ class MockStorageService extends _i1.Mock implements _i7.StorageService {
             ),
           )
           as _i3.Future<Map<String, dynamic>>);
+
+  @override
+  _i3.Future<void> clearLoginState() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearLoginState, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }

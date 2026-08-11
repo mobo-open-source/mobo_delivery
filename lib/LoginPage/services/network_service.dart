@@ -14,12 +14,17 @@ class NetworkService {
   /// - Sends JSON RPC request to `/web/database/list`
   /// - Returns list of database names
   ///
+  /// Returns an empty list when the server answers with a JSON-RPC error,
+  /// which is how Odoo replies when database listing is disabled
+  /// (`list_db = False`). Callers fall back to manual database entry.
+  ///
   /// Throws:
-  /// - Exception if network request fails or response is invalid
+  /// - Exception if the network request fails or the response isn't JSON
   Future<List<String>> fetchDatabaseList(String url) async {
     try {
       String normalizedUrl = url.trim();
-      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      if (!normalizedUrl.startsWith('http://') &&
+          !normalizedUrl.startsWith('https://')) {
         normalizedUrl = 'https://$normalizedUrl';
       }
       if (normalizedUrl.endsWith('/')) {
@@ -38,23 +43,23 @@ class NetworkService {
       );
 
       request.headers.set('Content-Type', 'application/json');
-      request.write(jsonEncode({'jsonrpc': '2.0', 'method': 'call', 'params': {}, 'id': 1}));
+      request.write(
+        jsonEncode({'jsonrpc': '2.0', 'method': 'call', 'params': {}, 'id': 1}),
+      );
 
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
       httpClient.close();
 
-      final jsonResponse = jsonDecode(responseBody);
-      if (jsonResponse.containsKey('error')) {
-        throw Exception(
-          jsonResponse['error']['data']?['message'] ?? 'Odoo Server returned an error',
-        );
-      }
-      if (jsonResponse['result'] is List) {
-        return (jsonResponse['result'] as List).map((db) => db.toString()).toList();
+      final dynamic jsonResponse = jsonDecode(responseBody);
+      if (jsonResponse is! Map) return [];
+      if (jsonResponse.containsKey('error')) return [];
+
+      final dynamic result = jsonResponse['result'];
+      if (result is List) {
+        return result.map((db) => db.toString()).toList();
       }
       return [];
-
     } catch (e) {
       throw Exception('Error fetching database list: $e');
     }

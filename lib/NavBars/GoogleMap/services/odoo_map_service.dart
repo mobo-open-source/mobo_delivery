@@ -77,7 +77,9 @@ class OdooMapService {
 
       final keyStr = dotenv.env['ENCRYPTION_KEY'];
       if (keyStr == null || keyStr.length != 32) {
-        throw Exception('Missing or invalid ENCRYPTION_KEY in .env file (must be 32 chars).');
+        throw Exception(
+          'Missing or invalid ENCRYPTION_KEY in .env file (must be 32 chars).',
+        );
       }
       final key = encrypt.Key.fromUtf8(keyStr);
       final iv = encrypt.IV(ivBytes);
@@ -159,7 +161,13 @@ class OdooMapService {
         'method': 'search_read',
         'args': [],
         'kwargs': {
-          'fields': ['id', 'name', 'location_id', 'location_dest_id', 'partner_id'],
+          'fields': [
+            'id',
+            'name',
+            'location_id',
+            'location_dest_id',
+            'partner_id',
+          ],
         },
       });
 
@@ -188,7 +196,9 @@ class OdooMapService {
             ['id', 'in', locationIds.toList()],
           ],
         ],
-        'kwargs': {'fields': ['id', 'company_id']},
+        'kwargs': {
+          'fields': ['id', 'company_id'],
+        },
       });
 
       final locationToCompany = <int, int>{};
@@ -238,18 +248,34 @@ class OdooMapService {
       for (var picking in pickingItems) {
         Map<String, dynamic> enrichedPicking = Map.from(picking);
 
-        int? locationId = picking['location_id'] is List && picking['location_id'].isNotEmpty
+        int? locationId =
+            picking['location_id'] is List && picking['location_id'].isNotEmpty
             ? picking['location_id'][0]
             : null;
-        int? destLocationId = picking['location_dest_id'] is List && picking['location_dest_id'].isNotEmpty
+        int? destLocationId =
+            picking['location_dest_id'] is List &&
+                picking['location_dest_id'].isNotEmpty
             ? picking['location_dest_id'][0]
             : null;
-        int? partnerId = picking['partner_id'] is List && picking['partner_id'].isNotEmpty
+        int? partnerId =
+            picking['partner_id'] is List && picking['partner_id'].isNotEmpty
             ? picking['partner_id'][0]
             : null;
 
-        String startingPoint = _getAddressFromMaps(locationId, partnerId, locationToCompany, companyAddresses, partnerAddresses);
-        String destinationPoint = _getAddressFromMaps(destLocationId, partnerId, locationToCompany, companyAddresses, partnerAddresses);
+        String startingPoint = _getAddressFromMaps(
+          locationId,
+          partnerId,
+          locationToCompany,
+          companyAddresses,
+          partnerAddresses,
+        );
+        String destinationPoint = _getAddressFromMaps(
+          destLocationId,
+          partnerId,
+          locationToCompany,
+          companyAddresses,
+          partnerAddresses,
+        );
 
         enrichedPicking['starting_point'] = startingPoint;
         enrichedPicking['destination_point'] = destinationPoint;
@@ -272,12 +298,21 @@ class OdooMapService {
     if (data != null) {
       for (var item in data) {
         final id = item['id'];
-        final addressParts = [
-          item['street'],
-          item['city'],
-          item['state_id'] is List && item['state_id'].length > 1 ? item['state_id'][1] : null,
-          item['country_id'] is List && item['country_id'].length > 1 ? item['country_id'][1] : null,
-        ].where((part) => part != null && part.toString().trim().isNotEmpty).join(', ');
+        final addressParts =
+            [
+                  item['street'],
+                  item['city'],
+                  item['state_id'] is List && item['state_id'].length > 1
+                      ? item['state_id'][1]
+                      : null,
+                  item['country_id'] is List && item['country_id'].length > 1
+                      ? item['country_id'][1]
+                      : null,
+                ]
+                .where(
+                  (part) => part != null && part.toString().trim().isNotEmpty,
+                )
+                .join(', ');
         map[id] = addressParts;
       }
     }
@@ -291,12 +326,12 @@ class OdooMapService {
   ///   2. Partner (customer/supplier) address
   /// Returns empty string if no match found.
   String _getAddressFromMaps(
-      int? locationId,
-      int? partnerId,
-      Map<int, int> locationToCompany,
-      Map<int, String> companyAddresses,
-      Map<int, String> partnerAddresses,
-      ) {
+    int? locationId,
+    int? partnerId,
+    Map<int, int> locationToCompany,
+    Map<int, String> companyAddresses,
+    Map<int, String> partnerAddresses,
+  ) {
     if (locationId != null && locationToCompany.containsKey(locationId)) {
       int companyId = locationToCompany[locationId]!;
       if (companyAddresses.containsKey(companyId)) {

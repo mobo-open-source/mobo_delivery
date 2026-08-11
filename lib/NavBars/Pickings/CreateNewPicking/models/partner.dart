@@ -12,10 +12,7 @@ class PartnerModel extends Equatable {
   final int id;
   final String name;
 
-  const PartnerModel({
-    required this.id,
-    required this.name,
-  });
+  const PartnerModel({required this.id, required this.name});
 
   /// Creates a `PartnerModel` from the JSON data returned by Odoo's `search_read`
   /// on the `res.partner` model.
@@ -29,10 +26,7 @@ class PartnerModel extends Equatable {
   /// ```
   /// Throws error if `id` or `name` are missing or have wrong type.
   factory PartnerModel.fromJson(Map<String, dynamic> json) {
-    return PartnerModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-    );
+    return PartnerModel(id: json['id'] as int, name: json['name'] as String);
   }
 
   /// Defines which properties are used to determine equality between two

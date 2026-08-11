@@ -42,7 +42,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   static final PickingFormToOffline PickingForm = PickingFormToOffline();
   static final ReturnToOffline Return = ReturnToOffline();
   static final AttachmentAndNotesToOffline attachmentAndNotes =
-  AttachmentAndNotesToOffline();
+      AttachmentAndNotesToOffline();
 
   /// Bottom-nav tabs — static so they render before the session finishes loading.
   static const List<Map<String, dynamic>> navPages = [
@@ -79,7 +79,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ];
 
   DashboardBloc(this.storageService, this.serviceFactory)
-      : super(const DashboardState(isLoading: true, pages: navPages)) {
+    : super(const DashboardState(isLoading: true, pages: navPages)) {
     on<InitializeDashboard>(_onInitializeDashboard);
     on<ChangeTab>(_onChangeTab);
     on<LoadUserProfile>(_onLoadUserProfile);
@@ -93,7 +93,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ///   - Loads user profile
   ///   - Sets up navigation pages
   Future<void> _onInitializeDashboard(
-      InitializeDashboard event, Emitter<DashboardState> emit) async {
+    InitializeDashboard event,
+    Emitter<DashboardState> emit,
+  ) async {
     emit(state.copyWith(isLoading: true));
 
     final sessionData = await storageService.getSessionData();
@@ -118,11 +120,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     odooService = serviceFactory(url, session);
     await _initializeOfflineClients();
 
-    emit(state.copyWith(
-      isLoading: false,
-      currentIndex: event.initialIndex,
-      pages: navPages,
-    ));
+    emit(
+      state.copyWith(
+        isLoading: false,
+        currentIndex: event.initialIndex,
+        pages: navPages,
+      ),
+    );
 
     add(LoadUserProfile());
   }
@@ -134,13 +138,17 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
   /// Public event handler to (re)load user profile
   Future<void> _onLoadUserProfile(
-      LoadUserProfile event, Emitter<DashboardState> emit) async {
+    LoadUserProfile event,
+    Emitter<DashboardState> emit,
+  ) async {
     await _loadUserProfile(emit);
   }
 
   /// Public event handler to refresh profile (usually after settings/company change)
   Future<void> _onRefreshUserProfile(
-      RefreshUserProfile event, Emitter<DashboardState> emit) async {
+    RefreshUserProfile event,
+    Emitter<DashboardState> emit,
+  ) async {
     await _loadUserProfile(emit);
   }
 
@@ -154,8 +162,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     unawaited(OdooDateTimeFormat.ensureFetched());
   }
 
-  String safeString(dynamic value) =>
-      value is String ? value : '';
+  String safeString(dynamic value) => value is String ? value : '';
 
   /// Core method: Load or refresh user profile data
   ///   - Online: fetch from Odoo → save to storage
@@ -194,25 +201,28 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     if (userDetails != null) {
       final imageBase64 = userDetails['image_1920']?.toString();
-      final profilePicBytes = (imageBase64 != null &&
-          imageBase64.isNotEmpty &&
-          imageBase64 != 'false')
+      final profilePicBytes =
+          (imageBase64 != null &&
+              imageBase64.isNotEmpty &&
+              imageBase64 != 'false')
           ? base64Decode(imageBase64)
           : null;
 
-      emit(state.copyWith(
-        userName: safeString(userDetails['name']),
-        mail: safeString(userDetails['email']),
-        profilePicBytes: profilePicBytes,
-      ));
+      emit(
+        state.copyWith(
+          userName: safeString(userDetails['name']),
+          mail: safeString(userDetails['email']),
+          profilePicBytes: profilePicBytes,
+        ),
+      );
     }
 
-   final base64Image = userDetails?['image_1920'];
+    final base64Image = userDetails?['image_1920'];
 
     final currentAccounts = await storageService.getAccounts();
 
     final existing = currentAccounts.firstWhere(
-          (a) => a['userId'] == userDetails?['id'],
+      (a) => a['userId'] == userDetails?['id'],
       orElse: () => {},
     );
 
@@ -221,7 +231,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     await storageService.saveAccount(accountWithImage);
 
     if (isOnline && !liveFetchSucceeded && !_didProfileAutoRetry) {
-      final stillEmpty = (userDetails?['name'] == null ||
+      final stillEmpty =
+          (userDetails?['name'] == null ||
           userDetails!['name'].toString().trim().isEmpty);
       if (stillEmpty) {
         _didProfileAutoRetry = true;

@@ -7,6 +7,8 @@ import 'dart:async' as _i4;
 
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i3;
+import 'package:odoo_delivery_app/NavBars/AttachDocument/models/pending_attachment.dart'
+    as _i13;
 import 'package:odoo_delivery_app/NavBars/Pickings/CreateNewPicking/models/Hive/pending_creates.dart'
     as _i12;
 import 'package:odoo_delivery_app/NavBars/Pickings/CreateNewPicking/models/operation_type.dart'
@@ -20,25 +22,25 @@ import 'package:odoo_delivery_app/NavBars/Pickings/CreateNewPicking/models/user.
 import 'package:odoo_delivery_app/NavBars/Pickings/CreateNewPicking/services/odoo_create_picking_service.dart'
     as _i2;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/operation_type.dart'
-    as _i19;
+    as _i20;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/partner.dart'
-    as _i17;
+    as _i18;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/partner_details.dart'
-    as _i15;
+    as _i16;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/pending_updates.dart'
     as _i11;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/pending_validation.dart'
     as _i10;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/picking_form.dart'
-    as _i14;
+    as _i15;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/product.dart'
-    as _i16;
+    as _i17;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/product_update.dart'
-    as _i13;
+    as _i14;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/stock_move.dart'
-    as _i20;
+    as _i21;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/user.dart'
-    as _i18;
+    as _i19;
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/services/hive_service.dart'
     as _i9;
 
@@ -171,6 +173,7 @@ class MockOdooCreatePickingService extends _i1.Mock
     required int? pickingId,
     required int? locationId,
     required int? locationDestId,
+    int? companyId,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#createStockMove, [], {
@@ -181,7 +184,29 @@ class MockOdooCreatePickingService extends _i1.Mock
               #pickingId: pickingId,
               #locationId: locationId,
               #locationDestId: locationDestId,
+              #companyId: companyId,
             }),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<int?> getPickingCompanyId(int? pickingId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getPickingCompanyId, [pickingId]),
+            returnValue: _i4.Future<int?>.value(),
+          )
+          as _i4.Future<int?>);
+
+  @override
+  _i4.Future<void> confirmPicking(int? pickingId, {int? companyId}) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #confirmPicking,
+              [pickingId],
+              {#companyId: companyId},
+            ),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
@@ -370,6 +395,21 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<List<_i12.PendingCreates>>);
 
   @override
+  _i4.Future<void> updatePendingCreateData(
+    int? pickingId,
+    Map<String, dynamic>? pickingData,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updatePendingCreateData, [
+              pickingId,
+              pickingData,
+            ]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
   _i4.Future<void> clearPendingCreates(int? pickingId) =>
       (super.noSuchMethod(
             Invocation.method(#clearPendingCreates, [pickingId]),
@@ -405,14 +445,64 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i13.ProductUpdates>> getPendingProductUpdates() =>
+  _i4.Future<void> savePendingAttachment(_i13.PendingAttachment? attachment) =>
       (super.noSuchMethod(
-            Invocation.method(#getPendingProductUpdates, []),
-            returnValue: _i4.Future<List<_i13.ProductUpdates>>.value(
-              <_i13.ProductUpdates>[],
+            Invocation.method(#savePendingAttachment, [attachment]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<List<_i13.PendingAttachment>> getPendingAttachments() =>
+      (super.noSuchMethod(
+            Invocation.method(#getPendingAttachments, []),
+            returnValue: _i4.Future<List<_i13.PendingAttachment>>.value(
+              <_i13.PendingAttachment>[],
             ),
           )
-          as _i4.Future<List<_i13.ProductUpdates>>);
+          as _i4.Future<List<_i13.PendingAttachment>>);
+
+  @override
+  _i4.Future<Map<dynamic, _i13.PendingAttachment>> getPendingAttachmentsMap() =>
+      (super.noSuchMethod(
+            Invocation.method(#getPendingAttachmentsMap, []),
+            returnValue: _i4.Future<Map<dynamic, _i13.PendingAttachment>>.value(
+              <dynamic, _i13.PendingAttachment>{},
+            ),
+          )
+          as _i4.Future<Map<dynamic, _i13.PendingAttachment>>);
+
+  @override
+  _i4.Future<void> clearPendingAttachmentByKey(dynamic key) =>
+      (super.noSuchMethod(
+            Invocation.method(#clearPendingAttachmentByKey, [key]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> remapPendingAttachmentsPickingId(int? oldId, int? newId) =>
+      (super.noSuchMethod(
+            Invocation.method(#remapPendingAttachmentsPickingId, [
+              oldId,
+              newId,
+            ]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<List<_i14.ProductUpdates>> getPendingProductUpdates() =>
+      (super.noSuchMethod(
+            Invocation.method(#getPendingProductUpdates, []),
+            returnValue: _i4.Future<List<_i14.ProductUpdates>>.value(
+              <_i14.ProductUpdates>[],
+            ),
+          )
+          as _i4.Future<List<_i14.ProductUpdates>>);
 
   @override
   _i4.Future<void> clearPendingProductUpdates(int? pickingId) =>
@@ -442,25 +532,25 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i14.PickingForm>> getPickings() =>
+  _i4.Future<List<_i15.PickingForm>> getPickings() =>
       (super.noSuchMethod(
             Invocation.method(#getPickings, []),
-            returnValue: _i4.Future<List<_i14.PickingForm>>.value(
-              <_i14.PickingForm>[],
+            returnValue: _i4.Future<List<_i15.PickingForm>>.value(
+              <_i15.PickingForm>[],
             ),
           )
-          as _i4.Future<List<_i14.PickingForm>>);
+          as _i4.Future<List<_i15.PickingForm>>);
 
   @override
-  _i4.Future<_i14.PickingForm?> getPickingById(int? id) =>
+  _i4.Future<_i15.PickingForm?> getPickingById(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getPickingById, [id]),
-            returnValue: _i4.Future<_i14.PickingForm?>.value(),
+            returnValue: _i4.Future<_i15.PickingForm?>.value(),
           )
-          as _i4.Future<_i14.PickingForm?>);
+          as _i4.Future<_i15.PickingForm?>);
 
   @override
-  _i4.Future<void> savePartnerDetails(_i15.PartnerDetails? details) =>
+  _i4.Future<void> savePartnerDetails(_i16.PartnerDetails? details) =>
       (super.noSuchMethod(
             Invocation.method(#savePartnerDetails, [details]),
             returnValue: _i4.Future<void>.value(),
@@ -469,12 +559,12 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<_i15.PartnerDetails?> getPartnerDetails(int? id) =>
+  _i4.Future<_i16.PartnerDetails?> getPartnerDetails(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getPartnerDetails, [id]),
-            returnValue: _i4.Future<_i15.PartnerDetails?>.value(),
+            returnValue: _i4.Future<_i16.PartnerDetails?>.value(),
           )
-          as _i4.Future<_i15.PartnerDetails?>);
+          as _i4.Future<_i16.PartnerDetails?>);
 
   @override
   _i4.Future<void> saveReturnPickings(List<Map<String, dynamic>>? pickings) =>
@@ -486,14 +576,14 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i14.PickingForm>> getReturnPickings() =>
+  _i4.Future<List<_i15.PickingForm>> getReturnPickings() =>
       (super.noSuchMethod(
             Invocation.method(#getReturnPickings, []),
-            returnValue: _i4.Future<List<_i14.PickingForm>>.value(
-              <_i14.PickingForm>[],
+            returnValue: _i4.Future<List<_i15.PickingForm>>.value(
+              <_i15.PickingForm>[],
             ),
           )
-          as _i4.Future<List<_i14.PickingForm>>);
+          as _i4.Future<List<_i15.PickingForm>>);
 
   @override
   _i4.Future<void> saveProducts(List<Map<String, dynamic>>? products) =>
@@ -505,12 +595,12 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i16.Product>> getProducts() =>
+  _i4.Future<List<_i17.Product>> getProducts() =>
       (super.noSuchMethod(
             Invocation.method(#getProducts, []),
-            returnValue: _i4.Future<List<_i16.Product>>.value(<_i16.Product>[]),
+            returnValue: _i4.Future<List<_i17.Product>>.value(<_i17.Product>[]),
           )
-          as _i4.Future<List<_i16.Product>>);
+          as _i4.Future<List<_i17.Product>>);
 
   @override
   _i4.Future<void> savePartners(List<Map<String, dynamic>>? partners) =>
@@ -522,12 +612,12 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i17.Partner>> getPartners() =>
+  _i4.Future<List<_i18.Partner>> getPartners() =>
       (super.noSuchMethod(
             Invocation.method(#getPartners, []),
-            returnValue: _i4.Future<List<_i17.Partner>>.value(<_i17.Partner>[]),
+            returnValue: _i4.Future<List<_i18.Partner>>.value(<_i18.Partner>[]),
           )
-          as _i4.Future<List<_i17.Partner>>);
+          as _i4.Future<List<_i18.Partner>>);
 
   @override
   _i4.Future<void> saveUsers(List<Map<String, dynamic>>? users) =>
@@ -539,12 +629,12 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i18.User>> getUsers() =>
+  _i4.Future<List<_i19.User>> getUsers() =>
       (super.noSuchMethod(
             Invocation.method(#getUsers, []),
-            returnValue: _i4.Future<List<_i18.User>>.value(<_i18.User>[]),
+            returnValue: _i4.Future<List<_i19.User>>.value(<_i19.User>[]),
           )
-          as _i4.Future<List<_i18.User>>);
+          as _i4.Future<List<_i19.User>>);
 
   @override
   _i4.Future<void> saveOperationTypes(
@@ -558,14 +648,14 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i19.OperationType>> getOperationTypes() =>
+  _i4.Future<List<_i20.OperationType>> getOperationTypes() =>
       (super.noSuchMethod(
             Invocation.method(#getOperationTypes, []),
-            returnValue: _i4.Future<List<_i19.OperationType>>.value(
-              <_i19.OperationType>[],
+            returnValue: _i4.Future<List<_i20.OperationType>>.value(
+              <_i20.OperationType>[],
             ),
           )
-          as _i4.Future<List<_i19.OperationType>>);
+          as _i4.Future<List<_i20.OperationType>>);
 
   @override
   _i4.Future<void> saveStockMoves(List<Map<String, dynamic>>? moves) =>
@@ -577,14 +667,14 @@ class MockHiveService extends _i1.Mock implements _i9.HiveService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i20.StockMove>> getStockMoves({int? pickingId}) =>
+  _i4.Future<List<_i21.StockMove>> getStockMoves({int? pickingId}) =>
       (super.noSuchMethod(
             Invocation.method(#getStockMoves, [], {#pickingId: pickingId}),
-            returnValue: _i4.Future<List<_i20.StockMove>>.value(
-              <_i20.StockMove>[],
+            returnValue: _i4.Future<List<_i21.StockMove>>.value(
+              <_i21.StockMove>[],
             ),
           )
-          as _i4.Future<List<_i20.StockMove>>);
+          as _i4.Future<List<_i21.StockMove>>);
 
   @override
   _i4.Future<void> clearAllData() =>

@@ -44,7 +44,7 @@ class ReturnManagementState extends Equatable {
     this.groupedPickings = const {},
     this.groupExpanded = const {},
     this.filters = const [],
-    this.groupBy
+    this.groupBy,
   });
 
   /// Computed getter: returns human-readable page range string

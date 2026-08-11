@@ -31,7 +31,6 @@ class ProductTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
           if (!isEmpty) ...[
             _buildListHeader(isDark),
             const SizedBox(height: 8),

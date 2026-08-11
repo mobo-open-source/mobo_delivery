@@ -190,12 +190,21 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
           await prefs.setString('userName', widget.session.userName ?? '');
           await prefs.setString('userLogin', widget.session.userLogin ?? '');
           await prefs.setInt('userId', widget.session.userId ?? 0);
-          await prefs.setString('serverVersion', widget.session.serverVersion ?? '');
+          await prefs.setString(
+            'serverVersion',
+            widget.session.serverVersion ?? '',
+          );
           await prefs.setString('userLang', widget.session.userLang ?? '');
           await prefs.setInt('partnerId', widget.session.partnerId ?? 0);
-          await prefs.setString('userTimezone', widget.session.userTimezone ?? '');
+          await prefs.setString(
+            'userTimezone',
+            widget.session.userTimezone ?? '',
+          );
           await prefs.setInt('companyId', widget.session.companyId ?? 1);
-          await prefs.setString('company_name', widget.session.companyName ?? '');
+          await prefs.setString(
+            'company_name',
+            widget.session.companyName ?? '',
+          );
           await prefs.setBool('isSystem', widget.session.isSystem);
           await prefs.setInt('version', widget.session.version ?? 0);
           await prefs.setStringList(
@@ -290,7 +299,9 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
             await prefs.setString('userLogin', widget.session.userLogin!);
             await prefs.setInt('userId', widget.session.userId!);
             await prefs.setString(
-                'serverVersion', widget.session.serverVersion!);
+              'serverVersion',
+              widget.session.serverVersion!,
+            );
             await prefs.setString('userLang', widget.session.userLang!);
             await prefs.setInt('partnerId', widget.session.partnerId!);
             await prefs.setString('userTimezone', widget.session.userTimezone!);
@@ -313,9 +324,9 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => ServerUrlScreen(
-                    serverUrl: _previousUrl!,
-                    database: _previousDatabase!,
-                    session: widget.session
+                  serverUrl: _previousUrl!,
+                  database: _previousDatabase!,
+                  session: widget.session,
                 ),
               ),
             );
@@ -337,7 +348,7 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
               reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-return FadeTransition(opacity: animation, child: child);
+                    return FadeTransition(opacity: animation, child: child);
                   },
             ),
             (route) => false,
@@ -798,7 +809,9 @@ return FadeTransition(opacity: animation, child: child);
         suffixIcon: isPasswordField
             ? IconButton(
                 icon: Icon(
-                  _isPasswordVisible ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
+                  _isPasswordVisible
+                      ? HugeIcons.strokeRoundedView
+                      : HugeIcons.strokeRoundedViewOff,
                   color: _isPasswordVisible ? Colors.black26 : Colors.black54,
                 ),
                 onPressed: () =>

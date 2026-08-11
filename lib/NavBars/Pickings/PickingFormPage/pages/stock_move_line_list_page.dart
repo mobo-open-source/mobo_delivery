@@ -135,8 +135,10 @@ class StockMoveLineListPage extends StatelessWidget {
                             children: [
                               SizedBox(
                                 width: 22,
-                                child: Text('${index + 1}.',
-                                    style: _rowStyle(isDark)),
+                                child: Text(
+                                  '${index + 1}.',
+                                  style: _rowStyle(isDark),
+                                ),
                               ),
                               Expanded(
                                 child: Text(
@@ -150,12 +152,16 @@ class StockMoveLineListPage extends StatelessWidget {
                           ),
                         ),
                         _cell(
-                          child: Text(getName(item['location_id']),
-                              style: _rowStyle(isDark)),
+                          child: Text(
+                            getName(item['location_id']),
+                            style: _rowStyle(isDark),
+                          ),
                         ),
                         _cell(
-                          child: Text(lot == 'N/A' ? '—' : lot,
-                              style: _rowStyle(isDark)),
+                          child: Text(
+                            lot == 'N/A' ? '—' : lot,
+                            style: _rowStyle(isDark),
+                          ),
                         ),
                         _cell(
                           child: Align(
@@ -219,8 +225,8 @@ class StockMoveLineListPage extends StatelessWidget {
   }
 
   TextStyle _rowStyle(bool isDark) => TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w400,
-        color: isDark ? Colors.grey[300] : Colors.grey[700],
-      );
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: isDark ? Colors.grey[300] : Colors.grey[700],
+  );
 }

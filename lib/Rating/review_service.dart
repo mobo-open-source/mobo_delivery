@@ -125,8 +125,7 @@ class ReviewService {
           _wasRequestedThisRun = true;
 
           CustomRatingDialog.show(context);
-        } else {
-        }
+        } else {}
       } else {}
     } else {}
   }
@@ -216,25 +215,6 @@ class ReviewService {
   }
 
   /// Debug method to print current review tracking statistics
-  Future<void> printReviewStats() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    int openCount = prefs.getInt(_keyOpenCount) ?? 0;
-    int eventCount = prefs.getInt(_keyEventCount) ?? 0;
-    int? firstOpenEpoch = prefs.getInt(_keyFirstOpenDate);
-    int? nextAllowedEpoch = prefs.getInt(_keyNextAllowedDate);
-    if (firstOpenEpoch != null) {
-      final firstOpenDate = DateTime.fromMillisecondsSinceEpoch(firstOpenEpoch);
-      final daysSinceFirst = DateTime.now().difference(firstOpenDate).inDays;
-    } else {}
-
-    if (nextAllowedEpoch != null) {
-      final nextAllowedDate = DateTime.fromMillisecondsSinceEpoch(
-        nextAllowedEpoch,
-      );
-    } else {}
-  }
-
   /// Reset all review tracking data (useful for testing)
   Future<void> resetReviewTracking() async {
     final prefs = await SharedPreferences.getInstance();

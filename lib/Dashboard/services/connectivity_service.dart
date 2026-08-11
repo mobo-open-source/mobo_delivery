@@ -41,11 +41,11 @@ class ConnectivityService extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) return;
     await _checkConnectivity();
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-      (List<ConnectivityResult> results) {
-        _updateConnectivityStatus(results);
-      },
-    );
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      _updateConnectivityStatus(results);
+    });
     _isInitialized = true;
     notifyListeners();
   }

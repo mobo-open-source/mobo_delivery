@@ -18,10 +18,7 @@ class NotesTab extends StatelessWidget {
   /// Allows two-way binding between the text field and parent state.
   final TextEditingController noteController;
 
-  const NotesTab({
-    Key? key,
-    required this.noteController,
-  }) : super(key: key);
+  const NotesTab({Key? key, required this.noteController}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

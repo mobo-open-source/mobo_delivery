@@ -20,8 +20,5 @@ class PendingCreates extends HiveObject {
   ///
   /// [pickingId] should be a unique local identifier (often negative or generated).
   /// [pickingData] must contain all required fields expected by Odoo's picking creation.
-  PendingCreates({
-    required this.pickingId,
-    required this.pickingData,
-  });
+  PendingCreates({required this.pickingId, required this.pickingData});
 }

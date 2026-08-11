@@ -94,10 +94,7 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _biometricEnabled = false);
       await prefs.setBool('biometricEnabled', false);
       if (mounted) {
-        CustomSnackbar.showSuccess(
-          context,
-          'App lock turned off.',
-        );
+        CustomSnackbar.showSuccess(context, 'App lock turned off.');
       }
       return;
     }
@@ -126,7 +123,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     if (!authenticated) {
-
       setState(() => _biometricEnabled = false);
       await prefs.setBool('biometricEnabled', false);
       if (mounted) {
@@ -141,10 +137,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _biometricEnabled = true);
     await prefs.setBool('biometricEnabled', true);
     if (mounted) {
-      CustomSnackbar.showSuccess(
-        context,
-        'App lock turned on.',
-      );
+      CustomSnackbar.showSuccess(context, 'App lock turned on.');
     }
   }
 
@@ -237,7 +230,9 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         SwitchTile(
           title: 'Dark Mode',
-          subtitle: isDarkMode ? 'Dark theme is active' : 'Light theme is active',
+          subtitle: isDarkMode
+              ? 'Dark theme is active'
+              : 'Light theme is active',
           icon: isDarkMode
               ? HugeIcons.strokeRoundedMoon02
               : HugeIcons.strokeRoundedSun03,
@@ -580,12 +575,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
-        CustomSnackbar.showError(context, 'No app available to open this link.');
+        CustomSnackbar.showError(
+          context,
+          'No app available to open this link.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
       CustomSnackbar.showError(context, 'Could not open link. ${e.toString()}');
     }
   }
-
 }

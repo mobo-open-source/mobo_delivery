@@ -39,7 +39,8 @@ class DataLossWarningDialog extends StatelessWidget {
 
     /// Primary color adapts for dark mode contrast
     final primaryColor = AppStyle.accentOn(
-        isDark ? Brightness.dark : Brightness.light);
+      isDark ? Brightness.dark : Brightness.light,
+    );
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -64,6 +65,7 @@ class DataLossWarningDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
             /// Title Text
             Text(
               title,
@@ -74,6 +76,7 @@ class DataLossWarningDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+
             /// Message Text
             Text(
               message,
@@ -84,6 +87,7 @@ class DataLossWarningDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+
             /// Action Buttons Row
             Row(
               children: [
@@ -95,6 +99,7 @@ class DataLossWarningDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
+
                 /// Confirm Button (Leave / Discard)
                 Expanded(
                   child: MoboButton.primary(
@@ -129,6 +134,7 @@ class DataLossWarningDialog extends StatelessWidget {
   }) {
     return showDialog<bool>(
       context: context,
+
       /// Prevents closing dialog by tapping outside
       barrierDismissible: false,
       builder: (_) => DataLossWarningDialog(

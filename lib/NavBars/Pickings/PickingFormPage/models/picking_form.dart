@@ -118,26 +118,48 @@ class PickingForm {
       id: json['id'] is int ? json['id'] : 0,
       name: json['name'] is String ? json['name'] : '',
       partnerId: json['partner_id'] is List ? json['partner_id'] : null,
-      pickingTypeId: json['picking_type_id'] is List ? json['picking_type_id'] : null,
-      scheduledDate: json['scheduled_date'] is String ? json['scheduled_date'] : null,
-      dateDeadline: json['date_deadline'] is String ? json['date_deadline'] : null,
+      pickingTypeId: json['picking_type_id'] is List
+          ? json['picking_type_id']
+          : null,
+      scheduledDate: json['scheduled_date'] is String
+          ? json['scheduled_date']
+          : null,
+      dateDeadline: json['date_deadline'] is String
+          ? json['date_deadline']
+          : null,
       dateDone: json['date_done'] is String ? json['date_done'] : null,
-      productsAvailability: json['products_availability'] is String ? json['products_availability'] : null,
+      productsAvailability: json['products_availability'] is String
+          ? json['products_availability']
+          : null,
       origin: json['origin'] is String ? json['origin'] : null,
       state: json['state'] is String ? json['state'] : 'draft',
-      note: json['note'] is String ? json['note'] : (json['note'] == false ? null : json['note']?.toString()),
+      note: json['note'] is String
+          ? json['note']
+          : (json['note'] == false ? null : json['note']?.toString()),
       moveType: json['move_type'] is String ? json['move_type'] : null,
       userId: json['user_id'] is List ? json['user_id'] : null,
       groupId: json['group_id'] is List ? json['group_id'] : null,
       companyId: json['company_id'] is List ? json['company_id'] : null,
       returnCount: json['return_count'] is int ? json['return_count'] : 0,
-      returnIds: json['return_ids'] != null ? List<int>.from(json['return_ids']) : null,
-      showCheckAvailability: json['show_check_availability'] is bool ? json['show_check_availability'] : false,
-      pickingTypeCode: json['picking_type_code'] is String ? json['picking_type_code'] : null,
-      locationIdInt: extractId(json['location_id']) ??
-          (json['location_id_int'] is int ? json['location_id_int'] as int : null),
-      locationDestIdInt: extractId(json['location_dest_id']) ??
-          (json['location_dest_id_int'] is int ? json['location_dest_id_int'] as int : null),
+      returnIds: json['return_ids'] != null
+          ? List<int>.from(json['return_ids'])
+          : null,
+      showCheckAvailability: json['show_check_availability'] is bool
+          ? json['show_check_availability']
+          : false,
+      pickingTypeCode: json['picking_type_code'] is String
+          ? json['picking_type_code']
+          : null,
+      locationIdInt:
+          extractId(json['location_id']) ??
+          (json['location_id_int'] is int
+              ? json['location_id_int'] as int
+              : null),
+      locationDestIdInt:
+          extractId(json['location_dest_id']) ??
+          (json['location_dest_id_int'] is int
+              ? json['location_dest_id_int'] as int
+              : null),
     );
   }
 

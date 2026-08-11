@@ -5,23 +5,21 @@ Color _base(bool isDark) =>
     isDark ? const Color(0xFF2A2A2A) : Colors.grey[300]!;
 Color _highlight(bool isDark) =>
     isDark ? const Color(0xFF3A3A3A) : Colors.grey[100]!;
-Color _cardBg(bool isDark) =>
-    isDark ? const Color(0xFF1E1E1E) : Colors.white;
+Color _cardBg(bool isDark) => isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
 Widget _box({
   required bool isDark,
   required double height,
   double? width,
   double radius = 6,
-}) =>
-    Container(
-      height: height,
-      width: width ?? double.infinity,
-      decoration: BoxDecoration(
-        color: _base(isDark),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    );
+}) => Container(
+  height: height,
+  width: width ?? double.infinity,
+  decoration: BoxDecoration(
+    color: _base(isDark),
+    borderRadius: BorderRadius.circular(radius),
+  ),
+);
 
 class PickingCardShimmer extends StatelessWidget {
   const PickingCardShimmer({super.key, required this.isDark});
@@ -46,7 +44,6 @@ class PickingCardShimmer extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Row(
                 children: [
                   Expanded(child: _box(isDark: isDark, height: 14, width: 160)),
@@ -56,25 +53,31 @@ class PickingCardShimmer extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-              Row(children: [
-                _box(isDark: isDark, height: 12, width: 52),
-                const SizedBox(width: 12),
-                Expanded(child: _box(isDark: isDark, height: 12, width: 180)),
-              ]),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 12, width: 52),
+                  const SizedBox(width: 12),
+                  Expanded(child: _box(isDark: isDark, height: 12, width: 180)),
+                ],
+              ),
               const SizedBox(height: 6),
 
-              Row(children: [
-                _box(isDark: isDark, height: 12, width: 52),
-                const SizedBox(width: 12),
-                Expanded(child: _box(isDark: isDark, height: 12, width: 140)),
-              ]),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 12, width: 52),
+                  const SizedBox(width: 12),
+                  Expanded(child: _box(isDark: isDark, height: 12, width: 140)),
+                ],
+              ),
               const SizedBox(height: 6),
 
-              Row(children: [
-                _box(isDark: isDark, height: 14, width: 14, radius: 3),
-                const SizedBox(width: 6),
-                Expanded(child: _box(isDark: isDark, height: 12, width: 120)),
-              ]),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 14, width: 14, radius: 3),
+                  const SizedBox(width: 6),
+                  Expanded(child: _box(isDark: isDark, height: 12, width: 120)),
+                ],
+              ),
             ],
           ),
         ),
@@ -113,12 +116,10 @@ class PaginationBarShimmer extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-
             _box(isDark: isDark, height: 28, width: 80, radius: 14),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-
                 _box(isDark: isDark, height: 28, width: 80, radius: 20),
                 const SizedBox(width: 4),
 
@@ -158,16 +159,17 @@ class ReturnCardShimmer extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Row(children: [
-                      _box(isDark: isDark, height: 14, width: 140),
-                      const SizedBox(width: 8),
-                      _box(isDark: isDark, height: 20, width: 52, radius: 4),
-                    ]),
+                    child: Row(
+                      children: [
+                        _box(isDark: isDark, height: 14, width: 140),
+                        const SizedBox(width: 8),
+                        _box(isDark: isDark, height: 20, width: 52, radius: 4),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 12),
                   _box(isDark: isDark, height: 24, width: 72, radius: 12),
@@ -175,25 +177,31 @@ class ReturnCardShimmer extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
-              Row(children: [
-                _box(isDark: isDark, height: 12, width: 66),
-                const SizedBox(width: 12),
-                Expanded(child: _box(isDark: isDark, height: 12, width: 160)),
-              ]),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 12, width: 66),
+                  const SizedBox(width: 12),
+                  Expanded(child: _box(isDark: isDark, height: 12, width: 160)),
+                ],
+              ),
               const SizedBox(height: 6),
 
-              Row(children: [
-                _box(isDark: isDark, height: 12, width: 66),
-                const SizedBox(width: 12),
-                Expanded(child: _box(isDark: isDark, height: 12, width: 110)),
-              ]),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 12, width: 66),
+                  const SizedBox(width: 12),
+                  Expanded(child: _box(isDark: isDark, height: 12, width: 110)),
+                ],
+              ),
               const SizedBox(height: 6),
 
-              Row(children: [
-                _box(isDark: isDark, height: 12, width: 66),
-                const SizedBox(width: 12),
-                Expanded(child: _box(isDark: isDark, height: 12, width: 140)),
-              ]),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 12, width: 66),
+                  const SizedBox(width: 12),
+                  Expanded(child: _box(isDark: isDark, height: 12, width: 140)),
+                ],
+              ),
             ],
           ),
         ),
@@ -300,23 +308,29 @@ class PickingDocumentPageShimmer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Expanded(child: _box(isDark: isDark, height: 16, width: 180)),
-              const SizedBox(width: 12),
-              _box(isDark: isDark, height: 24, width: 72, radius: 12),
-            ]),
+            Row(
+              children: [
+                Expanded(child: _box(isDark: isDark, height: 16, width: 180)),
+                const SizedBox(width: 12),
+                _box(isDark: isDark, height: 24, width: 72, radius: 12),
+              ],
+            ),
             const SizedBox(height: 12),
-            Row(children: [
-              _box(isDark: isDark, height: 14, width: 14, radius: 3),
-              const SizedBox(width: 8),
-              Expanded(child: _box(isDark: isDark, height: 12, width: 120)),
-            ]),
+            Row(
+              children: [
+                _box(isDark: isDark, height: 14, width: 14, radius: 3),
+                const SizedBox(width: 8),
+                Expanded(child: _box(isDark: isDark, height: 12, width: 120)),
+              ],
+            ),
             const SizedBox(height: 8),
-            Row(children: [
-              _box(isDark: isDark, height: 14, width: 14, radius: 3),
-              const SizedBox(width: 8),
-              Expanded(child: _box(isDark: isDark, height: 12, width: 100)),
-            ]),
+            Row(
+              children: [
+                _box(isDark: isDark, height: 14, width: 14, radius: 3),
+                const SizedBox(width: 8),
+                Expanded(child: _box(isDark: isDark, height: 12, width: 100)),
+              ],
+            ),
           ],
         ),
       ),
@@ -344,7 +358,6 @@ class PickingDocumentPageShimmer extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-
               Container(
                 width: 44,
                 height: 44,
@@ -443,41 +456,48 @@ class PickingDetailShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
-          _card(children: [
-            Row(children: [
-              Expanded(child: _box(isDark: isDark, height: 20, width: 180)),
-              const SizedBox(width: 12),
-              _box(isDark: isDark, height: 26, width: 72, radius: 13),
-            ]),
-            const SizedBox(height: 10),
-            _box(isDark: isDark, height: 14, width: 200),
-            const SizedBox(height: 4),
-            _box(isDark: isDark, height: 12, width: 160),
-            const SizedBox(height: 10),
-            Row(children: [
-              _box(isDark: isDark, height: 13, width: 13, radius: 3),
-              const SizedBox(width: 6),
-              _box(isDark: isDark, height: 12, width: 110),
-            ]),
-          ]),
-          const SizedBox(height: 16),
-
-          _card(children: [
-            _box(isDark: isDark, height: 18, width: 140),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
+          _card(
+            children: [
+              Row(
                 children: [
-                  _infoRow(110, 140),
-                  _infoRow(100, 100),
-                  _infoRow(100, 110),
-                  _infoRow(110, 120),
+                  Expanded(child: _box(isDark: isDark, height: 20, width: 180)),
+                  const SizedBox(width: 12),
+                  _box(isDark: isDark, height: 26, width: 72, radius: 13),
                 ],
               ),
-            ),
-          ]),
+              const SizedBox(height: 10),
+              _box(isDark: isDark, height: 14, width: 200),
+              const SizedBox(height: 4),
+              _box(isDark: isDark, height: 12, width: 160),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _box(isDark: isDark, height: 13, width: 13, radius: 3),
+                  const SizedBox(width: 6),
+                  _box(isDark: isDark, height: 12, width: 110),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          _card(
+            children: [
+              _box(isDark: isDark, height: 18, width: 140),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    _infoRow(110, 140),
+                    _infoRow(100, 100),
+                    _infoRow(100, 110),
+                    _infoRow(110, 120),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
           Shimmer.fromColors(
@@ -498,25 +518,29 @@ class PickingDetailShimmer extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          _card(children: [
-            for (int i = 0; i < 3; i++) ...[
-              Row(children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: _base(isDark),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+          _card(
+            children: [
+              for (int i = 0; i < 3; i++) ...[
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _base(isDark),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _box(isDark: isDark, height: 14)),
+                    const SizedBox(width: 12),
+                    _box(isDark: isDark, height: 14, width: 48),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(child: _box(isDark: isDark, height: 14)),
-                const SizedBox(width: 12),
-                _box(isDark: isDark, height: 14, width: 48),
-              ]),
-              if (i < 2) const SizedBox(height: 12),
+                if (i < 2) const SizedBox(height: 12),
+              ],
             ],
-          ]),
+          ),
         ],
       ),
     );

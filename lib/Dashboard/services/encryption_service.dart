@@ -15,7 +15,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// • Initialization Vector (IV) is generated with fixed length (16 bytes).
 /// • Encrypted output contains IV + encrypted data encoded in Base64.
 class EncryptionService {
-
   /// Secret key used for AES encryption.
   ///
   ///
@@ -23,7 +22,9 @@ class EncryptionService {
   static String get _keyString {
     final key = dotenv.env['ENCRYPTION_KEY'];
     if (key == null || key.length != 32) {
-      throw Exception('Missing or invalid ENCRYPTION_KEY in .env file (must be 32 chars).');
+      throw Exception(
+        'Missing or invalid ENCRYPTION_KEY in .env file (must be 32 chars).',
+      );
     }
     return key;
   }

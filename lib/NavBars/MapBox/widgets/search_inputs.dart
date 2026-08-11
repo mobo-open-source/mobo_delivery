@@ -33,10 +33,10 @@ class SearchInputs extends StatelessWidget {
 
     final activeStops = showStopFields
         ? stopControllers
-            .asMap()
-            .entries
-            .where((e) => e.value.text.trim().isNotEmpty)
-            .toList()
+              .asMap()
+              .entries
+              .where((e) => e.value.text.trim().isNotEmpty)
+              .toList()
         : <MapEntry<int, TextEditingController>>[];
 
     final rowCount = 1 + activeStops.length;
@@ -58,7 +58,6 @@ class SearchInputs extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
             SizedBox(
               width: 22,
               child: Column(
@@ -80,11 +79,12 @@ class SearchInputs extends StatelessWidget {
                         color: isSource
                             ? const Color(0xFF4285F4)
                             : isLast
-                                ? const Color(0xFFE74C3C)
-                                : const Color(0xFFF39C12),
+                            ? const Color(0xFFE74C3C)
+                            : const Color(0xFFF39C12),
                         shape: isSource ? BoxShape.circle : BoxShape.rectangle,
-                        borderRadius:
-                            isSource ? null : BorderRadius.circular(3),
+                        borderRadius: isSource
+                            ? null
+                            : BorderRadius.circular(3),
                         border: Border.all(color: Colors.white, width: 1.5),
                         boxShadow: [
                           BoxShadow(
@@ -96,12 +96,7 @@ class SearchInputs extends StatelessWidget {
                     );
                   } else {
                     return Expanded(
-                      child: Center(
-                        child: Container(
-                          width: 2,
-                          color: divider,
-                        ),
-                      ),
+                      child: Center(child: Container(width: 2, color: divider)),
                     );
                   }
                 }),
@@ -152,9 +147,7 @@ class SearchInputs extends StatelessWidget {
                     child: Icon(
                       HugeIcons.strokeRoundedCancel01,
                       size: 16,
-                      color: isDark
-                          ? Colors.white38
-                          : const Color(0xFF9AA0A6),
+                      color: isDark ? Colors.white38 : const Color(0xFF9AA0A6),
                     ),
                   ),
                 ),
@@ -175,7 +168,11 @@ class SearchInputs extends StatelessWidget {
     return TextField(
       controller: controller,
       readOnly: true,
-      style: TextStyle(fontSize: 13, color: primary, fontWeight: FontWeight.w500),
+      style: TextStyle(
+        fontSize: 13,
+        color: primary,
+        fontWeight: FontWeight.w500,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(fontSize: 13, color: hint2),

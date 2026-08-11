@@ -37,7 +37,7 @@ class StorageService {
     await prefs.setString('company_name', session.companyName ?? '');
     await prefs.setBool('isSystem', session.isSystem);
     await prefs.setBool('isPortal', session.isPortal);
-    await prefs.setInt('version', session.version??0);
+    await prefs.setInt('version', session.version ?? 0);
   }
 
   /// Saves login state information to local storage.
@@ -80,6 +80,7 @@ class StorageService {
       'password': prefs.getString('pass') ?? '',
     };
   }
+
   /// Clears login state and session data from local storage.
   Future<void> clearLoginState() async {
     final prefs = await SharedPreferences.getInstance();

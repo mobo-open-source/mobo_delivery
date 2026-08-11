@@ -7,11 +7,7 @@ class LoadingOverlay extends StatelessWidget {
   final String? message;
   final bool isFullPage;
 
-  const LoadingOverlay({
-    super.key,
-    this.message,
-    this.isFullPage = true,
-  });
+  const LoadingOverlay({super.key, this.message, this.isFullPage = true});
 
   @override
   Widget build(BuildContext context) {

@@ -108,25 +108,25 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: videoController.value.isInitialized
           ? SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: videoController.value.size.width,
-            height: videoController.value.size.height,
-            child: VideoPlayer(videoController),
-          ),
-        ),
-      )
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: videoController.value.size.width,
+                  height: videoController.value.size.height,
+                  child: VideoPlayer(videoController),
+                ),
+              ),
+            )
           : Center(
-        child: ClipOval(
-          child: Image.asset(
-            'assets/icons/icon.png',
-            width: 200,
-            height: 200,
-            fit: BoxFit.cover,
-          ),
-        ),
-      ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/icons/icon.png',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
     );
   }
 }

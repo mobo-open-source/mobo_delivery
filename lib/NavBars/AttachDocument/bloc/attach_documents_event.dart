@@ -63,14 +63,22 @@ class FetchDocumentStockPickings extends AttachDocumentsEvent {
   final List<String>? filters;
   final String? groupBy;
 
-  const FetchDocumentStockPickings(this.page, this.itemsPerPage, {
+  const FetchDocumentStockPickings(
+    this.page,
+    this.itemsPerPage, {
     this.searchQuery,
     this.filters,
     this.groupBy,
   });
 
   @override
-  List<Object?> get props => [page, itemsPerPage, searchQuery, filters, groupBy];
+  List<Object?> get props => [
+    page,
+    itemsPerPage,
+    searchQuery,
+    filters,
+    groupBy,
+  ];
 }
 
 /// Event triggered when the user uploads a file or signature for a specific picking.
@@ -83,7 +91,12 @@ class UploadFile extends AttachDocumentsEvent {
   final int pickingId;
   final String fileName;
 
-  const UploadFile(this.mimeType, this.base64File, this.pickingId, this.fileName);
+  const UploadFile(
+    this.mimeType,
+    this.base64File,
+    this.pickingId,
+    this.fileName,
+  );
 
   @override
   List<Object?> get props => [mimeType, base64File, pickingId, fileName];

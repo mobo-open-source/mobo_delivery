@@ -14,11 +14,9 @@ class OdooDateTimeFormat {
   static String? _cachedDatePattern;
   static Future<void>? _inflight;
 
-  static String get timePattern =>
-      _cachedTimePattern ?? _fallbackTimePattern;
+  static String get timePattern => _cachedTimePattern ?? _fallbackTimePattern;
 
-  static String get datePattern =>
-      _cachedDatePattern ?? _fallbackDatePattern;
+  static String get datePattern => _cachedDatePattern ?? _fallbackDatePattern;
 
   static String get dateTimePattern => '$datePattern $timePattern';
 
@@ -60,8 +58,14 @@ class OdooDateTimeFormat {
       final rawTime = row['time_format']?.toString() ?? '';
       final rawDate = row['date_format']?.toString() ?? '';
 
-      final timePattern = _strftimeToDartPattern(rawTime, fallback: _fallbackTimePattern);
-      final datePattern = _strftimeToDartPattern(rawDate, fallback: _fallbackDatePattern);
+      final timePattern = _strftimeToDartPattern(
+        rawTime,
+        fallback: _fallbackTimePattern,
+      );
+      final datePattern = _strftimeToDartPattern(
+        rawDate,
+        fallback: _fallbackDatePattern,
+      );
 
       _cachedTimePattern = timePattern;
       _cachedDatePattern = datePattern;
@@ -70,7 +74,10 @@ class OdooDateTimeFormat {
     } catch (_) {}
   }
 
-  static String _strftimeToDartPattern(String pattern, {required String fallback}) {
+  static String _strftimeToDartPattern(
+    String pattern, {
+    required String fallback,
+  }) {
     if (pattern.isEmpty) return fallback;
     const map = <String, String>{
       '%Y': 'yyyy',
@@ -128,8 +135,14 @@ class OdooDateTimeFormat {
     if (odooStorage.hasMatch(trimmed)) {
       try {
         final dt = DateFormat('yyyy-MM-dd HH:mm:ss').parseStrict(trimmed);
-        return DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute,
-            dt.second);
+        return DateTime.utc(
+          dt.year,
+          dt.month,
+          dt.day,
+          dt.hour,
+          dt.minute,
+          dt.second,
+        );
       } catch (_) {}
     }
 

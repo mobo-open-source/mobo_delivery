@@ -23,7 +23,10 @@ class MapService {
   /// Returns a list of human-readable place name strings.
   ///
   /// Returns empty list on error or invalid response.
-  Future<List<String>> fetchSuggestions(String input, String accessToken) async {
+  Future<List<String>> fetchSuggestions(
+    String input,
+    String accessToken,
+  ) async {
     if (input.trim().isEmpty) return [];
     final encoded = Uri.encodeComponent(input);
     final url =
@@ -38,8 +41,7 @@ class MapService {
           (json['features'] as List).map((f) => f['place_name'] as String),
         );
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     return [];
   }
 
@@ -61,13 +63,11 @@ class MapService {
     try {
       final response = await http.get(Uri.parse(url));
       final json = jsonDecode(response.body);
-      if (json['features'] != null &&
-          (json['features'] as List).isNotEmpty) {
+      if (json['features'] != null && (json['features'] as List).isNotEmpty) {
         final center = json['features'][0]['center'] as List;
         return LatLng(center[1] as double, center[0] as double);
       }
-    } catch (_) {
-    }
+    } catch (_) {}
     return null;
   }
 

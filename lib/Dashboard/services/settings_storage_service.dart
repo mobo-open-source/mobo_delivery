@@ -31,19 +31,22 @@ class SettingsStorageService {
   }
 
   /// Stores a string value under the given [key].
-  Future<void> setString(String key, String value) async => await _prefs.setString(key, value);
+  Future<void> setString(String key, String value) async =>
+      await _prefs.setString(key, value);
 
   /// Retrieves the string value for [key], or `null` if not set.
   String? getString(String key) => _prefs.getString(key);
 
   /// Stores an integer value under the given [key].
-  Future<void> setInt(String key, int value) async => await _prefs.setInt(key, value);
+  Future<void> setInt(String key, int value) async =>
+      await _prefs.setInt(key, value);
 
   /// Retrieves the integer value for [key], or `null` if not set.
   int? getInt(String key) => _prefs.getInt(key);
 
   /// Stores a double value under the given [key].
-  Future<void> setDouble(String key, double value) async => await _prefs.setDouble(key, value);
+  Future<void> setDouble(String key, double value) async =>
+      await _prefs.setDouble(key, value);
 
   /// Retrieves the double value for [key], or `null` if not set.
   double? getDouble(String key) => _prefs.getDouble(key);

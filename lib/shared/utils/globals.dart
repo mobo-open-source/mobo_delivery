@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 /// Helps maintain consistency across the app UI and avoids
 /// hardcoding colors in multiple widgets.
 class AppStyle {
-
   /// Primary brand color used for:
   /// • Buttons
   /// • Highlights

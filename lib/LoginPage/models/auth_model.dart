@@ -2,12 +2,7 @@
 ///
 /// Used primarily by authentication services (e.g. local_auth package) to communicate
 /// the result of a biometric/PIN check to the rest of the app.
-enum AuthenticationResult {
-  success,
-  failure,
-  error,
-  unavailable,
-}
+enum AuthenticationResult { success, failure, error, unavailable }
 
 /// Data model representing the user's current authentication state.
 ///

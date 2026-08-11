@@ -56,10 +56,7 @@ class pickingListToOffline {
       await CompanySessionManager.callKwWithCompany({
         'model': 'stock.warehouse',
         'method': 'search_read',
-        'args': [
-          [
-          ],
-        ],
+        'args': [[]],
         'kwargs': {
           'fields': ['id', 'name'],
         },
@@ -209,7 +206,8 @@ class pickingListToOffline {
 
           _allPickingsByLocation.putIfAbsent(warehouseName, () => []).add({
             'id': pickingId.toString(),
-            'scheduled_date': picking['scheduled_date'] is String &&
+            'scheduled_date':
+                picking['scheduled_date'] is String &&
                     (picking['scheduled_date'] as String).isNotEmpty &&
                     picking['scheduled_date'] != 'false'
                 ? picking['scheduled_date']
@@ -233,7 +231,8 @@ class pickingListToOffline {
                 : '0',
             'products_availability':
                 picking['products_availability']?.toString() ?? '',
-            'origin': picking['origin'] is String &&
+            'origin':
+                picking['origin'] is String &&
                     (picking['origin'] as String).isNotEmpty &&
                     picking['origin'] != 'false'
                 ? picking['origin']
@@ -272,8 +271,7 @@ class pickingListToOffline {
         }
       }
       await storePickingsToHive();
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   /// Stores enriched picking data into Hive box 'pickings'

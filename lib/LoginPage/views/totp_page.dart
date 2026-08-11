@@ -134,11 +134,9 @@ class _TotpPageState extends State<TotpPage> {
                   return NavigationActionPolicy.ALLOW;
                 },
 
-                onLoadError: (controller, url, code, message) {
-                },
+                onLoadError: (controller, url, code, message) {},
 
-                onReceivedError: (controller, request, errorResponse) {
-                },
+                onReceivedError: (controller, request, errorResponse) {},
                 onLoadStop: (controller, url) async {
                   final urlStr = url?.toString() ?? '';
 
@@ -374,7 +372,7 @@ class _TotpPageState extends State<TotpPage> {
     try {
       await _webController!.evaluateJavascript(
         source:
-        """
+            """
   (function() {
     let input = document.querySelector(
       'input[name="totp_token"], input[autocomplete="one-time-code"], input[type="text"][maxlength="6"], input[type="number"][maxlength="6"]'
@@ -425,7 +423,7 @@ class _TotpPageState extends State<TotpPage> {
         );
         if (isLoggedIn == 'error') {
           setState(
-                () => _error = "Invalid code or login failed. Please try again.",
+            () => _error = "Invalid code or login failed. Please try again.",
           );
           return;
         }
@@ -442,7 +440,7 @@ class _TotpPageState extends State<TotpPage> {
       );
 
       final sessionCookie = cookies.firstWhere(
-            (c) => c.name == 'session_id',
+        (c) => c.name == 'session_id',
         orElse: () => Cookie(name: '', value: ''),
       );
 
@@ -471,13 +469,13 @@ class _TotpPageState extends State<TotpPage> {
 
       final isSuccess =
           sessionCookie.value.isNotEmpty &&
-              sessionCookie.value.length > 20 &&
-              ((urlStr.contains('/web') ||
+          sessionCookie.value.length > 20 &&
+          ((urlStr.contains('/web') ||
                   (urlStr.contains('/odoo/discuss')) ||
                   (urlStr.contains('/odoo')) ||
                   (urlStr.contains('/odoo/apps'))) &&
-                  !urlStr.contains('/login') &&
-                  !urlStr.contains('/totp'));
+              !urlStr.contains('/login') &&
+              !urlStr.contains('/totp'));
 
       if (!isSuccess) {
         setState(() {
@@ -523,7 +521,7 @@ class _TotpPageState extends State<TotpPage> {
           Navigator.pushNamedAndRemoveUntil(
             context,
             '/login',
-                (route) => false,
+            (route) => false,
           );
           if (mounted) {
             showModuleMissingDialog(context);

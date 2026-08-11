@@ -130,11 +130,19 @@ class RouteInfoCard extends StatelessWidget {
                             unselectedLabelColor: Colors.white70,
                             tabs: [
                               Tab(
-                                icon: Icon(HugeIcons.strokeRoundedShippingTruck02),
+                                icon: Icon(
+                                  HugeIcons.strokeRoundedShippingTruck02,
+                                ),
                                 text: 'Car',
                               ),
-                              Tab(icon: Icon(HugeIcons.strokeRoundedRoute02), text: 'Bike'),
-                              Tab(icon: Icon(HugeIcons.strokeRoundedRoute03), text: 'Train'),
+                              Tab(
+                                icon: Icon(HugeIcons.strokeRoundedRoute02),
+                                text: 'Bike',
+                              ),
+                              Tab(
+                                icon: Icon(HugeIcons.strokeRoundedRoute03),
+                                text: 'Train',
+                              ),
                               Tab(
                                 icon: Icon(HugeIcons.strokeRoundedRoute02),
                                 text: 'Walk',
@@ -261,7 +269,10 @@ class RouteInfoCard extends StatelessWidget {
                             ),
                           ),
                           onPressed: onAddStopPressed,
-                          icon: const Icon(HugeIcons.strokeRoundedLocation01, size: 20),
+                          icon: const Icon(
+                            HugeIcons.strokeRoundedLocation01,
+                            size: 20,
+                          ),
                           label: Text(
                             "Add Stop",
                             style: TextStyle(

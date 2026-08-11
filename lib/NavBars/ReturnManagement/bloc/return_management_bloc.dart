@@ -97,7 +97,6 @@ class ReturnManagementBloc
     Emitter<ReturnManagementState> emit,
   ) async {
     try {
-
       if (event.currentPage == 0) {
         emit(state.copyWith(isLoading: true));
       } else {
@@ -141,12 +140,9 @@ class ReturnManagementBloc
       }
 
       final newDisplayedCount = event.currentPage == 0
-          ? filtered
-                .length
+          ? filtered.length
           : event.currentPage > state.currentPage
-          ? state.displayedCount +
-                filtered
-                    .length
+          ? state.displayedCount + filtered.length
           : state.displayedCount - (state.filteredPickings.length);
 
       emit(
@@ -157,8 +153,8 @@ class ReturnManagementBloc
           isFetchingMore: false,
           searchText: event.searchText,
           currentPage: event.currentPage,
-          totalCount: count ?? 0,
-          displayedCount: newDisplayedCount.clamp(0, count ?? 0),
+          totalCount: count,
+          displayedCount: newDisplayedCount.clamp(0, count),
           filters: event.filters ?? [],
           groupBy: event.groupBy,
           groupedPickings: grouped,
@@ -186,7 +182,7 @@ class ReturnManagementBloc
     final value = item[field];
 
     if (field == 'state') {
-      return capitalizeFirstLetter(value) ?? value ?? 'Unknown';
+      return capitalizeFirstLetter(value);
     }
     if (field == 'partner_id' && value is List && value.length > 1) {
       return value[1].toString();

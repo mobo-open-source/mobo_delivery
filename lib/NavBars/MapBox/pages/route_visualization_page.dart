@@ -21,7 +21,6 @@ import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/error_state_widget.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../../../shared/widgets/inputs/mobo_text_field.dart';
-import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/dialogs/common_dialog.dart';
 import '../widgets/navigation_header.dart';
 import '../widgets/remaining_info_card.dart';
@@ -108,7 +107,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   LatLng? _currentLatLng;
   bool _showLayer = true;
   List<Map<String, dynamic>> pickings = [];
-  bool _isLoadingPickings = true;
   List<int> selectedPickings = [];
   List<String> selectedPickingNames = [];
   bool shouldValidate = false;
@@ -130,7 +128,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   @override
   void initState() {
     super.initState();
-    _apiKey = dotenv.env['TOMTOM_API_KEY'] ?? '***REMOVED-SEE-SECURITY-NOTICE***';
+    _apiKey =
+        dotenv.env['TOMTOM_API_KEY'] ?? '***REMOVED-SEE-SECURITY-NOTICE***';
     _initializeServices();
     _setInitialLocation();
     _loadCustomMarker();
@@ -166,13 +165,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     try {
       await odooService.initializeOdooClient();
       final fetched = await odooService.fetchStockPickings();
-      if (mounted) setState(() {
-        pickings = fetched;
-        _isLoadingPickings = false;
-      });
+      if (mounted)
+        setState(() {
+          pickings = fetched;
+        });
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingPickings = false);
         CustomSnackbar.showError(
           context,
           'Could not load pickings from Odoo. Map navigation still works.',
@@ -183,7 +181,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
   /// Listens to gyroscope events to detect phone rotation (used for bearing updates).
   void _listenToGyroscope() {
-    _gyroscopeSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
+    _gyroscopeSubscription = gyroscopeEventStream().listen((
+      GyroscopeEvent event,
+    ) {
       _isPhoneRotated = event.z.abs() > 0.5;
     });
   }
@@ -220,7 +220,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           ),
         ],
       ),
-      child: const Icon(HugeIcons.strokeRoundedNavigation03, color: Colors.white, size: 20),
+      child: const Icon(
+        HugeIcons.strokeRoundedNavigation03,
+        color: Colors.white,
+        size: 20,
+      ),
     );
     if (mounted) setState(() {});
   }
@@ -238,8 +242,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     final finalCtrl = _stopSearchControllers.last;
 
     final intermediate = _stops.sublist(0, _stops.length - 1);
-    final intermediateCtrls =
-        _stopSearchControllers.sublist(0, _stopSearchControllers.length - 1);
+    final intermediateCtrls = _stopSearchControllers.sublist(
+      0,
+      _stopSearchControllers.length - 1,
+    );
 
     final remaining = List<int>.generate(intermediate.length, (i) => i);
     final sortedIndices = <int>[];
@@ -247,8 +253,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
     while (remaining.isNotEmpty) {
       int bestIdx = remaining[0];
-      double bestDist =
-          mapService.distanceBetweenPoints(current, intermediate[bestIdx]);
+      double bestDist = mapService.distanceBetweenPoints(
+        current,
+        intermediate[bestIdx],
+      );
       for (final i in remaining) {
         final d = mapService.distanceBetweenPoints(current, intermediate[i]);
         if (d < bestDist) {
@@ -330,8 +338,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         } else if (sourceController.text.trim().isNotEmpty &&
             sourceController.text != 'Your Location') {
           _sourceLatLng = await mapService.getLatLngFromPlace(
-              sourceController.text, _apiKey,
-              proximity: _currentLatLng);
+            sourceController.text,
+            _apiKey,
+            proximity: _currentLatLng,
+          );
         }
       }
 
@@ -340,9 +350,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         surfaceError(
           usingGps
               ? 'We couldn\'t get your current location. Please enable GPS '
-                  'and grant location permission, or type a source address.'
+                    'and grant location permission, or type a source address.'
               : 'We couldn\'t resolve the source address. Try selecting a '
-                  'suggestion or use "Your location" instead.',
+                    'suggestion or use "Your location" instead.',
           toastOverride:
               'Source location not set. Enable GPS or enter manually.',
         );
@@ -356,8 +366,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         final resolved = <LatLng>[];
         for (final ctrl in filledCtrls) {
           final latlng = await mapService.getLatLngFromPlace(
-              ctrl.text, _apiKey,
-              proximity: _currentLatLng);
+            ctrl.text,
+            _apiKey,
+            proximity: _currentLatLng,
+          );
           if (latlng != null) {
             resolved.add(latlng);
           }
@@ -395,28 +407,37 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       debugPrint('[TomTom] Routing URL: $url');
 
       final response = await http.get(Uri.parse(url));
-      debugPrint('[TomTom] Routing response (${response.statusCode}): ${response.body.substring(0, response.body.length.clamp(0, 300))}');
+      debugPrint(
+        '[TomTom] Routing response (${response.statusCode}): ${response.body.substring(0, response.body.length.clamp(0, 300))}',
+      );
 
       if (response.statusCode != 200) {
         if (!mounted) return;
-        String friendly = 'We couldn\'t compute a route between these '
+        String friendly =
+            'We couldn\'t compute a route between these '
             'locations. Please check your stops and try again.';
         try {
           final errJson = jsonDecode(response.body);
-          final msg = errJson['detailedError']?['message']
-              ?? errJson['message']
-              ?? 'HTTP ${response.statusCode}';
+          final msg =
+              errJson['detailedError']?['message'] ??
+              errJson['message'] ??
+              'HTTP ${response.statusCode}';
           if (travelMode == 'bicycle') {
-            friendly = 'Bike routing is unavailable for this trip. '
+            friendly =
+                'Bike routing is unavailable for this trip. '
                 'Try a shorter distance or switch to Drive mode.';
           }
-          CustomSnackbar.showError(context,
-              travelMode == 'bicycle'
-                  ? 'Bike routing unavailable for this route. Try a shorter distance or Drive mode. ($msg)'
-                  : 'Route request failed: $msg');
+          CustomSnackbar.showError(
+            context,
+            travelMode == 'bicycle'
+                ? 'Bike routing unavailable for this route. Try a shorter distance or Drive mode. ($msg)'
+                : 'Route request failed: $msg',
+          );
         } catch (_) {
           CustomSnackbar.showError(
-              context, 'Route request failed (HTTP ${response.statusCode}).');
+            context,
+            'Route request failed (HTTP ${response.statusCode}).',
+          );
         }
         setState(() {
           _polylines.clear();
@@ -430,15 +451,17 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
       final json = jsonDecode(response.body);
 
-      if (json['routes'] != null &&
-          (json['routes'] as List).isNotEmpty) {
+      if (json['routes'] != null && (json['routes'] as List).isNotEmpty) {
         final route = json['routes'][0];
         final legs = route['legs'] as List;
         final polylinePoints = mapService.parseRoutePoints(legs);
 
         if (polylinePoints.isEmpty) {
           if (mounted) {
-            CustomSnackbar.showError(context, 'Route geometry could not be parsed.');
+            CustomSnackbar.showError(
+              context,
+              'Route geometry could not be parsed.',
+            );
           }
           return;
         }
@@ -452,35 +475,44 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           'start_address': sourceController.text.isEmpty
               ? 'Your Location'
               : sourceController.text,
-          'end_address': _stopSearchControllers.isNotEmpty &&
+          'end_address':
+              _stopSearchControllers.isNotEmpty &&
                   _stopSearchControllers[0].text.isNotEmpty
               ? _stopSearchControllers[0].text
               : 'Stop 1',
-          'distance':
-              mapService.formatDistance((leg0Summary['lengthInMeters'] as num).toDouble()),
-          'duration':
-              mapService.formatDuration((leg0Summary['travelTimeInSeconds'] as num).toInt()),
+          'distance': mapService.formatDistance(
+            (leg0Summary['lengthInMeters'] as num).toDouble(),
+          ),
+          'duration': mapService.formatDuration(
+            (leg0Summary['travelTimeInSeconds'] as num).toInt(),
+          ),
         });
-        totalDistance += (leg0Summary['lengthInMeters'] as num).toDouble() / 1000;
+        totalDistance +=
+            (leg0Summary['lengthInMeters'] as num).toDouble() / 1000;
         totalDuration += (leg0Summary['travelTimeInSeconds'] as num).toInt();
 
         for (int i = 1; i < legs.length; i++) {
           final legSummary = legs[i]['summary'];
-          totalDistance += (legSummary['lengthInMeters'] as num).toDouble() / 1000;
+          totalDistance +=
+              (legSummary['lengthInMeters'] as num).toDouble() / 1000;
           totalDuration += (legSummary['travelTimeInSeconds'] as num).toInt();
           legInfo.add({
-            'start_address': i - 1 < _stopSearchControllers.length &&
+            'start_address':
+                i - 1 < _stopSearchControllers.length &&
                     _stopSearchControllers[i - 1].text.isNotEmpty
                 ? _stopSearchControllers[i - 1].text
                 : 'Stop $i',
-            'end_address': i < _stopSearchControllers.length &&
+            'end_address':
+                i < _stopSearchControllers.length &&
                     _stopSearchControllers[i].text.isNotEmpty
                 ? _stopSearchControllers[i].text
                 : 'Stop ${i + 1}',
-            'distance':
-                mapService.formatDistance((legSummary['lengthInMeters'] as num).toDouble()),
-            'duration':
-                mapService.formatDuration((legSummary['travelTimeInSeconds'] as num).toInt()),
+            'distance': mapService.formatDistance(
+              (legSummary['lengthInMeters'] as num).toDouble(),
+            ),
+            'duration': mapService.formatDuration(
+              (legSummary['travelTimeInSeconds'] as num).toInt(),
+            ),
           });
         }
 
@@ -525,9 +557,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         });
         _moveCameraToFitAllMarkers();
       } else {
-        final errorMsg = json['detailedError']?['message']
-            ?? json['message']
-            ?? 'No route found between these locations.';
+        final errorMsg =
+            json['detailedError']?['message'] ??
+            json['message'] ??
+            'No route found between these locations.';
         debugPrint('[TomTom] Routing error: $errorMsg');
         if (mounted) {
           CustomSnackbar.showError(context, 'Route error: $errorMsg');
@@ -569,7 +602,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2.5),
             boxShadow: const [
-              BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
             ],
           ),
           child: Center(
@@ -588,7 +625,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           height: 10,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(2)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(2),
+            ),
           ),
         ),
       ],
@@ -601,14 +640,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// Marks visited stops (within 50 m) and plays the reach-stop sound.
   Future<void> _updateRemainingDistanceAndTime() async {
     if (!_isNavigationStarted || _currentLatLng == null || _polylines.isEmpty) {
-
       return;
     }
 
     final List<LatLng> polylinePoints = _polylines.first.points;
     for (int i = 0; i < polylinePoints.length; i++) {
       mapService.distanceToSegment(
-          _currentLatLng!, polylinePoints[i], polylinePoints[i]);
+        _currentLatLng!,
+        polylinePoints[i],
+        polylinePoints[i],
+      );
     }
 
     final List<LatLng> remainingPoints = List.from(_stops);
@@ -622,8 +663,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     double minDistanceToPoint = double.infinity;
 
     for (int i = 0; i < remainingPoints.length; i++) {
-      final distance =
-          mapService.distanceBetweenPoints(_currentLatLng!, remainingPoints[i]);
+      final distance = mapService.distanceBetweenPoints(
+        _currentLatLng!,
+        remainingPoints[i],
+      );
       if (distance <= 50) {
         visitedStops[i] = true;
         await mapService.playReachPointSound();
@@ -667,21 +710,28 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
         for (int i = 0; i < legs.length; i++) {
           final legSummary = legs[i]['summary'];
-          totalDistance += (legSummary['lengthInMeters'] as num).toDouble() / 1000;
+          totalDistance +=
+              (legSummary['lengthInMeters'] as num).toDouble() / 1000;
           totalDuration += (legSummary['travelTimeInSeconds'] as num).toInt();
 
-          final name = remainingNames[
-              i < remainingNames.length ? i : remainingNames.length - 1];
-          final latlng = remainingPoints[
-              i < remainingPoints.length ? i : remainingPoints.length - 1];
+          final name =
+              remainingNames[i < remainingNames.length
+                  ? i
+                  : remainingNames.length - 1];
+          final latlng =
+              remainingPoints[i < remainingPoints.length
+                  ? i
+                  : remainingPoints.length - 1];
           final isVisited = i < visitedStops.length ? visitedStops[i] : false;
 
           remainingLegInfo.add({
             'name': name,
             'distance': mapService.formatDistance(
-                (legSummary['lengthInMeters'] as num).toDouble()),
+              (legSummary['lengthInMeters'] as num).toDouble(),
+            ),
             'duration': mapService.formatDuration(
-                (legSummary['travelTimeInSeconds'] as num).toInt()),
+              (legSummary['travelTimeInSeconds'] as num).toInt(),
+            ),
             'latlng': latlng,
             'type': isVisited ? 'visited_stop' : 'stop',
           });
@@ -692,9 +742,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           remainingLegInfo.insert(0, {
             'name': 'Current Location',
             'distance': mapService.formatDistance(
-                (firstLegSummary['lengthInMeters'] as num).toDouble()),
+              (firstLegSummary['lengthInMeters'] as num).toDouble(),
+            ),
             'duration': mapService.formatDuration(
-                (firstLegSummary['travelTimeInSeconds'] as num).toInt()),
+              (firstLegSummary['travelTimeInSeconds'] as num).toInt(),
+            ),
             'latlng': _currentLatLng,
             'type': 'start',
           });
@@ -708,10 +760,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           });
         }
       }
-
     } catch (e) {
       debugPrint('[TomTom] _updateRemainingDistanceAndTime error: $e');
-
     }
   }
 
@@ -817,10 +867,18 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2.5),
             boxShadow: const [
-              BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
             ],
           ),
-          child: const Icon(HugeIcons.strokeRoundedUserCircle, color: Colors.white, size: 18),
+          child: const Icon(
+            HugeIcons.strokeRoundedUserCircle,
+            color: Colors.white,
+            size: 18,
+          ),
         ),
         Container(
           width: 3,
@@ -840,8 +898,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// source field with Mapbox autocomplete, and dynamic stop fields.
   void _showEnterRootPopup({bool fromAddStop = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    bool isDropdownActive = false;
-
     bool popCalled = false;
     bool needsAutoRoute = false;
 
@@ -892,9 +948,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   duration: const Duration(milliseconds: 260),
                   curve: Curves.easeOutCubic,
                   constraints: BoxConstraints(
-                    minHeight: isDropdownActive
-                        ? MediaQuery.of(context).size.height * 0.75
-                        : MediaQuery.of(context).size.height * 0.70,
+                    minHeight: MediaQuery.of(context).size.height * 0.70,
                     maxHeight: MediaQuery.of(context).size.height * 0.90,
                   ),
                   child: Stack(
@@ -909,859 +963,1120 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Enter Route',
-                              style: GoogleFonts.manrope(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                          ),
-
-                          IconButton(
-                            tooltip: 'Close',
-                            onPressed: () => Navigator.pop(context),
-                            icon: Icon(
-                              HugeIcons.strokeRoundedCancel01,
-                              size: 22,
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 40,
-                              minHeight: 40,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      _fieldHeading('Pickings', isDark, isRequired: true),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isPickingDropdownOpen
-                                ? AppStyle.primaryColor
-                                : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: DropdownSearch<Map<String, dynamic>>.multiSelection(
-                        key: pickingsDropdownKey,
-                        items: [
-                          ...pickings.where((p) => selectedPickings.contains(p['id'])),
-                          ...pickings.where((p) => !selectedPickings.contains(p['id'])),
-                        ],
-                        itemAsString: (p) =>
-                            p['name']?.toString() ?? '',
-                        compareFn: (a, b) => a['id'] == b['id'],
-                        selectedItems: pickings
-                            .where((p) =>
-                                selectedPickings.contains(p['id']))
-                            .toList(),
-                        onBeforePopupOpening: (_) async {
-                          pickingsSearchCtrl.clear();
-                          sheetSetState(() => isPickingDropdownOpen = true);
-                          return true;
-                        },
-                        onChanged: (items) {
-                          sheetSetState(() {
-                            selectedPickings = items
-                                .map((e) => e['id'] as int)
-                                .toList();
-                            selectedPickingNames = items
-                                .map((e) => e['name'] as String)
-                                .toList();
-                          });
-                        },
-
-                        dropdownBuilder: (context, selectedItems) {
-                          const int maxVisible = 2;
-                          final visibleItems =
-                              selectedItems.take(maxVisible).toList();
-                          final extraCount =
-                              selectedItems.length - maxVisible;
-                          return Container(
-                            constraints:
-                                const BoxConstraints(minHeight: 24),
-                            alignment: Alignment.centerLeft,
-                            child: selectedItems.isEmpty
-                                ? Text(
-                                    'Select Pickings',
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? Colors.white38
-                                          : Colors.grey[500],
-                                      fontStyle: FontStyle.italic,
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 14,
-                                    ),
-                                  )
-                                : Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
+                                  const SizedBox(height: 4),
+                                  Row(
                                     children: [
-                                      ...visibleItems.map((item) {
-                                        return Container(
-                                          padding: const EdgeInsets.only(
-                                              left: 10,
-                                              right: 6,
-                                              top: 4,
-                                              bottom: 4),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                AppStyle.primaryColor
-                                                    .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(20),
+                                      Expanded(
+                                        child: Text(
+                                          'Enter Route',
+                                          style: GoogleFonts.manrope(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black87,
                                           ),
-                                          child: Row(
+                                        ),
+                                      ),
+
+                                      IconButton(
+                                        tooltip: 'Close',
+                                        onPressed: () => Navigator.pop(context),
+                                        icon: Icon(
+                                          HugeIcons.strokeRoundedCancel01,
+                                          size: 22,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 40,
+                                          minHeight: 40,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  _fieldHeading(
+                                    'Pickings',
+                                    isDark,
+                                    isRequired: true,
+                                  ),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isPickingDropdownOpen
+                                            ? AppStyle.primaryColor
+                                            : Colors.transparent,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: DropdownSearch<Map<String, dynamic>>.multiSelection(
+                                      key: pickingsDropdownKey,
+                                      items: [
+                                        ...pickings.where(
+                                          (p) => selectedPickings.contains(
+                                            p['id'],
+                                          ),
+                                        ),
+                                        ...pickings.where(
+                                          (p) => !selectedPickings.contains(
+                                            p['id'],
+                                          ),
+                                        ),
+                                      ],
+                                      itemAsString: (p) =>
+                                          p['name']?.toString() ?? '',
+                                      compareFn: (a, b) => a['id'] == b['id'],
+                                      selectedItems: pickings
+                                          .where(
+                                            (p) => selectedPickings.contains(
+                                              p['id'],
+                                            ),
+                                          )
+                                          .toList(),
+                                      onBeforePopupOpening: (_) async {
+                                        pickingsSearchCtrl.clear();
+                                        sheetSetState(
+                                          () => isPickingDropdownOpen = true,
+                                        );
+                                        return true;
+                                      },
+                                      onChanged: (items) {
+                                        sheetSetState(() {
+                                          selectedPickings = items
+                                              .map((e) => e['id'] as int)
+                                              .toList();
+                                          selectedPickingNames = items
+                                              .map((e) => e['name'] as String)
+                                              .toList();
+                                        });
+                                      },
+
+                                      dropdownBuilder: (context, selectedItems) {
+                                        const int maxVisible = 2;
+                                        final visibleItems = selectedItems
+                                            .take(maxVisible)
+                                            .toList();
+                                        final extraCount =
+                                            selectedItems.length - maxVisible;
+                                        return Container(
+                                          constraints: const BoxConstraints(
+                                            minHeight: 24,
+                                          ),
+                                          alignment: Alignment.centerLeft,
+                                          child: selectedItems.isEmpty
+                                              ? Text(
+                                                  'Select Pickings',
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? Colors.white38
+                                                        : Colors.grey[500],
+                                                    fontStyle: FontStyle.italic,
+                                                    fontWeight: FontWeight.w400,
+                                                    fontSize: 14,
+                                                  ),
+                                                )
+                                              : Wrap(
+                                                  spacing: 6,
+                                                  runSpacing: 6,
+                                                  children: [
+                                                    ...visibleItems.map((item) {
+                                                      return Container(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              left: 10,
+                                                              right: 6,
+                                                              top: 4,
+                                                              bottom: 4,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: AppStyle
+                                                              .primaryColor
+                                                              .withValues(
+                                                                alpha: 0.12,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Text(
+                                                              item['name']
+                                                                      ?.toString() ??
+                                                                  '',
+                                                              style: const TextStyle(
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: AppStyle
+                                                                    .primaryColor,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
+                                                            GestureDetector(
+                                                              behavior:
+                                                                  HitTestBehavior
+                                                                      .opaque,
+                                                              onTap: () {
+                                                                final updated =
+                                                                    List<
+                                                                        Map<
+                                                                          String,
+                                                                          dynamic
+                                                                        >
+                                                                      >.from(
+                                                                        selectedItems,
+                                                                      )
+                                                                      ..removeWhere(
+                                                                        (s) =>
+                                                                            s['id'] ==
+                                                                            item['id'],
+                                                                      );
+                                                                sheetSetState(() {
+                                                                  selectedPickings = updated
+                                                                      .map(
+                                                                        (e) =>
+                                                                            e['id']
+                                                                                as int,
+                                                                      )
+                                                                      .toList();
+                                                                  selectedPickingNames = updated
+                                                                      .map(
+                                                                        (e) =>
+                                                                            e['name']
+                                                                                as String,
+                                                                      )
+                                                                      .toList();
+                                                                });
+                                                                pickingsDropdownKey
+                                                                    .currentState
+                                                                    ?.changeSelectedItems(
+                                                                      updated,
+                                                                    );
+                                                              },
+                                                              child: const Icon(
+                                                                HugeIcons
+                                                                    .strokeRoundedCancel01,
+                                                                size: 14,
+                                                                color: AppStyle
+                                                                    .primaryColor,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    }),
+                                                    if (extraCount > 0)
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 4,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: isDark
+                                                              ? Colors.white12
+                                                              : Colors
+                                                                    .grey[200],
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          '+$extraCount more',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color: isDark
+                                                                ? Colors.white54
+                                                                : Colors
+                                                                      .grey[700],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                        );
+                                      },
+                                      dropdownDecoratorProps: DropDownDecoratorProps(
+                                        dropdownSearchDecoration:
+                                            InputDecoration(
+                                              isDense: true,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 14,
+                                                  ),
+                                              filled: true,
+                                              fillColor: isDark
+                                                  ? const Color(0xFF2A2A2A)
+                                                  : const Color(0xffF8FAFB),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide.none,
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide.none,
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide.none,
+                                              ),
+                                            ),
+                                      ),
+                                      popupProps: PopupPropsMultiSelection.menu(
+                                        onDismissed: () => sheetSetState(
+                                          () => isPickingDropdownOpen = false,
+                                        ),
+                                        showSearchBox: false,
+                                        searchFieldProps: TextFieldProps(
+                                          controller: pickingsSearchCtrl,
+                                        ),
+                                        showSelectedItems: true,
+                                        menuProps: MenuProps(
+                                          backgroundColor: isDark
+                                              ? Colors.grey[850]
+                                              : Colors.white,
+                                          elevation: 4,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          maxHeight: 380,
+                                        ),
+                                        validationWidgetBuilder:
+                                            (context, __) =>
+                                                const SizedBox.shrink(),
+                                        selectionWidget:
+                                            (context, item, isSelected) =>
+                                                const SizedBox.shrink(),
+                                        onItemAdded: (selectedItems, _) {
+                                          sheetSetState(() {
+                                            selectedPickings = selectedItems
+                                                .map((e) => e['id'] as int)
+                                                .toList();
+                                            selectedPickingNames = selectedItems
+                                                .map((e) => e['name'] as String)
+                                                .toList();
+                                          });
+                                        },
+                                        onItemRemoved: (selectedItems, _) {
+                                          sheetSetState(() {
+                                            selectedPickings = selectedItems
+                                                .map((e) => e['id'] as int)
+                                                .toList();
+                                            selectedPickingNames = selectedItems
+                                                .map((e) => e['name'] as String)
+                                                .toList();
+                                          });
+                                        },
+                                        title: Container(
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: isDark
+                                                    ? Colors.white12
+                                                    : const Color(0xFFE0E0E0),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Column(
                                             mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
                                             children: [
-                                              Text(
-                                                item['name']?.toString() ??
-                                                    '',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color:
-                                                      AppStyle.primaryColor,
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      16,
+                                                      12,
+                                                      16,
+                                                      8,
+                                                    ),
+                                                child: Text(
+                                                  'Select Pickings',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : Colors.black87,
+                                                  ),
                                                 ),
                                               ),
-                                              const SizedBox(width: 4),
-                                              GestureDetector(
-                                                behavior:
-                                                    HitTestBehavior.opaque,
-                                                onTap: () {
-                                                  final updated =
-                                                      List<Map<String,
-                                                              dynamic>>.from(
-                                                          selectedItems)
-                                                        ..removeWhere(
-                                                            (s) =>
-                                                                s['id'] ==
-                                                                item['id']);
-                                                  sheetSetState(() {
-                                                    selectedPickings = updated
-                                                        .map((e) =>
-                                                            e['id'] as int)
-                                                        .toList();
-                                                    selectedPickingNames =
-                                                        updated
-                                                            .map((e) =>
-                                                                e['name']
-                                                                    as String)
-                                                            .toList();
-                                                  });
-                                                  pickingsDropdownKey
-                                                      .currentState
-                                                      ?.changeSelectedItems(
-                                                          updated);
-                                                },
-                                                child: const Icon(
-                                                  HugeIcons.strokeRoundedCancel01,
-                                                  size: 14,
-                                                  color:
-                                                      AppStyle.primaryColor,
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                    ),
+                                                child: TextField(
+                                                  controller:
+                                                      pickingsSearchCtrl,
+                                                  decoration: InputDecoration(
+                                                    hintText: 'Search...',
+                                                    filled: true,
+                                                    fillColor: isDark
+                                                        ? Colors.grey[800]
+                                                        : const Color(
+                                                            0xFFF3F4F6,
+                                                          ),
+                                                    prefixIcon: Icon(
+                                                      HugeIcons
+                                                          .strokeRoundedSearch01,
+                                                      size: 20,
+                                                      color: isDark
+                                                          ? Colors.white54
+                                                          : Colors.grey[600],
+                                                    ),
+                                                    contentPadding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 10,
+                                                        ),
+                                                    border: OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                      borderSide:
+                                                          BorderSide.none,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      16,
+                                                      6,
+                                                      16,
+                                                      10,
+                                                    ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        pickingsDropdownKey
+                                                            .currentState
+                                                            ?.changeSelectedItems(
+                                                              [],
+                                                            );
+                                                        sheetSetState(() {
+                                                          selectedPickings
+                                                              .clear();
+                                                          selectedPickingNames
+                                                              .clear();
+                                                        });
+                                                      },
+                                                      child: Text(
+                                                        'Clear',
+                                                        style: TextStyle(
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: isDark
+                                                              ? Colors.white38
+                                                              : Colors
+                                                                    .grey[500],
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    GestureDetector(
+                                                      onTap: () async {
+                                                        pickingsSearchCtrl
+                                                            .clear();
+                                                        pickingsDropdownKey
+                                                            .currentState
+                                                            ?.closeDropDownSearch();
+                                                        sheetSetState(
+                                                          () =>
+                                                              isFetchingStops =
+                                                                  true,
+                                                        );
+                                                        try {
+                                                          final value = pickings
+                                                              .where(
+                                                                (
+                                                                  p,
+                                                                ) => selectedPickings
+                                                                    .contains(
+                                                                      p['id'],
+                                                                    ),
+                                                              )
+                                                              .toList();
+                                                          _stops.clear();
+                                                          for (var c
+                                                              in _stopSearchControllers) {
+                                                            c.dispose();
+                                                          }
+                                                          _stopSearchControllers
+                                                              .clear();
+                                                          _stopSuggestions
+                                                              .clear();
+                                                          final Set<String>
+                                                          uniqueDestinations =
+                                                              {};
+                                                          for (var picking
+                                                              in value) {
+                                                            final raw =
+                                                                picking['destination_point']
+                                                                    as String? ??
+                                                                '';
+
+                                                            final dest = raw
+                                                                .split(',')
+                                                                .map(
+                                                                  (s) =>
+                                                                      s.trim(),
+                                                                )
+                                                                .where(
+                                                                  (s) =>
+                                                                      s.isNotEmpty &&
+                                                                      s.toLowerCase() !=
+                                                                          'false',
+                                                                )
+                                                                .join(', ');
+
+                                                            if (dest.isNotEmpty &&
+                                                                uniqueDestinations
+                                                                    .add(
+                                                                      dest,
+                                                                    )) {
+                                                              _stopSearchControllers
+                                                                  .add(
+                                                                    TextEditingController(
+                                                                      text:
+                                                                          dest,
+                                                                    ),
+                                                                  );
+                                                              _stopSuggestions
+                                                                  .add([]);
+                                                              final stopLatLng =
+                                                                  await mapService
+                                                                      .getLatLngFromPlace(
+                                                                        dest,
+                                                                        _apiKey,
+                                                                        proximity:
+                                                                            _currentLatLng,
+                                                                      );
+                                                              if (stopLatLng !=
+                                                                  null) {
+                                                                _stops.add(
+                                                                  stopLatLng,
+                                                                );
+                                                              }
+                                                            }
+                                                          }
+                                                          if (_stopSearchControllers
+                                                              .isEmpty) {
+                                                            _stopSearchControllers
+                                                                .add(
+                                                                  TextEditingController(),
+                                                                );
+                                                            _stopSuggestions
+                                                                .add([]);
+                                                          }
+                                                        } catch (_) {
+                                                        } finally {
+                                                          setState(() {});
+                                                          sheetSetState(() {
+                                                            shouldValidate =
+                                                                false;
+                                                            isFetchingStops =
+                                                                false;
+                                                          });
+                                                        }
+                                                      },
+                                                      child: Text(
+                                                        'Done',
+                                                        style: TextStyle(
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: AppStyle
+                                                              .primaryColor,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
                                           ),
-                                        );
-                                      }),
-                                      if (extraCount > 0)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? Colors.white12
-                                                : Colors.grey[200],
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          child: Text(
-                                            '+$extraCount more',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: isDark
-                                                  ? Colors.white54
-                                                  : Colors.grey[700],
+                                        ),
+                                        itemBuilder: (context, item, isSelected) {
+                                          return Container(
+                                            color: Colors.transparent,
+                                            padding: const EdgeInsets.only(
+                                              left: 16,
+                                              right: 4,
+                                              top: 4,
+                                              bottom: 4,
                                             ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                          );
-                        },
-                        dropdownDecoratorProps: DropDownDecoratorProps(
-                          dropdownSearchDecoration: InputDecoration(
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 14),
-                            filled: true,
-                            fillColor: isDark
-                                ? const Color(0xFF2A2A2A)
-                                : const Color(0xffF8FAFB),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        popupProps:
-                            PopupPropsMultiSelection.menu(
-                          onDismissed: () =>
-                              sheetSetState(() => isPickingDropdownOpen = false),
-                          showSearchBox: false,
-                          searchFieldProps: TextFieldProps(
-                              controller: pickingsSearchCtrl),
-                          showSelectedItems: true,
-                          menuProps: MenuProps(
-                            backgroundColor: isDark
-                                ? Colors.grey[850]
-                                : Colors.white,
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          constraints:
-                              const BoxConstraints(maxHeight: 380),
-                          validationWidgetBuilder: (context, __) =>
-                              const SizedBox.shrink(),
-                          selectionWidget:
-                              (context, item, isSelected) =>
-                                  const SizedBox.shrink(),
-                          onItemAdded: (selectedItems, _) {
-                            sheetSetState(() {
-                              selectedPickings = selectedItems
-                                  .map((e) => e['id'] as int)
-                                  .toList();
-                              selectedPickingNames = selectedItems
-                                  .map((e) => e['name'] as String)
-                                  .toList();
-                            });
-                          },
-                          onItemRemoved: (selectedItems, _) {
-                            sheetSetState(() {
-                              selectedPickings = selectedItems
-                                  .map((e) => e['id'] as int)
-                                  .toList();
-                              selectedPickingNames = selectedItems
-                                  .map((e) => e['name'] as String)
-                                  .toList();
-                            });
-                          },
-                          title: Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: isDark
-                                      ? Colors.white12
-                                      : const Color(0xFFE0E0E0),
-                                  width: 0.8,
-                                ),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.stretch,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 12, 16, 8),
-                                  child: Text(
-                                    'Select Pickings',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12),
-                                  child: TextField(
-                                    controller: pickingsSearchCtrl,
-                                    decoration: InputDecoration(
-                                      hintText: 'Search...',
-                                      filled: true,
-                                      fillColor: isDark
-                                          ? Colors.grey[800]
-                                          : const Color(0xFFF3F4F6),
-                                      prefixIcon: Icon(
-                                        HugeIcons.strokeRoundedSearch01,
-                                        size: 20,
-                                        color: isDark
-                                            ? Colors.white54
-                                            : Colors.grey[600],
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 10),
-                                      border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 6, 16, 10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-
-                                      GestureDetector(
-                                        onTap: () {
-                                          pickingsDropdownKey.currentState
-                                              ?.changeSelectedItems([]);
-                                          sheetSetState(() {
-                                            selectedPickings.clear();
-                                            selectedPickingNames.clear();
-                                          });
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    item['name']?.toString() ??
+                                                        '-',
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight.normal,
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Checkbox(
+                                                  value: isSelected,
+                                                  onChanged: (_) {},
+                                                  checkColor: Colors.white,
+                                                  fillColor:
+                                                      WidgetStateProperty.resolveWith<
+                                                        Color
+                                                      >(
+                                                        (states) =>
+                                                            states.contains(
+                                                              WidgetState
+                                                                  .selected,
+                                                            )
+                                                            ? AppStyle
+                                                                  .primaryColor
+                                                            : Colors
+                                                                  .transparent,
+                                                      ),
+                                                  side: const BorderSide(
+                                                    color:
+                                                        AppStyle.primaryColor,
+                                                    width: 1.5,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
                                         },
-                                        child: Text(
-                                          'Clear',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                            color: isDark
-                                                ? Colors.white38
-                                                : Colors.grey[500],
-                                          ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  if (shouldValidate) ...[
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        'Pickings cannot be empty',
+                                        style: TextStyle(
+                                          color: Colors.red[400],
+                                          fontSize: 12,
                                         ),
                                       ),
+                                    ),
+                                  ],
 
-                                      GestureDetector(
-                                        onTap: () async {
-                                          pickingsSearchCtrl.clear();
-                                          pickingsDropdownKey.currentState
-                                              ?.closeDropDownSearch();
-                                          sheetSetState(() =>
-                                              isFetchingStops = true);
-                                          try {
-                                            final value = pickings
-                                                .where((p) =>
-                                                    selectedPickings
-                                                        .contains(p['id']))
-                                                .toList();
-                                            _stops.clear();
-                                            for (var c
-                                                in _stopSearchControllers) {
-                                              c.dispose();
+                                  const SizedBox(height: 18),
+
+                                  _fieldHeading('Source Location', isDark),
+                                  if (sourceController.text == 'Your Location')
+                                    _buildCurrentLocationChip(
+                                      isDark: isDark,
+                                      onSurface: onSurface,
+                                      onClear: () {
+                                        sheetSetState(() {
+                                          sourceController.clear();
+                                          _sourceSuggestions.clear();
+                                        });
+                                        setState(() => _sourceLatLng = null);
+                                      },
+                                    )
+                                  else
+                                    Focus(
+                                      onFocusChange: (hasFocus) async {
+                                        if (hasFocus) {
+                                          sheetSetState(() {
+                                            if (_sourceSuggestions.isEmpty) {
+                                              _sourceSuggestions = [
+                                                'Your Location',
+                                              ];
                                             }
-                                            _stopSearchControllers.clear();
-                                            _stopSuggestions.clear();
-                                            final Set<String>
-                                                uniqueDestinations = {};
-                                            for (var picking in value) {
-                                              final raw = picking[
-                                                          'destination_point']
-                                                      as String? ??
-                                                  '';
-
-                                              final dest = raw
-                                                  .split(',')
-                                                  .map((s) => s.trim())
-                                                  .where((s) =>
-                                                      s.isNotEmpty &&
-                                                      s.toLowerCase() !=
-                                                          'false')
-                                                  .join(', ');
-
-                                              if (dest.isNotEmpty &&
-                                                  uniqueDestinations
-                                                      .add(dest)) {
-                                                _stopSearchControllers.add(
-                                                    TextEditingController(
-                                                        text: dest));
-                                                _stopSuggestions.add([]);
-                                                final stopLatLng =
-                                                    await mapService
-                                                        .getLatLngFromPlace(
-                                                            dest, _apiKey,
-                                                            proximity:
-                                                                _currentLatLng);
-                                                if (stopLatLng != null) {
-                                                  _stops.add(stopLatLng);
+                                          });
+                                        } else {
+                                          await Future.delayed(
+                                            const Duration(milliseconds: 150),
+                                          );
+                                          sheetSetState(
+                                            () => _sourceSuggestions.clear(),
+                                          );
+                                        }
+                                      },
+                                      child: MoboTextField(
+                                        controller: sourceController,
+                                        hintText: 'Search location',
+                                        onChanged: (value) async {
+                                          if (value.trim().isEmpty) {
+                                            sheetSetState(
+                                              () => _sourceSuggestions = [
+                                                'Your Location',
+                                              ],
+                                            );
+                                            return;
+                                          }
+                                          final suggestions = await mapService
+                                              .fetchSuggestions(
+                                                value,
+                                                _apiKey,
+                                                proximity: _currentLatLng,
+                                              );
+                                          sheetSetState(
+                                            () => _sourceSuggestions = [
+                                              'Your Location',
+                                              ...suggestions,
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  if (_sourceSuggestions.isNotEmpty &&
+                                      sourceController.text != 'Your Location')
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 4),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.grey[850]
+                                            : Colors.grey[50],
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: ListView.separated(
+                                        shrinkWrap: true,
+                                        padding: EdgeInsets.zero,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        itemCount: _sourceSuggestions.length,
+                                        separatorBuilder: (_, __) => Divider(
+                                          height: 1,
+                                          color: onSurface.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                        ),
+                                        itemBuilder: (context, index) {
+                                          return InkWell(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            onTap: () async {
+                                              final selected =
+                                                  _sourceSuggestions[index];
+                                              sourceController.text = selected;
+                                              sheetSetState(
+                                                () =>
+                                                    _sourceSuggestions.clear(),
+                                              );
+                                              if (selected == 'Your Location') {
+                                                if (_currentLatLng != null) {
+                                                  setState(
+                                                    () => _sourceLatLng =
+                                                        _currentLatLng,
+                                                  );
                                                 }
+                                              } else {
+                                                _sourceLatLng = await mapService
+                                                    .getLatLngFromPlace(
+                                                      selected,
+                                                      _apiKey,
+                                                      proximity: _currentLatLng,
+                                                    );
+                                              }
+                                              setState(() {});
+                                            },
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 12,
+                                                  ),
+                                              child:
+                                                  _sourceSuggestions[index] ==
+                                                      'Your Location'
+                                                  ? Row(
+                                                      children: [
+                                                        SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child: Stack(
+                                                            alignment: Alignment
+                                                                .center,
+                                                            children: [
+                                                              Container(
+                                                                width: 20,
+                                                                height: 20,
+                                                                decoration: BoxDecoration(
+                                                                  color:
+                                                                      const Color(
+                                                                        0xFF4285F4,
+                                                                      ).withValues(
+                                                                        alpha:
+                                                                            0.18,
+                                                                      ),
+                                                                  shape: BoxShape
+                                                                      .circle,
+                                                                ),
+                                                              ),
+                                                              Container(
+                                                                width: 10,
+                                                                height: 10,
+                                                                decoration: const BoxDecoration(
+                                                                  color: Color(
+                                                                    0xFF4285F4,
+                                                                  ),
+                                                                  shape: BoxShape
+                                                                      .circle,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              Text(
+                                                                'Your location',
+                                                                style: TextStyle(
+                                                                  fontSize: 13,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
+                                                                  color:
+                                                                      onSurface,
+                                                                ),
+                                                              ),
+                                                              const Text(
+                                                                'Using GPS',
+                                                                style: TextStyle(
+                                                                  fontSize: 11,
+                                                                  color: Color(
+                                                                    0xFF4285F4,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    )
+                                                  : Row(
+                                                      children: [
+                                                        Icon(
+                                                          HugeIcons
+                                                              .strokeRoundedLocation01,
+                                                          size: 18,
+                                                          color: onSurface
+                                                              .withValues(
+                                                                alpha: 0.5,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            _sourceSuggestions[index],
+                                                            style: TextStyle(
+                                                              fontSize: 13,
+                                                              color: onSurface,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+
+                                  ...List.generate(_stopSearchControllers.length, (
+                                    index,
+                                  ) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        const SizedBox(height: 18),
+                                        _fieldHeading(
+                                          'Stop ${index + 1}',
+                                          isDark,
+                                        ),
+                                        Focus(
+                                          onFocusChange: (hasFocus) async {
+                                            if (!hasFocus) {
+                                              await Future.delayed(
+                                                const Duration(
+                                                  milliseconds: 150,
+                                                ),
+                                              );
+                                              if (index <
+                                                  _stopSuggestions.length) {
+                                                sheetSetState(
+                                                  () => _stopSuggestions[index]
+                                                      .clear(),
+                                                );
                                               }
                                             }
-                                            if (_stopSearchControllers.isEmpty) {
-                                              _stopSearchControllers.add(
-                                                  TextEditingController());
-                                              _stopSuggestions.add([]);
-                                            }
-                                          } catch (_) {
-                                          } finally {
-                                            setState(() {});
-                                            sheetSetState(() {
-                                              shouldValidate = false;
-                                              isFetchingStops = false;
-                                            });
-                                          }
+                                          },
+                                          child: MoboTextField(
+                                            controller:
+                                                _stopSearchControllers[index],
+                                            hintText: 'Add your stop',
+                                            showShadow: false,
+                                            onChanged: (value) async {
+                                              final suggestions =
+                                                  await mapService
+                                                      .fetchSuggestions(
+                                                        value,
+                                                        _apiKey,
+                                                        proximity:
+                                                            _currentLatLng,
+                                                      );
+                                              sheetSetState(() {
+                                                if (_stopSuggestions.length <=
+                                                    index) {
+                                                  _stopSuggestions.add(
+                                                    suggestions,
+                                                  );
+                                                } else {
+                                                  _stopSuggestions[index] =
+                                                      suggestions;
+                                                }
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        if (_stopSuggestions[index].isNotEmpty)
+                                          Container(
+                                            margin: const EdgeInsets.only(
+                                              top: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.grey[850]
+                                                  : Colors.grey[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: ListView.separated(
+                                              shrinkWrap: true,
+                                              padding: EdgeInsets.zero,
+                                              physics:
+                                                  const NeverScrollableScrollPhysics(),
+                                              itemCount: _stopSuggestions[index]
+                                                  .length,
+                                              separatorBuilder: (_, __) =>
+                                                  Divider(
+                                                    height: 1,
+                                                    color: onSurface.withValues(
+                                                      alpha: 0.08,
+                                                    ),
+                                                  ),
+                                              itemBuilder: (context, si) {
+                                                return InkWell(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  onTap: () async {
+                                                    final nav = Navigator.of(
+                                                      context,
+                                                    );
+                                                    _stopSearchControllers[index]
+                                                            .text =
+                                                        _stopSuggestions[index][si];
+                                                    sheetSetState(
+                                                      () =>
+                                                          _stopSuggestions[index]
+                                                              .clear(),
+                                                    );
+                                                    final stopLatLng =
+                                                        await mapService
+                                                            .getLatLngFromPlace(
+                                                              _stopSearchControllers[index]
+                                                                  .text,
+                                                              _apiKey,
+                                                              proximity:
+                                                                  _currentLatLng,
+                                                            );
+                                                    if (stopLatLng != null) {
+                                                      setState(() {
+                                                        if (_stops.length >
+                                                            index) {
+                                                          _stops[index] =
+                                                              stopLatLng;
+                                                        } else if (fromAddStop &&
+                                                            _stops.isNotEmpty) {
+                                                          _stops.insert(
+                                                            0,
+                                                            stopLatLng,
+                                                          );
+                                                          final ctrl =
+                                                              _stopSearchControllers
+                                                                  .removeAt(
+                                                                    index,
+                                                                  );
+                                                          _stopSearchControllers
+                                                              .insert(0, ctrl);
+                                                          final sugg =
+                                                              _stopSuggestions
+                                                                  .removeAt(
+                                                                    index,
+                                                                  );
+                                                          _stopSuggestions
+                                                              .insert(0, sugg);
+                                                        } else {
+                                                          _stops.add(
+                                                            stopLatLng,
+                                                          );
+                                                        }
+                                                      });
+
+                                                      if (fromAddStop &&
+                                                          mounted &&
+                                                          !popCalled) {
+                                                        needsAutoRoute = true;
+                                                        popCalled = true;
+                                                        nav.pop();
+                                                      }
+                                                    }
+                                                  },
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 14,
+                                                          vertical: 12,
+                                                        ),
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          HugeIcons
+                                                              .strokeRoundedLocation01,
+                                                          size: 18,
+                                                          color: onSurface
+                                                              .withValues(
+                                                                alpha: 0.5,
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            _stopSuggestions[index][si],
+                                                            style: TextStyle(
+                                                              fontSize: 13,
+                                                              color: onSurface,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        const SizedBox(height: 12),
+                                      ],
+                                    );
+                                  }),
+
+                                  if (_stopSearchControllers.isEmpty ||
+                                      _stopSearchControllers.last.text
+                                          .trim()
+                                          .isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton.icon(
+                                        onPressed: () {
+                                          sheetSetState(() {
+                                            _stopSearchControllers.add(
+                                              TextEditingController(),
+                                            );
+                                            _stopSuggestions.add([]);
+                                          });
                                         },
-                                        child: Text(
-                                          'Done',
-                                          style: TextStyle(
-                                            fontSize: 15,
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 6,
+                                          ),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          foregroundColor:
+                                              AppStyle.primaryColor,
+                                        ),
+                                        icon: const Icon(
+                                          HugeIcons.strokeRoundedAdd01,
+                                          size: 18,
+                                        ),
+                                        label: Text(
+                                          'Add another stop',
+                                          style: GoogleFonts.manrope(
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w600,
                                             color: AppStyle.primaryColor,
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          itemBuilder: (context, item, isSelected) {
-                            return Container(
-                              color: Colors.transparent,
-                              padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 4,
-                                  top: 4,
-                                  bottom: 4),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      item['name']?.toString() ?? '-',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.normal,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black87,
-                                      ),
                                     ),
-                                  ),
-                                  Checkbox(
-                                    value: isSelected,
-                                    onChanged: (_) {},
-                                    checkColor: Colors.white,
-                                    fillColor:
-                                        WidgetStateProperty.resolveWith<
-                                            Color>(
-                                      (states) => states.contains(
-                                              WidgetState.selected)
-                                          ? AppStyle.primaryColor
-                                          : Colors.transparent,
-                                    ),
-                                    side: const BorderSide(
-                                      color: AppStyle.primaryColor,
-                                      width: 1.5,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      ),
-
-                      if (shouldValidate) ...[
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Pickings cannot be empty',
-                            style: TextStyle(
-                              color: Colors.red[400],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 18),
-
-                      _fieldHeading('Source Location', isDark),
-                      if (sourceController.text == 'Your Location')
-                        _buildCurrentLocationChip(
-                          isDark: isDark,
-                          onSurface: onSurface,
-                          onClear: () {
-                            sheetSetState(() {
-                              sourceController.clear();
-                              _sourceSuggestions.clear();
-                            });
-                            setState(() => _sourceLatLng = null);
-                          },
-                        )
-                      else
-                        Focus(
-                        onFocusChange: (hasFocus) async {
-                          if (hasFocus) {
-
-                            sheetSetState(() {
-                              if (_sourceSuggestions.isEmpty) {
-                                _sourceSuggestions = ['Your Location'];
-                              }
-                            });
-                          } else {
-                            await Future.delayed(
-                                const Duration(milliseconds: 150));
-                            sheetSetState(() => _sourceSuggestions.clear());
-                          }
-                        },
-                        child: MoboTextField(
-                          controller: sourceController,
-                          hintText: 'Search location',
-                          onChanged: (value) async {
-                            if (value.trim().isEmpty) {
-
-                              sheetSetState(() =>
-                                  _sourceSuggestions = ['Your Location']);
-                              return;
-                            }
-                            final suggestions = await mapService
-                                .fetchSuggestions(value, _apiKey,
-                                    proximity: _currentLatLng);
-                            sheetSetState(() => _sourceSuggestions = [
-                                  'Your Location',
-                                  ...suggestions,
-                                ]);
-                          },
-                        ),
-                        ),
-                      if (_sourceSuggestions.isNotEmpty &&
-                          sourceController.text != 'Your Location')
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[850] : Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            padding: EdgeInsets.zero,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _sourceSuggestions.length,
-                            separatorBuilder: (_, __) => Divider(
-                              height: 1,
-                              color: onSurface.withValues(alpha: 0.08),
-                            ),
-                            itemBuilder: (context, index) {
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () async {
-                                  final selected = _sourceSuggestions[index];
-                                  sourceController.text = selected;
-                                  sheetSetState(
-                                      () => _sourceSuggestions.clear());
-                                  if (selected == 'Your Location') {
-                                    if (_currentLatLng != null) {
-                                      setState(
-                                          () => _sourceLatLng = _currentLatLng);
-                                    }
-                                  } else {
-                                    _sourceLatLng = await mapService
-                                        .getLatLngFromPlace(selected, _apiKey,
-                                            proximity: _currentLatLng);
-                                  }
-                                  setState(() {});
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 12),
-                                  child: _sourceSuggestions[index] == 'Your Location'
-                                      ? Row(
-                                          children: [
-                                            SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: Stack(
-                                                alignment: Alignment.center,
-                                                children: [
-                                                  Container(
-                                                    width: 20,
-                                                    height: 20,
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(0xFF4285F4).withValues(alpha: 0.18),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    width: 10,
-                                                    height: 10,
-                                                    decoration: const BoxDecoration(
-                                                      color: Color(0xFF4285F4),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    'Your location',
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: onSurface,
-                                                    ),
-                                                  ),
-                                                  const Text(
-                                                    'Using GPS',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: Color(0xFF4285F4),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Row(
-                                    children: [
-                                      Icon(
-                                        HugeIcons.strokeRoundedLocation01,
-                                        size: 18,
-                                        color:
-                                            onSurface.withValues(alpha: 0.5),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          _sourceSuggestions[index],
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: onSurface,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                      ...List.generate(_stopSearchControllers.length, (index) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const SizedBox(height: 18),
-                              _fieldHeading('Stop ${index + 1}', isDark),
-                              Focus(
-                                onFocusChange: (hasFocus) async {
-                                  if (!hasFocus) {
-                                    await Future.delayed(
-                                        const Duration(milliseconds: 150));
-                                    if (index < _stopSuggestions.length) {
-                                      sheetSetState(() =>
-                                          _stopSuggestions[index].clear());
-                                    }
-                                  }
-                                },
-                                child: MoboTextField(
-                                  controller: _stopSearchControllers[index],
-                                  hintText: 'Add your stop',
-                                  showShadow: false,
-                                  onChanged: (value) async {
-                                    final suggestions = await mapService
-                                        .fetchSuggestions(value, _apiKey,
-                                            proximity: _currentLatLng);
-                                    sheetSetState(() {
-                                      if (_stopSuggestions.length <= index) {
-                                        _stopSuggestions.add(suggestions);
-                                      } else {
-                                        _stopSuggestions[index] = suggestions;
-                                      }
-                                    });
-                                  },
-                                ),
-                              ),
-                              if (_stopSuggestions[index].isNotEmpty)
-                                Container(
-                                  margin: const EdgeInsets.only(top: 4),
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.grey[850]
-                                        : Colors.grey[50],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: ListView.separated(
-                                    shrinkWrap: true,
-                                    padding: EdgeInsets.zero,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    itemCount:
-                                        _stopSuggestions[index].length,
-                                    separatorBuilder: (_, __) => Divider(
-                                      height: 1,
-                                      color:
-                                          onSurface.withValues(alpha: 0.08),
-                                    ),
-                                    itemBuilder: (context, si) {
-                                      return InkWell(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                        onTap: () async {
-                                          final nav = Navigator.of(context);
-                                          _stopSearchControllers[index]
-                                                  .text =
-                                              _stopSuggestions[index][si];
-                                          sheetSetState(() =>
-                                              _stopSuggestions[index]
-                                                  .clear());
-                                          final stopLatLng = await mapService
-                                              .getLatLngFromPlace(
-                                            _stopSearchControllers[index]
-                                                .text,
-                                            _apiKey,
-                                            proximity: _currentLatLng,
-                                          );
-                                          if (stopLatLng != null) {
-                                            setState(() {
-                                              if (_stops.length > index) {
-                                                _stops[index] = stopLatLng;
-                                              } else if (fromAddStop &&
-                                                  _stops.isNotEmpty) {
-                                                _stops.insert(0, stopLatLng);
-                                                final ctrl =
-                                                    _stopSearchControllers
-                                                        .removeAt(index);
-                                                _stopSearchControllers
-                                                    .insert(0, ctrl);
-                                                final sugg =
-                                                    _stopSuggestions
-                                                        .removeAt(index);
-                                                _stopSuggestions.insert(
-                                                    0, sugg);
-                                              } else {
-                                                _stops.add(stopLatLng);
-                                              }
-                                            });
-
-                                            if (fromAddStop && mounted &&
-                                                !popCalled) {
-                                              needsAutoRoute = true;
-                                              popCalled = true;
-                                              nav.pop();
-                                            }
-                                          }
-                                        },
-                                        child: Padding(
-                                          padding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 14,
-                                                  vertical: 12),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                HugeIcons.strokeRoundedLocation01,
-                                                size: 18,
-                                                color: onSurface.withValues(
-                                                    alpha: 0.5),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  _stopSuggestions[index]
-                                                      [si],
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: onSurface,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              const SizedBox(height: 12),
-                            ],
-                          );
-                        }),
-
-                      if (_stopSearchControllers.isEmpty ||
-                          _stopSearchControllers.last.text
-                              .trim()
-                              .isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () {
-                              sheetSetState(() {
-                                _stopSearchControllers
-                                    .add(TextEditingController());
-                                _stopSuggestions.add([]);
-                              });
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 6),
-                              minimumSize: Size.zero,
-                              tapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              foregroundColor: AppStyle.primaryColor,
-                            ),
-                            icon: const Icon(
-                              HugeIcons.strokeRoundedAdd01,
-                              size: 18,
-                            ),
-                            label: Text(
-                              'Add another stop',
-                              style: GoogleFonts.manrope(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppStyle.primaryColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                                  ],
                                 ],
                               ),
                             ),
@@ -1774,16 +2089,23 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                   child: OutlinedButton(
                                     onPressed: () => Navigator.pop(context),
                                     style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size(double.infinity, 44),
+                                      minimumSize: const Size(
+                                        double.infinity,
+                                        44,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      side: BorderSide(color: theme.primaryColor),
+                                      side: BorderSide(
+                                        color: theme.primaryColor,
+                                      ),
                                       foregroundColor: theme.primaryColor,
                                     ),
                                     child: const Text(
                                       'Cancel',
-                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1791,7 +2113,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                 Expanded(
                                   child: ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
-                                      minimumSize: const Size(double.infinity, 44),
+                                      minimumSize: const Size(
+                                        double.infinity,
+                                        44,
+                                      ),
                                       backgroundColor: theme.primaryColor,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
@@ -1800,7 +2125,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                       elevation: 0,
                                     ),
                                     onPressed: () async {
-                                      if (!fromAddStop && selectedPickings.isEmpty) {
+                                      if (!fromAddStop &&
+                                          selectedPickings.isEmpty) {
                                         setState(() => shouldValidate = true);
                                         if (!popCalled) {
                                           popCalled = true;
@@ -1825,12 +2151,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           _isNavigationStarted = false;
                                           RouteNavigationBus.set(false);
                                         }
-                                        sourceSearchController.text = sourceController.text;
+                                        sourceSearchController.text =
+                                            sourceController.text;
                                       });
                                       await _getOptimizedRoute();
                                       if (mounted) setState(() {});
                                     },
-                                    icon: const Icon(HugeIcons.strokeRoundedNavigation03, size: 18),
+                                    icon: const Icon(
+                                      HugeIcons.strokeRoundedNavigation03,
+                                      size: 18,
+                                    ),
                                     label: const FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
@@ -1838,7 +2168,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                         maxLines: 1,
                                         softWrap: false,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1900,54 +2232,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 6),
-        child: RequiredLabel(
-          text,
-          isRequired: isRequired,
-        ),
+        child: RequiredLabel(text, isRequired: isRequired),
       ),
     );
   }
-
-  /// Returns a borderless, filled [InputDecoration] matching the [MoboTextField]
-  /// design — no resting border, soft fill, brand-colored focus ring. Used by
-  /// the Pickings dropdown (and its search box) so it matches the text fields.
-  InputDecoration _fieldDecoration(bool isDark, String label) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    final fill = isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB);
-    OutlineInputBorder borderOf(Color color, double width) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: color, width: width),
-        );
-    return InputDecoration(
-      hintText: label,
-      hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.5)),
-      isDense: true,
-      filled: true,
-      fillColor: fill,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: borderOf(Colors.transparent, 0),
-      enabledBorder: borderOf(Colors.transparent, 0),
-      focusedBorder: borderOf(AppStyle.primaryColor, 1),
-      errorBorder: borderOf(Colors.transparent, 0),
-      focusedErrorBorder: borderOf(AppStyle.primaryColor, 1),
-    );
-  }
-
-  /// Soft shadow used behind filled fields so they get the elevated
-  /// "no border + shadow" look of [MoboTextField].
-  BoxDecoration get _fieldShadow => BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      );
 
   Widget _buildCurrentLocationChip({
     required bool isDark,
@@ -1991,21 +2279,20 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     ),
                     if (_polylines.isNotEmpty)
                       PolylineLayer(polylines: _polylines),
-                    MarkerLayer(markers: [
-                      ..._markers,
-                      if (_movingMarker != null) _movingMarker!,
-                    ]),
+                    MarkerLayer(
+                      markers: [
+                        ..._markers,
+                        if (_movingMarker != null) _movingMarker!,
+                      ],
+                    ),
                   ],
                 ),
 
-                if (!isOnline)
-                  ErrorStateWidget(
-                    title: 'No Internet Connection',
-                    message: 'Internet is not accessible. Please check your connection.',
-                    onRetry: _initializeServices,
-                  ),
+                if (!isOnline) ErrorStateWidget(onRetry: _initializeServices),
 
-                if (!_infoCard && _showLocationNames && !_isNavigationStarted) ...[
+                if (!_infoCard &&
+                    _showLocationNames &&
+                    !_isNavigationStarted) ...[
                   Positioned(
                     top: 40,
                     left: 16,
@@ -2026,7 +2313,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                       routeDistance: _routeDistance,
                       legInfo: _legInfo,
                       routeError: _routeError,
-                      onStartPressed: (_routeError == null &&
+                      onStartPressed:
+                          (_routeError == null &&
                               _sourceLatLng != null &&
                               _stops.isNotEmpty)
                           ? _startNavigation
@@ -2044,9 +2332,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     top: 40,
                     left: 16,
                     right: 16,
-                    child: NavigationHeader(
-                      onClose: _resetNavigation,
-                    ),
+                    child: NavigationHeader(onClose: _resetNavigation),
                   ),
                   Positioned(
                     bottom: 0,
@@ -2091,101 +2377,117 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             ),
 
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-          bottom: _isNavigationStarted ? 310 : 0,
-        ),
+        padding: EdgeInsets.only(bottom: _isNavigationStarted ? 310 : 0),
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (_showOtherFABs) ...[
-            FloatingActionButton(
-              heroTag: 'routeEnterRoot',
-              backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: AppStyle.accentOf(context),
-              elevation: 4,
-              onPressed: _showEnterRootPopup,
-              child: const Icon(HugeIcons.strokeRoundedRoute03),
-            ),
-            const SizedBox(height: 10),
-            FloatingActionButton(
-              heroTag: 'routeRecenterInitial',
-              backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-              foregroundColor: AppStyle.accentOf(context),
-              elevation: 4,
-              onPressed: () {
-                if (_initialCameraPosition != null) {
-                  _mapController.move(_initialCameraPosition!, 15.0);
-                }
-              },
-              child: const Icon(HugeIcons.strokeRoundedCenterFocus),
-            ),
-            const SizedBox(height: 10),
-          ],
-          if (_showLayer)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (!_showOtherFABs)
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeOutCubic,
-                    builder: (_, v, child) => ClipRect(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        widthFactor: v,
-                        child: child,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildMapTypeIcon('basic/main',
-                            HugeIcons.strokeRoundedMaps, 'Normal'),
-                        _buildMapTypeIcon('sat/main',
-                            HugeIcons.strokeRoundedSatellite02, 'Satellite'),
-                        _buildMapTypeIcon('basic/night',
-                            HugeIcons.strokeRoundedMountain, 'Night'),
-                        _buildMapTypeIcon('hybrid/main',
-                            HugeIcons.strokeRoundedGlobe02, 'Hybrid'),
-                        const SizedBox(width: 8),
-                      ],
-                    ),
-                  ),
-                FloatingActionButton(
-                  backgroundColor:
-                      isDark ? const Color(0xFF2C2C3E) : Colors.white,
-                  foregroundColor:
-                      AppStyle.accentOf(context),
-                  elevation: 4,
-                  heroTag: 'mapTypeToggle',
-                  tooltip: 'Change Map Style',
-                  onPressed: () =>
-                      setState(() => _showOtherFABs = !_showOtherFABs),
-                  child: const Icon(HugeIcons.strokeRoundedGlobal),
-                ),
-              ],
-            ),
-          if (_isNavigationStarted) ...[
-            if (_isMapManuallyMoved && _currentLatLng != null) ...[
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (_showOtherFABs) ...[
+              FloatingActionButton(
+                heroTag: 'routeEnterRoot',
+                backgroundColor: isDark
+                    ? const Color(0xFF2C2C3E)
+                    : Colors.white,
+                foregroundColor: AppStyle.accentOf(context),
+                elevation: 4,
+                onPressed: _showEnterRootPopup,
+                child: const Icon(HugeIcons.strokeRoundedRoute03),
+              ),
               const SizedBox(height: 10),
               FloatingActionButton(
-                heroTag: 'routeRecenterCurrent',
-                backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-                foregroundColor: AppStyle.primaryColor,
+                heroTag: 'routeRecenterInitial',
+                backgroundColor: isDark
+                    ? const Color(0xFF2C2C3E)
+                    : Colors.white,
+                foregroundColor: AppStyle.accentOf(context),
                 elevation: 4,
-                tooltip: 'Re-center on current location',
                 onPressed: () {
-                  _mapController.move(_currentLatLng!, 17.0);
-                  setState(() => _isMapManuallyMoved = false);
+                  if (_initialCameraPosition != null) {
+                    _mapController.move(_initialCameraPosition!, 15.0);
+                  }
                 },
-                child: const Icon(HugeIcons.strokeRoundedLocation03),
+                child: const Icon(HugeIcons.strokeRoundedCenterFocus),
               ),
+              const SizedBox(height: 10),
+            ],
+            if (_showLayer)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (!_showOtherFABs)
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, v, child) => ClipRect(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          widthFactor: v,
+                          child: child,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildMapTypeIcon(
+                            'basic/main',
+                            HugeIcons.strokeRoundedMaps,
+                            'Normal',
+                          ),
+                          _buildMapTypeIcon(
+                            'sat/main',
+                            HugeIcons.strokeRoundedSatellite02,
+                            'Satellite',
+                          ),
+                          _buildMapTypeIcon(
+                            'basic/night',
+                            HugeIcons.strokeRoundedMountain,
+                            'Night',
+                          ),
+                          _buildMapTypeIcon(
+                            'hybrid/main',
+                            HugeIcons.strokeRoundedGlobe02,
+                            'Hybrid',
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  FloatingActionButton(
+                    backgroundColor: isDark
+                        ? const Color(0xFF2C2C3E)
+                        : Colors.white,
+                    foregroundColor: AppStyle.accentOf(context),
+                    elevation: 4,
+                    heroTag: 'mapTypeToggle',
+                    tooltip: 'Change Map Style',
+                    onPressed: () =>
+                        setState(() => _showOtherFABs = !_showOtherFABs),
+                    child: const Icon(HugeIcons.strokeRoundedGlobal),
+                  ),
+                ],
+              ),
+            if (_isNavigationStarted) ...[
+              if (_isMapManuallyMoved && _currentLatLng != null) ...[
+                const SizedBox(height: 10),
+                FloatingActionButton(
+                  heroTag: 'routeRecenterCurrent',
+                  backgroundColor: isDark
+                      ? const Color(0xFF2C2C3E)
+                      : Colors.white,
+                  foregroundColor: AppStyle.primaryColor,
+                  elevation: 4,
+                  tooltip: 'Re-center on current location',
+                  onPressed: () {
+                    _mapController.move(_currentLatLng!, 17.0);
+                    setState(() => _isMapManuallyMoved = false);
+                  },
+                  child: const Icon(HugeIcons.strokeRoundedLocation03),
+                ),
+              ],
             ],
           ],
-        ],
         ),
       ),
     );
@@ -2227,15 +2529,16 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
 
     if (_currentLatLng != null && _sourceLatLng != null) {
-      final distanceToStart =
-          mapService.distanceBetweenPoints(_currentLatLng!, _sourceLatLng!);
+      final distanceToStart = mapService.distanceBetweenPoints(
+        _currentLatLng!,
+        _sourceLatLng!,
+      );
       if (distanceToStart > 5000) {
         if (!mounted) return;
         final km = (distanceToStart / 1000).toStringAsFixed(1);
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) {
-            final dark = Theme.of(ctx).brightness == Brightness.dark;
             return CommonDialog(
               title: 'Far from Route Start',
               message:
@@ -2278,11 +2581,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
     _locationSubscription?.cancel();
     LatLng? lastPosition;
-    List<LatLng> currentPolylinePoints =
-        _polylines.isNotEmpty ? _polylines.first.points : [];
+    List<LatLng> currentPolylinePoints = _polylines.isNotEmpty
+        ? _polylines.first.points
+        : [];
 
-    _locationSubscription =
-        _location.onLocationChanged.listen((locationData) async {
+    _locationSubscription = _location.onLocationChanged.listen((
+      locationData,
+    ) async {
       if (locationData.latitude == null || locationData.longitude == null) {
         return;
       }
@@ -2298,15 +2603,18 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
       if (currentPolylinePoints.isNotEmpty) {
         final distance = mapService.distanceToPolyline(
-            currentLatLng, currentPolylinePoints);
+          currentLatLng,
+          currentPolylinePoints,
+        );
         if (distance > 50.0) {
           setState(() {
             _sourceLatLng = currentLatLng;
             sourceController.text = 'Your Location';
           });
           await _getOptimizedRoute();
-          currentPolylinePoints =
-              _polylines.isNotEmpty ? _polylines.first.points : [];
+          currentPolylinePoints = _polylines.isNotEmpty
+              ? _polylines.first.points
+              : [];
           if (_polylines.isEmpty) {
             await mapService.playWrongPathSound();
             if (mounted) {
@@ -2421,7 +2729,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       ),
     );
   }
-
 }
 
 /// Animated "Your location / Using GPS" chip with a light-green pulsing dot.
@@ -2456,12 +2763,14 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
       duration: const Duration(milliseconds: 1200),
     )..repeat();
 
-    _pulseScale = Tween<double>(begin: 1.0, end: 3.2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _pulseOpacity = Tween<double>(begin: 0.7, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _pulseScale = Tween<double>(
+      begin: 1.0,
+      end: 3.2,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _pulseOpacity = Tween<double>(
+      begin: 0.7,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -2477,12 +2786,13 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: widget.isDark ? const Color(0xFF2A2A2A) : const Color(0xffF8FAFB),
+        color: widget.isDark
+            ? const Color(0xFF2A2A2A)
+            : const Color(0xffF8FAFB),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-
           ClipOval(
             child: SizedBox(
               width: 54,
@@ -2490,7 +2800,6 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-
                   AnimatedBuilder(
                     animation: _controller,
                     builder: (_, __) => Opacity(
@@ -2509,19 +2818,19 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
                     ),
                   ),
 
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: _green,
-                    shape: BoxShape.circle,
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: const BoxDecoration(
+                      color: _green,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      HugeIcons.strokeRoundedGps01,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(
-                    HugeIcons.strokeRoundedGps01,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
                 ],
               ),
             ),
@@ -2537,7 +2846,9 @@ class _GpsLocationChipState extends State<_GpsLocationChip>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: widget.isDark ? Colors.white : const Color(0xFF202124),
+                    color: widget.isDark
+                        ? Colors.white
+                        : const Color(0xFF202124),
                   ),
                 ),
                 const SizedBox(height: 1),

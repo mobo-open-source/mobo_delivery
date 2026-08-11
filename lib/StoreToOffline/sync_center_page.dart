@@ -70,75 +70,87 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
       final data = c.pickingData;
       final partner = (data['partnerName'] ?? '').toString();
       final opType = (data['operationTypeName'] ?? '').toString();
-      rows.add(_PendingRow(
-        group: 'New Pickings',
-        icon: HugeIcons.strokeRoundedAddCircle,
-        color: Colors.blue,
-        title: partner.isNotEmpty ? partner : 'New picking',
-        subtitle: opType.isNotEmpty ? opType : 'Created offline',
-        onDelete: () => _hive.clearPendingCreates(c.pickingId),
-      ));
+      rows.add(
+        _PendingRow(
+          group: 'New Pickings',
+          icon: HugeIcons.strokeRoundedAddCircle,
+          color: Colors.blue,
+          title: partner.isNotEmpty ? partner : 'New picking',
+          subtitle: opType.isNotEmpty ? opType : 'Created offline',
+          onDelete: () => _hive.clearPendingCreates(c.pickingId),
+        ),
+      );
     }
 
     for (final PendingUpdates u in results[1] as List<PendingUpdates>) {
       final keys = u.pickingData.keys
           .where((k) => u.pickingData[k] != null)
           .join(', ');
-      rows.add(_PendingRow(
-        group: 'Header Updates',
-        icon: HugeIcons.strokeRoundedEdit02,
-        color: Colors.orange,
-        title: 'Picking #${u.pickingId}',
-        subtitle: keys.isEmpty ? 'Field changes' : 'Changed: $keys',
-        onDelete: () => _hive.clearPendingUpdates(u.pickingId),
-      ));
+      rows.add(
+        _PendingRow(
+          group: 'Header Updates',
+          icon: HugeIcons.strokeRoundedEdit02,
+          color: Colors.orange,
+          title: 'Picking #${u.pickingId}',
+          subtitle: keys.isEmpty ? 'Field changes' : 'Changed: $keys',
+          onDelete: () => _hive.clearPendingUpdates(u.pickingId),
+        ),
+      );
     }
 
     for (final ProductUpdates p in results[2] as List<ProductUpdates>) {
-      rows.add(_PendingRow(
-        group: 'Product Line Changes',
-        icon: HugeIcons.strokeRoundedPackage,
-        color: AppStyle.primaryColor,
-        title: p.pickingName?.isNotEmpty == true
-            ? p.pickingName!
-            : 'Picking #${p.pickingId}',
-        subtitle: 'Product line add / edit',
-        onDelete: () => _hive.clearPendingProductUpdates(p.pickingId),
-      ));
+      rows.add(
+        _PendingRow(
+          group: 'Product Line Changes',
+          icon: HugeIcons.strokeRoundedPackage,
+          color: AppStyle.primaryColor,
+          title: p.pickingName?.isNotEmpty == true
+              ? p.pickingName!
+              : 'Picking #${p.pickingId}',
+          subtitle: 'Product line add / edit',
+          onDelete: () => _hive.clearPendingProductUpdates(p.pickingId),
+        ),
+      );
     }
 
     for (final PendingValidation v in results[3] as List<PendingValidation>) {
-      rows.add(_PendingRow(
-        group: 'Validations',
-        icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-        color: Colors.green,
-        title: 'Picking #${v.pickingId}',
-        subtitle: 'Validate transfer',
-        onDelete: () => _hive.clearPendingValidation(v.pickingId),
-      ));
+      rows.add(
+        _PendingRow(
+          group: 'Validations',
+          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+          color: Colors.green,
+          title: 'Picking #${v.pickingId}',
+          subtitle: 'Validate transfer',
+          onDelete: () => _hive.clearPendingValidation(v.pickingId),
+        ),
+      );
     }
 
     for (final PendingValidation c in results[4] as List<PendingValidation>) {
-      rows.add(_PendingRow(
-        group: 'Cancellations',
-        icon: HugeIcons.strokeRoundedCancelCircle,
-        color: Colors.red,
-        title: 'Picking #${c.pickingId}',
-        subtitle: 'Cancel transfer',
-        onDelete: () => _hive.clearPendingCancellation(c.pickingId),
-      ));
+      rows.add(
+        _PendingRow(
+          group: 'Cancellations',
+          icon: HugeIcons.strokeRoundedCancelCircle,
+          color: Colors.red,
+          title: 'Picking #${c.pickingId}',
+          subtitle: 'Cancel transfer',
+          onDelete: () => _hive.clearPendingCancellation(c.pickingId),
+        ),
+      );
     }
 
     final attachments = await _hive.getPendingAttachmentsMap();
     attachments.forEach((key, PendingAttachment a) {
-      rows.add(_PendingRow(
-        group: 'Attachments',
-        icon: HugeIcons.strokeRoundedAttachment,
-        color: Colors.teal,
-        title: a.fileName,
-        subtitle: 'Attach to picking #${a.pickingId}',
-        onDelete: () => _hive.clearPendingAttachmentByKey(key),
-      ));
+      rows.add(
+        _PendingRow(
+          group: 'Attachments',
+          icon: HugeIcons.strokeRoundedAttachment,
+          color: Colors.teal,
+          title: a.fileName,
+          subtitle: 'Attach to picking #${a.pickingId}',
+          onDelete: () => _hive.clearPendingAttachmentByKey(key),
+        ),
+      );
     });
 
     if (!mounted) return;
@@ -159,17 +171,24 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
       CustomSnackbar.showWarning(context, 'A sync is already in progress.');
     } else if (result.isEmpty) {
       CustomSnackbar.showInfo(context, 'Nothing to sync.');
-    } else if (result.failed == 0) {
-      CustomSnackbar.showSuccess(
-        context,
-        'Synced ${result.succeeded} offline change'
-        '${result.succeeded == 1 ? '' : 's'}.',
-      );
     } else {
-      CustomSnackbar.showWarning(
-        context,
-        'Synced ${result.succeeded} — ${result.failed} still pending retry.',
-      );
+      final dropped = result.droppedLines > 0
+          ? ' ${result.droppedLines} invalid product '
+                'line${result.droppedLines == 1 ? '' : 's'} skipped.'
+          : '';
+      if (result.failed == 0) {
+        CustomSnackbar.showSuccess(
+          context,
+          'Synced ${result.succeeded} offline change'
+          '${result.succeeded == 1 ? '' : 's'}.$dropped',
+        );
+      } else {
+        CustomSnackbar.showWarning(
+          context,
+          'Synced ${result.succeeded} — ${result.failed} still pending '
+          'retry.$dropped',
+        );
+      }
     }
     await _load();
   }
@@ -222,31 +241,29 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _rows.isEmpty
-              ? _buildEmptyState(isDark)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    children: [
-                      for (final section in sections) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-                          child: Text(
-                            '$section (${grouped[section]!.length})',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
-                            ),
-                          ),
+          ? _buildEmptyState(isDark)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                children: [
+                  for (final section in sections) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+                      child: Text(
+                        '$section (${grouped[section]!.length})',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
-                        ...grouped[section]!.map((r) => _buildCard(r, isDark)),
-                      ],
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                    ...grouped[section]!.map((r) => _buildCard(r, isDark)),
+                  ],
+                ],
+              ),
+            ),
       bottomNavigationBar: _rows.isEmpty
           ? null
           : SafeArea(

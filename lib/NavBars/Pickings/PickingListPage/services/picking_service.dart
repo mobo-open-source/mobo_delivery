@@ -298,9 +298,11 @@ class PickingService {
       final session = await CompanySessionManager.getCurrentSession();
       final uid = session!.userId;
 
-      final hasExplicitTypeChip = filters != null &&
-          filters.any((f) =>
-              f == 'receipt' || f == 'deliveries' || f == 'internal');
+      final hasExplicitTypeChip =
+          filters != null &&
+          filters.any(
+            (f) => f == 'receipt' || f == 'deliveries' || f == 'internal',
+          );
 
       if (filters != null && filters.isNotEmpty) {
         baseDomain.addAll(buildFilterDomain(filters, uid!));
@@ -320,9 +322,7 @@ class PickingService {
           'kwargs': {},
         });
         globalPickingCount = (count as int?) ?? 0;
-      } catch (_) {
-
-      }
+      } catch (_) {}
 
       final warehouseTasks = <Future<void>>[];
       for (var warehouse in warehouseItems ?? []) {
@@ -336,16 +336,18 @@ class PickingService {
         final int offset = page * pageSize;
         currentPage[warehouseName] = page;
 
-        warehouseTasks.add(_fetchWarehousePickings(
-          warehouseName: warehouseName,
-          warehouseId: warehouseId,
-          page: page,
-          offset: offset,
-          baseDomain: baseDomain,
-          type: type,
-          hasExplicitTypeChip: hasExplicitTypeChip,
-          version: version,
-        ));
+        warehouseTasks.add(
+          _fetchWarehousePickings(
+            warehouseName: warehouseName,
+            warehouseId: warehouseId,
+            page: page,
+            offset: offset,
+            baseDomain: baseDomain,
+            type: type,
+            hasExplicitTypeChip: hasExplicitTypeChip,
+            version: version,
+          ),
+        );
       }
 
       await Future.wait(warehouseTasks);
@@ -386,7 +388,8 @@ class PickingService {
         },
       });
 
-      final List<int> pickingTypeIds = (pickingTypes as List?)
+      final List<int> pickingTypeIds =
+          (pickingTypes as List?)
               ?.map((e) => int.parse(e['id'].toString()))
               .toList() ??
           [];
@@ -439,37 +442,36 @@ class PickingService {
 
       final List<Map<String, dynamic>> mappedPickings =
           (pickingItems as List?)?.map((picking) {
-                return {
-                  'id': picking['id'].toString(),
-                  'item': picking['name'],
-                  'scheduled_date': picking['scheduled_date'],
-                  'state': picking['state'],
-                  'origin': picking['origin'],
-                  'picking_type': picking['picking_type_id'] is List
-                      ? picking['picking_type_id'][1]
-                      : '',
-                  'partner_id': picking['partner_id'] is List
-                      ? picking['partner_id'][1]
-                      : '',
-                  'partner_id_int': picking['partner_id'] is List
-                      ? picking['partner_id'][0].toString()
-                      : '0',
-                  'picking_type_code': type ?? 'outgoing',
-                  if (version < 19) ...{
-                    'group_id': picking['group_id'] is List
-                        ? picking['group_id'][1]
-                        : '',
-                    'group_id_int': picking['group_id'] is List
-                        ? picking['group_id'][0].toString()
-                        : '0',
-                  },
-                };
-              }).toList() ??
-              [];
+            return {
+              'id': picking['id'].toString(),
+              'item': picking['name'],
+              'scheduled_date': picking['scheduled_date'],
+              'state': picking['state'],
+              'origin': picking['origin'],
+              'picking_type': picking['picking_type_id'] is List
+                  ? picking['picking_type_id'][1]
+                  : '',
+              'partner_id': picking['partner_id'] is List
+                  ? picking['partner_id'][1]
+                  : '',
+              'partner_id_int': picking['partner_id'] is List
+                  ? picking['partner_id'][0].toString()
+                  : '0',
+              'picking_type_code': type ?? 'outgoing',
+              if (version < 19) ...{
+                'group_id': picking['group_id'] is List
+                    ? picking['group_id'][1]
+                    : '',
+                'group_id_int': picking['group_id'] is List
+                    ? picking['group_id'][0].toString()
+                    : '0',
+              },
+            };
+          }).toList() ??
+          [];
 
       allPickingsByLocation[warehouseName] = mappedPickings;
-      hasNextPage[warehouseName] =
-          (pickingCount ?? 0) > (page + 1) * pageSize;
+      hasNextPage[warehouseName] = (pickingCount ?? 0) > (page + 1) * pageSize;
     } on OdooSessionExpiredException {
       rethrow;
     } catch (_) {
