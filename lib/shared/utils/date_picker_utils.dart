@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Extra space under the picker's Cancel/OK labels so the row doesn't sit
+/// flush against the dialog's bottom edge.
+const double _kActionBottomGap = 22;
+
 /// Utility class for showing consistently themed date and time pickers
 /// across the app. Matches the mobo sales app picker design.
 class DatePickerUtils {
@@ -41,6 +45,12 @@ class DatePickerUtils {
               style: TextButton.styleFrom(
                 foregroundColor: primaryColor,
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  10,
+                  16,
+                  _kActionBottomGap,
+                ),
               ),
             ),
             datePickerTheme: DatePickerThemeData(
@@ -129,6 +139,12 @@ class DatePickerUtils {
               style: TextButton.styleFrom(
                 foregroundColor: primaryColor,
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  10,
+                  16,
+                  _kActionBottomGap,
+                ),
               ),
             ),
 

@@ -3,10 +3,10 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
-import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/dialogs/common_dialog.dart';
 import '../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -682,21 +682,15 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          MoboButton.primary(
-            label: 'Add Document',
-            icon: HugeIcons.strokeRoundedAdd01,
-            height: 42,
-            borderRadius: 10,
-            fullWidth: false,
-            onPressed: _busy ? null : _showAddOptions,
-          ),
+          _buildAddDocumentButton(isDark),
         ],
       ),
     );
   }
 
-  /// Inline filled "Add Document" CTA at the end of the list — primary color
-  /// to match the app's in-app actions (black is reserved for the login flow).
+  /// Inline filled "Add Document" CTA shown once the picking already has
+  /// documents — keeps the primary colour; the grey variant is only for the
+  /// empty state.
   Widget _addDocumentCard() {
     return Material(
       color: AppStyle.primaryColor,
@@ -978,5 +972,43 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     if (s == null || s.isEmpty || s == 'false') return null;
 
     return s.split(' ').first;
+  }
+
+  /// Full-width grey "Add Document" button, matching the operations add
+  /// button used in the create-picking flow.
+  Widget _buildAddDocumentButton(bool isDark) {
+    final bgColor = isDark ? Colors.grey[700]! : Colors.grey[500]!;
+    const fgColor = Colors.white;
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: _busy ? null : _showAddOptions,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(HugeIcons.strokeRoundedAdd01, size: 18, color: fgColor),
+            const SizedBox(width: 8),
+            Text(
+              'Add Document',
+              style: GoogleFonts.manrope(
+                color: fgColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -73,7 +73,7 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
       rows.add(
         _PendingRow(
           group: 'New Pickings',
-          icon: HugeIcons.strokeRoundedAddCircle,
+          icon: HugeIcons.strokeRoundedPackageAdd,
           color: Colors.blue,
           title: partner.isNotEmpty ? partner : 'New picking',
           subtitle: opType.isNotEmpty ? opType : 'Created offline',

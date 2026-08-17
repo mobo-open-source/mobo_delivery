@@ -16,6 +16,9 @@ class SectionHeader extends StatelessWidget {
   /// Overrides the title's color. Defaults to [MoboHomeTheme.textPrimary].
   final Color? titleColor;
 
+  /// Icon shown after [trailingLabel]. Defaults to a right chevron.
+  final IconData trailingIcon;
+
   const SectionHeader({
     super.key,
     required this.title,
@@ -23,6 +26,7 @@ class SectionHeader extends StatelessWidget {
     this.onTrailingTap,
     this.titleFontSize = 16,
     this.titleColor,
+    this.trailingIcon = HugeIcons.strokeRoundedArrowRight01,
   });
 
   @override
@@ -62,11 +66,7 @@ class SectionHeader extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 3),
-                  Icon(
-                    HugeIcons.strokeRoundedArrowRight01,
-                    size: 14,
-                    color: linkColor,
-                  ),
+                  Icon(trailingIcon, size: 14, color: linkColor),
                 ],
               ),
             ),

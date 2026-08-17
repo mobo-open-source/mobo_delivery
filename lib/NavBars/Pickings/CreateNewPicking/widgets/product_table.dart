@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../../shared/utils/globals.dart';
-import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../models/stock_move.dart';
 
 class ProductTable extends StatelessWidget {
@@ -56,7 +55,7 @@ class ProductTable extends StatelessWidget {
             color: isDark ? Colors.white54 : Colors.grey[600],
           ),
         ),
-        TextButton.icon(
+        OutlinedButton.icon(
           onPressed: onAddLine,
           icon: const Icon(HugeIcons.strokeRoundedAdd01, size: 16),
           label: Text(
@@ -66,9 +65,16 @@ class ProductTable extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          style: TextButton.styleFrom(
+          style: OutlinedButton.styleFrom(
             foregroundColor: isDark ? Colors.white : Colors.black87,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            side: BorderSide(
+              color: isDark ? Colors.grey[600]! : Colors.grey[300]!,
+              width: 1,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -266,15 +272,50 @@ class ProductTable extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          MoboButton.primary(
-            label: 'Add product',
-            icon: HugeIcons.strokeRoundedAdd01,
-            height: 42,
-            borderRadius: 10,
-            fullWidth: false,
-            onPressed: onAddLine,
-          ),
+          _buildAddLineButton(isDark),
         ],
+      ),
+    );
+  }
+
+  /// Full-width grey "Add a product" button, matching the operations add
+  /// button used elsewhere in the create-picking flow.
+  Widget _buildAddLineButton(bool isDark) {
+    final bgColor = isDark ? Colors.grey[700]! : Colors.grey[500]!;
+    const fgColor = Colors.white;
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: onAddLine,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              HugeIcons.strokeRoundedPackageAdd,
+              size: 18,
+              color: fgColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Add a product',
+              style: GoogleFonts.manrope(
+                color: fgColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -14,8 +14,6 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final color = switch (kind) {
       StatusChipKind.late_ => Colors.red,
       StatusChipKind.waiting => Colors.orange,
@@ -23,10 +21,8 @@ class StatusChip extends StatelessWidget {
       StatusChipKind.done => Colors.green,
     };
 
-    final chipBg = isDark
-        ? Colors.white.withValues(alpha: 0.15)
-        : color.withValues(alpha: 0.10);
-    final labelColor = isDark ? Colors.white : color;
+    final chipBg = color.withValues(alpha: 0.10);
+    final labelColor = color;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),

@@ -229,7 +229,10 @@ class RequiredLabel extends StatelessWidget {
             ? const [
                 TextSpan(
                   text: ' *',
-                  style: TextStyle(color: Color(0xFFD32F2F)),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ]
             : null,

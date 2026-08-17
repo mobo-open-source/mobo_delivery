@@ -2203,8 +2203,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
   /// Builds a Mobo-style status badge matching the CRM design.
   Widget _buildStatusIndicator(String status) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     const Color statusGreen = Color(0xFF00A63E);
     const Color statusBlue = Color(0xFF3B82F6);
     const Color statusOrange = Color(0xFFF97316);
@@ -2247,9 +2245,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.15)
-            : color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(
@@ -2257,7 +2253,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.white : color,
+          color: color,
           letterSpacing: 0.1,
         ),
       ),
@@ -2543,9 +2539,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   value: 'mark_as_todo',
                                   child: Row(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         HugeIcons.strokeRoundedTask01,
-                                        color: Colors.green,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black54,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 12),
@@ -2600,10 +2598,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   value: 'validate',
                                   child: Row(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         HugeIcons
                                             .strokeRoundedCheckmarkCircle02,
-                                        color: Colors.green,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black54,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 12),
@@ -2633,9 +2633,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                       "Cancel",
                                       style: TextStyle(
                                         fontWeight: FontWeight.w500,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black54,
+                                        color: Colors.red,
                                       ),
                                     ),
                                   ],
@@ -4442,6 +4440,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       return Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (showWarn)
@@ -4484,20 +4483,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 ),
               )
             else
-              SizedBox(
-                height: 140,
-                child: Center(
-                  child: Text(
-                    'No products added yet',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? Colors.white54 : Colors.grey[500],
-                    ),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            if (canEdit) _addLineButton(isDark),
+              _buildEmptyProductsCard(isDark, showButton: canEdit),
           ],
         ),
       );
@@ -4521,7 +4507,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 ),
               ),
               if (canEdit)
-                TextButton.icon(
+                OutlinedButton.icon(
                   onPressed: _openAddLine,
                   icon: const Icon(HugeIcons.strokeRoundedAdd01, size: 16),
                   label: Text(
@@ -4531,11 +4517,18 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  style: TextButton.styleFrom(
+                  style: OutlinedButton.styleFrom(
                     foregroundColor: isDark ? Colors.white : Colors.black87,
+                    side: BorderSide(
+                      color: isDark ? Colors.grey[600]! : Colors.grey[300]!,
+                      width: 1,
+                    ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -4685,33 +4678,89 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     });
   }
 
+  /// Empty-products state, matching the create-picking page's design.
+  Widget _buildEmptyProductsCard(bool isDark, {required bool showButton}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[800] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[600]! : Colors.grey[350]!,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedPackage,
+            size: 40,
+            color: isDark ? Colors.grey[600] : Colors.grey[400],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No products added yet',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.manrope(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.grey[300] : Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Add a product to get started',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.manrope(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: isDark ? Colors.grey[500] : Colors.grey[500],
+            ),
+          ),
+          if (showButton) ...[
+            const SizedBox(height: 18),
+            _addLineButton(isDark),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Full-width grey "Add a product" button, matching the operations add
+  /// button used in the create-picking flow.
   Widget _addLineButton(bool isDark) {
-    return GestureDetector(
-      onTap: _openAddLine,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark
-                ? Colors.white24
-                : AppStyle.primaryColor.withValues(alpha: 0.5),
-            width: 1.2,
+    final bgColor = isDark ? Colors.grey[700]! : Colors.grey[500]!;
+    const fgColor = Colors.white;
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: _openAddLine,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               HugeIcons.strokeRoundedPackageAdd,
               size: 18,
-              color: AppStyle.accentOf(context),
+              color: fgColor,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Text(
               'Add a product',
-              style: TextStyle(
-                color: AppStyle.accentOf(context),
+              style: GoogleFonts.manrope(
+                color: fgColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
               ),

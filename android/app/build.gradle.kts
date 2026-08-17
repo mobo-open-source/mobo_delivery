@@ -23,7 +23,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.cybrosys.mobo_delivery"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "29.0.13113456 rc1"
+    ndkVersion = "29.0.13113456"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

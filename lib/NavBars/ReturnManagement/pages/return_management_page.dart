@@ -900,10 +900,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
 
   Widget _buildStatusBadge(String state, bool isDark, Color statusColor) {
     final String label = capitalizeFirstLetter(stateLabels[state] ?? state);
-    final textColor = isDark ? Colors.white : statusColor;
-    final backgroundColor = isDark
-        ? Colors.white.withValues(alpha: 0.15)
-        : statusColor.withValues(alpha: 0.10);
+    final textColor = statusColor;
+    final backgroundColor = statusColor.withValues(alpha: 0.10);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),

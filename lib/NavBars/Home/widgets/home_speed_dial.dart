@@ -15,11 +15,10 @@ import '../../Pickings/PickingListPage/services/picking_service.dart';
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
 
-/// Dashboard tab indices the speed-dial actions jump to.
+/// Dashboard tab index the "Plan route" action jumps to.
 const int _kRouteTabIndex = 2;
-const int _kDocumentsTabIndex = 4;
 
-/// Home's corner speed dial — New picking, Plan route, Attach doc.
+/// Home's corner speed dial — New picking, Plan route.
 class HomeSpeedDial extends StatelessWidget {
   const HomeSpeedDial({super.key});
 
@@ -80,17 +79,6 @@ class HomeSpeedDial extends StatelessWidget {
               (_) => RoutePlanBus.request(),
             );
           },
-        ),
-        _child(
-          icon: HugeIcons.strokeRoundedDocumentAttachment,
-          label: 'Attach doc',
-          childBg: childBg,
-          childFg: childFg,
-          labelBg: labelBg,
-          labelFg: labelFg,
-          onTap: () => context.read<DashboardBloc>().add(
-            const ChangeTab(_kDocumentsTabIndex),
-          ),
         ),
       ],
     );

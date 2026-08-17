@@ -805,15 +805,13 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.15)
-                : statusColor.withValues(alpha: 0.10),
+            color: statusColor.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             readableState,
             style: TextStyle(
-              color: isDark ? Colors.white : statusColor,
+              color: statusColor,
               fontWeight: FontWeight.w600,
               fontSize: 11,
               letterSpacing: 0.1,
@@ -1499,15 +1497,10 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                           vertical: 4,
                                                         ),
                                                     decoration: BoxDecoration(
-                                                      color: isDark
-                                                          ? Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.15,
-                                                                )
-                                                          : statusColor
-                                                                .withValues(
-                                                                  alpha: 0.10,
-                                                                ),
+                                                      color: statusColor
+                                                          .withValues(
+                                                            alpha: 0.10,
+                                                          ),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             12,
@@ -1518,9 +1511,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                                       style: TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600,
-                                                        color: isDark
-                                                            ? Colors.white
-                                                            : statusColor,
+                                                        color: statusColor,
                                                         fontSize: 11,
                                                         letterSpacing: 0.1,
                                                       ),

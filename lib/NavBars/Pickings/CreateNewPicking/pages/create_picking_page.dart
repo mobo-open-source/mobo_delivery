@@ -1062,11 +1062,11 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: isSelected
-            ? AppStyle.primaryColor
+            ? Colors.black
             : (isDark ? Colors.grey[800] : Colors.white),
         border: Border.all(
           color: isSelected
-              ? AppStyle.primaryColor
+              ? Colors.black
               : (isDark ? Colors.grey[600]! : Colors.grey[300]!),
           width: 1,
         ),

@@ -22,7 +22,7 @@ import '../widgets/section_header.dart';
 import '../widgets/stat_tile.dart';
 
 /// Bottom inset so the [HomeSpeedDial] never covers the last attention row.
-const double _kFabScrollInset = 72;
+const double _kFabScrollInset = 32;
 
 /// Bottom-nav index of the Pickings tab after Home is prepended.
 /// Kept as a named constant so the Home screen and any future deep-link
@@ -37,7 +37,7 @@ const int _kPickingsTabIndex = 1;
 ///   2. "Overview" section → 2×2 stat tiles, each opening the Pickings tab
 ///      pre-filtered via `PickingsFilterBus`
 ///   3. "Needs attention" section → picking rows or empty / skeleton state.
-///   4. Corner [HomeSpeedDial] — New picking, Plan route, Attach doc.
+///   4. Corner [HomeSpeedDial] — New picking, Plan route.
 ///
 /// All navigation routes into existing screens; nothing new is created here.
 class HomePage extends StatelessWidget {

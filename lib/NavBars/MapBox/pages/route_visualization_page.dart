@@ -27,6 +27,15 @@ import '../widgets/remaining_info_card.dart';
 import '../widgets/route_info_card.dart';
 import '../widgets/search_inputs.dart';
 
+/// Zoom bounds for the route map. Below [_kMinMapZoom] the tile server stops
+/// serving imagery, which is what left large blank areas when zooming out.
+const double _kMinMapZoom = 3;
+const double _kMaxMapZoom = 18;
+
+/// Ignore GPS jitter below roughly a metre so the pin doesn't rebuild the
+/// map on every tick while the device is stationary.
+const double _kMinPinMoveDegrees = 0.00001;
+
 /// Full-screen page for route planning and real-time navigation visualization.
 ///
 /// Features:
@@ -80,6 +89,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
   /// Static markers: start location + numbered stop pins.
   List<Marker> _markers = [];
+
+  /// The single current/source location pin, kept out of [_markers].
+  Marker? _currentLocationMarker;
 
   /// Live navigation marker (updated on every location event).
   Marker? _movingMarker;
@@ -813,7 +825,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         _sourceLatLng = currentLatLng;
         sourceController.text = 'Your Location';
       });
-      _addCurrentLocationMarker(currentLatLng);
+      _setCurrentLocationMarker(currentLatLng);
     } catch (_) {
       _useFallbackLocation();
     }
@@ -837,19 +849,27 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
   }
 
-  /// Places a green location pin at [position] representing current/source location.
-  void _addCurrentLocationMarker(LatLng position) {
+  /// Places the pin representing the current/source location.
+  ///
+  /// Held in its own field rather than appended to [_markers]: GPS readings
+  /// drift by a few metres each tick, so de-duplicating by coordinate never
+  /// matched and every update used to leave another pin behind.
+  void _setCurrentLocationMarker(LatLng position) {
+    if (!mounted) return;
+    final previous = _currentLocationMarker?.point;
+    if (previous != null &&
+        (previous.latitude - position.latitude).abs() < _kMinPinMoveDegrees &&
+        (previous.longitude - position.longitude).abs() < _kMinPinMoveDegrees) {
+      return;
+    }
     setState(() {
-      _markers = [
-        ..._markers.where((m) => m.point != position),
-        Marker(
-          point: position,
-          width: 40,
-          height: 50,
-          alignment: Alignment.bottomCenter,
-          child: _buildLocationPin(),
-        ),
-      ];
+      _currentLocationMarker = Marker(
+        point: position,
+        width: 40,
+        height: 50,
+        alignment: Alignment.bottomCenter,
+        child: _buildLocationPin(),
+      );
     });
   }
 
@@ -2263,6 +2283,17 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                   options: MapOptions(
                     initialCenter: _initialCameraPosition!,
                     initialZoom: 15.0,
+                    minZoom: _kMinMapZoom,
+                    maxZoom: _kMaxMapZoom,
+                    backgroundColor: isDark
+                        ? const Color(0xFF1B2733)
+                        : const Color(0xFFAAD3DF),
+                    cameraConstraint: CameraConstraint.contain(
+                      bounds: LatLngBounds(
+                        const LatLng(-85.0, -180.0),
+                        const LatLng(85.0, 180.0),
+                      ),
+                    ),
                     onPositionChanged: (position, hasGesture) {
                       if (hasGesture) {
                         setState(() => _isMapManuallyMoved = true);
@@ -2282,6 +2313,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     MarkerLayer(
                       markers: [
                         ..._markers,
+                        if (_currentLocationMarker != null)
+                          _currentLocationMarker!,
                         if (_movingMarker != null) _movingMarker!,
                       ],
                     ),
@@ -2680,6 +2713,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       _showOtherFABs = true;
       _polylines.clear();
       _markers.clear();
+      _currentLocationMarker = null;
       _movingMarker = null;
       _legInfo = [];
       _remainingLegInfo = [];
@@ -2697,7 +2731,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       _showStopLocationFields = false;
       _stops.clear();
       if (_currentLatLng != null) {
-        _addCurrentLocationMarker(_currentLatLng!);
+        _setCurrentLocationMarker(_currentLatLng!);
         _mapController.move(_currentLatLng!, 15);
       }
     });

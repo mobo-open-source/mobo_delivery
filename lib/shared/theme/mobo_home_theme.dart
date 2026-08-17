@@ -70,7 +70,13 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
 
   static const _primary = AppStyle.primaryColor;
 
-  static const _readyBlue = Color(0xFF2196F3);
+  /// Status accents, matching the sales-app dashboard's Material-500 palette.
+  /// One value per status, shared by both themes — light tints it at 10% and
+  /// dark at 60% inside the tile, exactly as the sales card does.
+  static const _statusBlue = Color(0xFF2196F3);
+  static const _statusOrange = Color(0xFFFF9800);
+  static const _statusRed = Color(0xFFF44336);
+  static const _statusGreen = Color(0xFF4CAF50);
 
   /// Light variant. Maroon slots use the app's canonical primary (#C03355);
   /// remaining values follow the Mobo Home design tokens.
@@ -83,15 +89,15 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     textMuted: const Color(0xFF9C9C95),
     skeletonBase: const Color(0xFFEDEDF0),
     skeletonHighlight: const Color(0xFFE2E2E6),
-    readyFg: _readyBlue,
-    readyBg: _readyBlue.withValues(alpha: 0.1),
-    waitFg: const Color(0xFFB27400),
-    waitBg: const Color(0xFFFBEFD5),
-    lateFg: const Color(0xFFC73E3E),
-    lateBg: const Color(0xFFFBE7E7),
-    lateBorder: const Color(0xFFF1C4C4),
-    doneFg: const Color(0xFF1F6840),
-    doneBg: const Color(0xFFE5F3EC),
+    readyFg: _statusBlue,
+    readyBg: _statusBlue.withValues(alpha: 0.1),
+    waitFg: _statusOrange,
+    waitBg: _statusOrange.withValues(alpha: 0.1),
+    lateFg: _statusRed,
+    lateBg: _statusRed.withValues(alpha: 0.1),
+    lateBorder: _statusRed.withValues(alpha: 0.35),
+    doneFg: _statusGreen,
+    doneBg: _statusGreen.withValues(alpha: 0.1),
     chipBg: const Color(0x26FFFFFF),
     chipBorder: const Color(0x4DFFFFFF),
     accent: _primary,
@@ -122,15 +128,15 @@ class MoboHomeTheme extends ThemeExtension<MoboHomeTheme> {
     skeletonBase: const Color(0xFF242428),
     skeletonHighlight: const Color(0xFF2E2E33),
 
-    readyFg: _readyBlue,
-    readyBg: _readyBlue.withValues(alpha: 0.2),
-    waitFg: const Color(0xFFE4B75A),
-    waitBg: const Color(0x2EC58B17),
-    lateFg: const Color(0xFFEF4444),
-    lateBg: const Color(0x38EF4444),
-    lateBorder: const Color(0x59EF4444),
-    doneFg: const Color(0xFF6FCB9F),
-    doneBg: const Color(0x2E2E8B57),
+    readyFg: _statusBlue,
+    readyBg: _statusBlue.withValues(alpha: 0.2),
+    waitFg: _statusOrange,
+    waitBg: _statusOrange.withValues(alpha: 0.2),
+    lateFg: _statusRed,
+    lateBg: _statusRed.withValues(alpha: 0.2),
+    lateBorder: _statusRed.withValues(alpha: 0.35),
+    doneFg: _statusGreen,
+    doneBg: _statusGreen.withValues(alpha: 0.2),
     chipBg: const Color(0x21FFFFFF),
     chipBorder: const Color(0x38FFFFFF),
     accent: _primary,

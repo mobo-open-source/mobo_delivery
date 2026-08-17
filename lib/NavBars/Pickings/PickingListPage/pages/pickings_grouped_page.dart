@@ -1303,7 +1303,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         backgroundColor: AppStyle.primaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const HugeIcon(
-          icon: HugeIcons.strokeRoundedFileAdd,
+          icon: HugeIcons.strokeRoundedPackageAdd,
           size: 30,
           color: Colors.white,
         ),
@@ -1503,10 +1503,8 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         label = capitalizeFirstLetter(stateMap[state] ?? state);
     }
 
-    final backgroundColor = isDark
-        ? Colors.white.withValues(alpha: 0.15)
-        : color.withValues(alpha: 0.10);
-    final textColor = isDark ? Colors.white : color;
+    final backgroundColor = color.withValues(alpha: 0.10);
+    final textColor = color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
