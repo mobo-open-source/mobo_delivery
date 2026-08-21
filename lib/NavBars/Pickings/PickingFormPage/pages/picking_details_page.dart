@@ -2836,81 +2836,131 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Column(
-                                    children: [
-                                      InfoRow(
-                                        label: "Delivery Address",
-                                        value: pickings[0].partnerId,
-                                        isEditing: _isEditing,
-                                        prefixIcon:
-                                            HugeIcons.strokeRoundedLocation01,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black87,
-                                        dropdownItems: partnerList
-                                            .map((p) => p.toJson())
-                                            .toList(),
-                                        selectedId:
-                                            selectedPartnerId ??
-                                            (pickings[0]
-                                                        .partnerId
-                                                        ?.isNotEmpty ??
-                                                    false
-                                                ? pickings[0].partnerId![0]
-                                                : null),
-                                        onDropdownChanged: (value) {
-                                          setState(() {
-                                            selectedPartnerId = value?['id'];
-                                          });
-                                        },
-                                      ),
+                                Column(
+                                  children: [
+                                    InfoRow(
+                                      label: "Delivery Address",
+                                      value: pickings[0].partnerId,
+                                      isEditing: _isEditing,
+                                      prefixIcon:
+                                          HugeIcons.strokeRoundedLocation01,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
+                                      dropdownItems: partnerList
+                                          .map((p) => p.toJson())
+                                          .toList(),
+                                      selectedId:
+                                          selectedPartnerId ??
+                                          (pickings[0].partnerId?.isNotEmpty ??
+                                                  false
+                                              ? pickings[0].partnerId![0]
+                                              : null),
+                                      onDropdownChanged: (value) {
+                                        setState(() {
+                                          selectedPartnerId = value?['id'];
+                                        });
+                                      },
+                                    ),
 
-                                      InfoRow(
-                                        label: "Operation Type",
-                                        value: pickings[0].pickingTypeId,
-                                        isEditing: _isEditing,
-                                        controller: operationTypeController,
-                                        dropdownItems: operationTypesList,
-                                        selectedId:
-                                            _selectedPickingTypeId ??
-                                            ((pickings[0]
-                                                        .pickingTypeId
-                                                        ?.isNotEmpty ??
-                                                    false)
-                                                ? pickings[0].pickingTypeId![0]
-                                                : null),
-                                        onDropdownChanged: (value) {
-                                          setState(() {
-                                            _selectedPickingTypeId =
-                                                value?['id'];
-                                            _selectedLocationId =
-                                                value?['default_location_src_id_int'];
-                                            _selectedLocationDestId =
-                                                value?['default_location_dest_id_int'];
-                                          });
-                                        },
-                                        prefixIcon:
-                                            HugeIcons.strokeRoundedTask01,
+                                    InfoRow(
+                                      label: "Operation Type",
+                                      value: pickings[0].pickingTypeId,
+                                      isEditing: _isEditing,
+                                      controller: operationTypeController,
+                                      dropdownItems: operationTypesList,
+                                      selectedId:
+                                          _selectedPickingTypeId ??
+                                          ((pickings[0]
+                                                      .pickingTypeId
+                                                      ?.isNotEmpty ??
+                                                  false)
+                                              ? pickings[0].pickingTypeId![0]
+                                              : null),
+                                      onDropdownChanged: (value) {
+                                        setState(() {
+                                          _selectedPickingTypeId = value?['id'];
+                                          _selectedLocationId =
+                                              value?['default_location_src_id_int'];
+                                          _selectedLocationDestId =
+                                              value?['default_location_dest_id_int'];
+                                        });
+                                      },
+                                      prefixIcon: HugeIcons.strokeRoundedTask01,
+                                    ),
+                                    InfoRow(
+                                      label: "Scheduled Date",
+                                      value: formatDateTimeForDisplay(
+                                        pickings[0].scheduledDate,
                                       ),
+                                      isEditing: _isEditing,
+                                      controller: scheduledDateController,
+                                      color: getScheduledDateColor(
+                                        pickings[0].scheduledDate ??
+                                            DateTime.now().toString(),
+                                      ),
+                                      prefixIcon:
+                                          HugeIcons.strokeRoundedCalendar03,
+                                      onTapEditing: () async {
+                                        final initial =
+                                            DateTime.tryParse(
+                                              pickings[0].scheduledDate ?? '',
+                                            ) ??
+                                            DateTime.now();
+                                        DateTime? pickedDate =
+                                            await DatePickerUtils.showStandardDatePicker(
+                                              context: context,
+                                              initialDate: initial,
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(2100),
+                                            );
+                                        if (pickedDate != null &&
+                                            context.mounted) {
+                                          TimeOfDay? pickedTime =
+                                              await DatePickerUtils.showStandardTimePicker(
+                                                context: context,
+                                                initialTime:
+                                                    TimeOfDay.fromDateTime(
+                                                      initial,
+                                                    ),
+                                              );
+                                          if (pickedTime != null) {
+                                            final combined = DateTime(
+                                              pickedDate.year,
+                                              pickedDate.month,
+                                              pickedDate.day,
+                                              pickedTime.hour,
+                                              pickedTime.minute,
+                                            );
+                                            setState(() {
+                                              scheduledDateController.text =
+                                                  formatDateTimeForDisplay(
+                                                    combined.toIso8601String(),
+                                                  );
+                                            });
+                                          }
+                                        }
+                                      },
+                                    ),
+                                    if (pickings[0].dateDeadline != null &&
+                                        pickings[0].dateDeadline!.isNotEmpty)
                                       InfoRow(
-                                        label: "Scheduled Date",
+                                        label: "Deadline",
                                         value: formatDateTimeForDisplay(
-                                          pickings[0].scheduledDate,
+                                          pickings[0].dateDeadline,
                                         ),
                                         isEditing: _isEditing,
-                                        controller: scheduledDateController,
-                                        color: getScheduledDateColor(
-                                          pickings[0].scheduledDate ??
-                                              DateTime.now().toString(),
-                                        ),
                                         prefixIcon:
                                             HugeIcons.strokeRoundedCalendar03,
+                                        controller: deadlineController,
+                                        color: getScheduledDateColor(
+                                          pickings[0].dateDeadline ??
+                                              DateTime.now().toString(),
+                                        ),
                                         onTapEditing: () async {
                                           final initial =
                                               DateTime.tryParse(
-                                                pickings[0].scheduledDate ?? '',
+                                                pickings[0].dateDeadline ?? '',
                                               ) ??
                                               DateTime.now();
                                           DateTime? pickedDate =
@@ -2939,7 +2989,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                                 pickedTime.minute,
                                               );
                                               setState(() {
-                                                scheduledDateController.text =
+                                                deadlineController.text =
                                                     formatDateTimeForDisplay(
                                                       combined
                                                           .toIso8601String(),
@@ -2949,151 +2999,86 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                           }
                                         },
                                       ),
-                                      if (pickings[0].dateDeadline != null &&
-                                          pickings[0].dateDeadline!.isNotEmpty)
-                                        InfoRow(
-                                          label: "Deadline",
-                                          value: formatDateTimeForDisplay(
-                                            pickings[0].dateDeadline,
-                                          ),
-                                          isEditing: _isEditing,
-                                          prefixIcon:
-                                              HugeIcons.strokeRoundedCalendar03,
-                                          controller: deadlineController,
-                                          color: getScheduledDateColor(
-                                            pickings[0].dateDeadline ??
-                                                DateTime.now().toString(),
-                                          ),
-                                          onTapEditing: () async {
-                                            final initial =
-                                                DateTime.tryParse(
-                                                  pickings[0].dateDeadline ??
-                                                      '',
-                                                ) ??
-                                                DateTime.now();
-                                            DateTime? pickedDate =
-                                                await DatePickerUtils.showStandardDatePicker(
-                                                  context: context,
-                                                  initialDate: initial,
-                                                  firstDate: DateTime(2000),
-                                                  lastDate: DateTime(2100),
-                                                );
-                                            if (pickedDate != null &&
-                                                context.mounted) {
-                                              TimeOfDay? pickedTime =
-                                                  await DatePickerUtils.showStandardTimePicker(
-                                                    context: context,
-                                                    initialTime:
-                                                        TimeOfDay.fromDateTime(
-                                                          initial,
-                                                        ),
-                                                  );
-                                              if (pickedTime != null) {
-                                                final combined = DateTime(
-                                                  pickedDate.year,
-                                                  pickedDate.month,
-                                                  pickedDate.day,
-                                                  pickedTime.hour,
-                                                  pickedTime.minute,
-                                                );
-                                                setState(() {
-                                                  deadlineController.text =
-                                                      formatDateTimeForDisplay(
-                                                        combined
-                                                            .toIso8601String(),
-                                                      );
-                                                });
-                                              }
-                                            }
-                                          },
+                                    if (pickings[0].state == 'done')
+                                      InfoRow(
+                                        label: "Effective Date",
+                                        value: formatDateTimeForDisplay(
+                                          pickings[0].dateDone,
                                         ),
-                                      if (pickings[0].state == 'done')
-                                        InfoRow(
-                                          label: "Effective Date",
-                                          value: formatDateTimeForDisplay(
-                                            pickings[0].dateDone,
-                                          ),
-                                          isEditing: _isEditing,
-                                          controller: dateDoneController,
-                                          prefixIcon:
-                                              HugeIcons.strokeRoundedCalendar03,
-                                          color: getScheduledDateColor(
-                                            pickings[0].dateDone ??
-                                                DateTime.now().toString(),
-                                          ),
-                                          onTapEditing: _isEditing
-                                              ? () async {
-                                                  final initial =
-                                                      DateTime.tryParse(
-                                                        pickings[0].dateDone ??
-                                                            '',
-                                                      ) ??
-                                                      DateTime.now();
-                                                  DateTime? pickedDate =
-                                                      await DatePickerUtils.showStandardDatePicker(
+                                        isEditing: _isEditing,
+                                        controller: dateDoneController,
+                                        prefixIcon:
+                                            HugeIcons.strokeRoundedCalendar03,
+                                        color: getScheduledDateColor(
+                                          pickings[0].dateDone ??
+                                              DateTime.now().toString(),
+                                        ),
+                                        onTapEditing: _isEditing
+                                            ? () async {
+                                                final initial =
+                                                    DateTime.tryParse(
+                                                      pickings[0].dateDone ??
+                                                          '',
+                                                    ) ??
+                                                    DateTime.now();
+                                                DateTime? pickedDate =
+                                                    await DatePickerUtils.showStandardDatePicker(
+                                                      context: context,
+                                                      initialDate: initial,
+                                                      firstDate: DateTime(2000),
+                                                      lastDate: DateTime(2100),
+                                                    );
+                                                if (pickedDate != null &&
+                                                    context.mounted) {
+                                                  TimeOfDay? pickedTime =
+                                                      await DatePickerUtils.showStandardTimePicker(
                                                         context: context,
-                                                        initialDate: initial,
-                                                        firstDate: DateTime(
-                                                          2000,
-                                                        ),
-                                                        lastDate: DateTime(
-                                                          2100,
-                                                        ),
+                                                        initialTime:
+                                                            TimeOfDay.fromDateTime(
+                                                              initial,
+                                                            ),
                                                       );
-                                                  if (pickedDate != null &&
-                                                      context.mounted) {
-                                                    TimeOfDay? pickedTime =
-                                                        await DatePickerUtils.showStandardTimePicker(
-                                                          context: context,
-                                                          initialTime:
-                                                              TimeOfDay.fromDateTime(
-                                                                initial,
-                                                              ),
-                                                        );
-                                                    if (pickedTime != null) {
-                                                      final combined = DateTime(
-                                                        pickedDate.year,
-                                                        pickedDate.month,
-                                                        pickedDate.day,
-                                                        pickedTime.hour,
-                                                        pickedTime.minute,
-                                                      );
-                                                      setState(() {
-                                                        dateDoneController
-                                                                .text =
-                                                            formatDateTimeForDisplay(
-                                                              combined
-                                                                  .toIso8601String(),
-                                                            );
-                                                      });
-                                                    }
+                                                  if (pickedTime != null) {
+                                                    final combined = DateTime(
+                                                      pickedDate.year,
+                                                      pickedDate.month,
+                                                      pickedDate.day,
+                                                      pickedTime.hour,
+                                                      pickedTime.minute,
+                                                    );
+                                                    setState(() {
+                                                      dateDoneController.text =
+                                                          formatDateTimeForDisplay(
+                                                            combined
+                                                                .toIso8601String(),
+                                                          );
+                                                    });
                                                   }
                                                 }
-                                              : null,
-                                        ),
-                                      if (pickings[0].pickingTypeCode ==
-                                              'outgoing' &&
-                                          [
-                                            'waiting',
-                                            'confirmed',
-                                            'assigned',
-                                          ].contains(pickings[0].state))
-                                        _buildAvailabilityField(
-                                          isDark: isDark,
-                                          isEditing: _isEditing,
-                                          availability:
-                                              pickings[0].productsAvailability,
-                                        ),
-                                      InfoRow(
-                                        label: "Source Document",
-                                        value: pickings[0].origin,
-                                        isEditing: _isEditing,
-                                        prefixIcon:
-                                            HugeIcons.strokeRoundedFile01,
-                                        controller: sourceDocController,
+                                              }
+                                            : null,
                                       ),
-                                    ],
-                                  ),
+                                    if (pickings[0].pickingTypeCode ==
+                                            'outgoing' &&
+                                        [
+                                          'waiting',
+                                          'confirmed',
+                                          'assigned',
+                                        ].contains(pickings[0].state))
+                                      _buildAvailabilityField(
+                                        isDark: isDark,
+                                        isEditing: _isEditing,
+                                        availability:
+                                            pickings[0].productsAvailability,
+                                      ),
+                                    InfoRow(
+                                      label: "Source Document",
+                                      value: pickings[0].origin,
+                                      isEditing: _isEditing,
+                                      prefixIcon: HugeIcons.strokeRoundedFile01,
+                                      controller: sourceDocController,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
