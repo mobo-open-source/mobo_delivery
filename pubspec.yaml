@@ -76,7 +76,7 @@ dependencies:
   bloc_test: ^10.0.0
   in_app_review: ^2.0.11
   package_info_plus: ^8.0.0
-  pdfrx: ^1.0.86
+  pdfrx: ^2.5.0
   open_file: ^3.5.10
   flutter_rating_bar: ^4.0.1
   flutter_svg: ^2.2.4

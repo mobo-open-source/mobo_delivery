@@ -67,7 +67,7 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - pdfrx (0.0.6):
+  - pdfium_flutter (0.1.5):
     - Flutter
     - FlutterMacOS
   - SDWebImage (5.21.6):
@@ -103,7 +103,7 @@ DEPENDENCIES:
   - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
-  - pdfrx (from `.symlinks/plugins/pdfrx/darwin`)
+  - pdfium_flutter (from `.symlinks/plugins/pdfium_flutter/darwin`)
   - sensors_plus (from `.symlinks/plugins/sensors_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
@@ -147,8 +147,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
-  pdfrx:
-    :path: ".symlinks/plugins/pdfrx/darwin"
+  pdfium_flutter:
+    :path: ".symlinks/plugins/pdfium_flutter/darwin"
   sensors_plus:
     :path: ".symlinks/plugins/sensors_plus/ios"
   shared_preferences_foundation:
@@ -166,7 +166,7 @@ SPEC CHECKSUMS:
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_inappwebview_ios: b89ba3482b96fb25e00c967aae065701b66e9b99
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
@@ -178,7 +178,7 @@ SPEC CHECKSUMS:
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
-  pdfrx: 310e84d01e06fd2af26e16507a0e48c27e99195c
+  pdfium_flutter: e5a6e881af0b182d5b0465ebad23a8a20caa28d4
   SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   sensors_plus: 6a11ed0c2e1d0bd0b20b4029d3bad27d96e0c65b
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
@@ -187,6 +187,6 @@ SPEC CHECKSUMS:
   video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
   webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
 
-PODFILE CHECKSUM: 352fcf90f17e1862e31388c51809cf5060099073
+PODFILE CHECKSUM: 8bd7d8d3f4bbdf27a9dd8fd2c9eee9dc8223c7e4
 
 COCOAPODS: 1.16.2

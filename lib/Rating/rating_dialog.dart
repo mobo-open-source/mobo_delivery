@@ -128,35 +128,31 @@ class _CustomRatingDialogState extends State<CustomRatingDialog> {
             ),
             const SizedBox(height: 32),
 
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final starSize =
-                    ((constraints.maxWidth / _kStarCount) - _kStarGap * 2)
-                        .clamp(20.0, _kMaxStarSize);
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_kStarCount, (index) {
-                    final filled = index < _rating;
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _rating = index + 1),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: _kStarGap,
-                        ),
-                        child: SvgPicture.asset(
-                          filled
-                              ? 'assets/icons/star_filled.svg'
-                              : 'assets/icons/star_outlined.svg',
-                          width: starSize,
-                          height: starSize,
-                        ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(_kStarCount, (index) {
+                  final filled = index < _rating;
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _rating = index + 1),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: _kStarGap,
                       ),
-                    );
-                  }),
-                );
-              },
+                      child: SvgPicture.asset(
+                        filled
+                            ? 'assets/icons/star_filled.svg'
+                            : 'assets/icons/star_outlined.svg',
+                        width: _kMaxStarSize,
+                        height: _kMaxStarSize,
+                      ),
+                    ),
+                  );
+                }),
+              ),
             ),
             const SizedBox(height: 32),
 
