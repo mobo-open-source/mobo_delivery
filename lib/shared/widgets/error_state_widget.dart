@@ -30,6 +30,7 @@ class ErrorStateWidget extends StatefulWidget {
 class _ErrorStateWidgetState extends State<ErrorStateWidget> {
   late bool _noInternet =
       !ConnectivityService.instance.lastKnownInternetReachable;
+  bool _showDetails = false;
 
   @override
   void initState() {
@@ -115,6 +116,35 @@ class _ErrorStateWidgetState extends State<ErrorStateWidget> {
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (widget.errorMessage != null &&
+                  widget.errorMessage!.trim().isNotEmpty &&
+                  widget.errorMessage != subtitle) ...[
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () => setState(() => _showDetails = !_showDetails),
+                  child: Text(
+                    _showDetails ? 'Hide details' : 'Show details',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: subtitleColor,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+                if (_showDetails) ...[
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    widget.errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                      color: subtitleColor,
+                    ),
+                  ),
+                ],
+              ],
               if (onAction != null) ...[
                 const SizedBox(height: 32),
                 SizedBox(

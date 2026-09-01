@@ -108,7 +108,7 @@ class _SyncCenterPageState extends State<SyncCenterPage> {
               ? p.pickingName!
               : 'Picking #${p.pickingId}',
           subtitle: 'Product line add / edit',
-          onDelete: () => _hive.clearPendingProductUpdates(p.pickingId),
+          onDelete: () => p.delete(),
         ),
       );
     }

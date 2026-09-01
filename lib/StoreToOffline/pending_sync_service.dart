@@ -296,7 +296,7 @@ class PendingSyncService {
 
         if (moveId != null) {
           await _formService.updateProductMove(moveId, productId, qty);
-          await _hive.clearPendingProductUpdates(p.pickingId);
+          await p.delete();
           ok++;
         } else {
           final locations = await _formService.getPickingLocations(p.pickingId);
@@ -326,7 +326,7 @@ class PendingSyncService {
             dst,
             pickingState: pickingState,
           );
-          await _hive.clearPendingProductUpdates(p.pickingId);
+          await p.delete();
           ok++;
         }
       } catch (_) {

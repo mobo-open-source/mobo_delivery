@@ -10,6 +10,7 @@ import '../../../LoginPage/services/storage_service.dart';
 import '../../security/secure_storage_service.dart';
 import '../services/connectivity_service.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
+import '../../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 
 /// Central manager for Odoo session lifecycle and RPC safety handling.
 ///
@@ -836,6 +837,11 @@ class CompanySessionManager {
     await Future.delayed(const Duration(milliseconds: 500));
 
     await clearSessionCache();
+    try {
+      final hiveService = HiveService();
+      await hiveService.initialize();
+      await hiveService.clearAllData();
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
 
     List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];

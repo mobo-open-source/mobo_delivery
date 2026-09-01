@@ -24,10 +24,10 @@ import '../../../shared/widgets/buttons/mobo_button.dart';
 /// Main screen for managing return pickings (reverse transfers / customer returns).
 ///
 /// Features:
-/// • Paginated list of return pickings grouped by status/origin/type
+/// • Paginated list of return pickings grouped by source/type/customer
 /// • Search by item/reference
-/// • Advanced filters (status, type, date range, presets like "Late", "Backorders")
-/// • Grouping (by status, source document, operation type)
+/// • Filters (operation type, ownership, return status, date range)
+/// • Grouping (by source document, operation type, customer)
 /// • Offline support via Hive cache
 /// • Pull-to-refresh & company change auto-reload
 /// • Bottom sheet detail view for each return
@@ -56,24 +56,21 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   bool hasGroupBy = false;
 
   final Map<String, String> filterTechnicalNames = {
-    "To Do": "to_do",
     "My Transfer": "my_transfer",
-    "Draft": "draft",
-    "Waiting": "waiting",
-    "Ready": "ready",
     "Receipts": "receipt",
     "Deliveries": "deliveries",
     "Internal": "internal",
-    "Late": "late",
-    "Planning Issues": "planning_issue",
-    "Backorders": "backorder",
+    "Already Returned": "has_return",
+    "Not Yet Returned": "no_return",
+    "This Week": "this_week",
+    "This Month": "this_month",
     "Warning": "warning",
   };
 
   final Map<String, String> groupTechnicalNames = {
-    "Status": "state",
     "Source Document": "origin",
     "Operation Type": "picking_type_id",
+    "Customer": "partner_id",
   };
 
   StreamSubscription? _profileSub;
@@ -605,9 +602,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _selectedGroupBy == 'state'
-                                    ? capitalizeFirstLetter(groupName)
-                                    : groupName,
+                                groupName,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -671,6 +666,11 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         rawOrigin != false &&
         rawOrigin.toString().trim().isNotEmpty;
     final origin = hasOrigin ? rawOrigin.toString() : 'None';
+
+    final returnedFrom = picking['origin_returned_picking_id'];
+    final isReturn = returnedFrom is List && returnedFrom.length > 1;
+    final returnedFromName = isReturn ? returnedFrom[1].toString() : null;
+
     String partnerName = 'None';
     if (picking['partner_id'] is List && picking['partner_id'].length > 1) {
       partnerName = picking['partner_id'][1].toString();
@@ -776,8 +776,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                 const SizedBox(height: 8),
 
                 _buildDetailRow(
-                  hasOrigin ? 'Return of:' : 'Origin:',
-                  origin,
+                  isReturn ? 'Return of:' : 'Origin:',
+                  isReturn ? returnedFromName! : origin,
                   labelColor,
                   valueColor,
                 ),
@@ -809,7 +809,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (hasOrigin) ...[
+                    if (isReturn) ...[
                       const SizedBox(width: 8),
                       Icon(
                         HugeIcons.strokeRoundedArrowTurnBackward,

@@ -33,7 +33,12 @@ class ProductModel extends Equatable {
     return ProductModel(
       id: json['id'] as int,
       name: displayName.isNotEmpty ? displayName : rawName,
-      uom_id: json['uom_id'][0] as int,
+      uom_id:
+          (json['uom_id'] != null &&
+              json['uom_id'] is List &&
+              json['uom_id'].isNotEmpty)
+          ? json['uom_id'][0] as int
+          : 0,
       imageBase64: (image is String && image.isNotEmpty && image != 'false')
           ? image
           : null,

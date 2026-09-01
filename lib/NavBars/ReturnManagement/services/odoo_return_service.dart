@@ -6,7 +6,7 @@ import '../../../core/company/session/company_session_manager.dart';
 ///
 /// Handles:
 /// • Counting & fetching paginated return-eligible pickings
-/// • Building complex filter domains for presets ("Late", "Backorders", "My Transfer", etc.)
+/// • Building filter domains for presets ("My Transfer", "Already Returned", etc.)
 /// • Fetching move lines from a picking
 /// • Creating return pickings via the `stock.return.picking` wizard
 ///
@@ -25,47 +25,20 @@ class OdooReturnManagementService {
 
   /// Builds Odoo domain clauses from user-friendly filter presets
   ///
-  /// Translates labels like "Late", "Backorders", "My Transfer" into proper domain tuples.
-  /// Supports combining multiple filters with AND/OR logic.
+  /// Every return record queried by this service is already pinned to
+  /// `state = 'done'` (see [StockCount] / [fetchStockPickings]), so any
+  /// preset that filters on `state` (e.g. draft/waiting/ready/late/
+  /// backorder) would always AND against a contradictory state and match
+  /// nothing. Only presets compatible with a done-only domain are offered
+  /// here — operation type, ownership, return status, and date range.
   /// Used for both count and search_read operations.
   List<dynamic> buildFilterDomain(List<String> filters, int uid) {
     final List<dynamic> domain = [];
 
     for (final filter in filters) {
       switch (filter) {
-        case 'to_do':
-          domain.addAll([
-            [
-              'user_id',
-              'in',
-              [uid, false],
-            ],
-            [
-              'state',
-              'not in',
-              ['done', 'cancel'],
-            ],
-          ]);
-          break;
-
         case 'my_transfer':
           domain.add(['user_id', '=', uid]);
-          break;
-
-        case 'draft':
-          domain.add(['state', '=', 'draft']);
-          break;
-
-        case 'waiting':
-          domain.add([
-            'state',
-            'in',
-            ['confirmed', 'waiting'],
-          ]);
-          break;
-
-        case 'ready':
-          domain.add(['state', '=', 'assigned']);
           break;
 
         case 'receipt':
@@ -80,55 +53,20 @@ class OdooReturnManagementService {
           domain.add(['picking_type_code', '=', 'internal']);
           break;
 
-        case 'late':
-          final now = DateTime.now()
-              .toUtc()
-              .toString()
-              .replaceFirst('Z', '')
-              .trim();
-          domain.addAll([
-            '&',
-            [
-              'state',
-              'in',
-              ['assigned', 'waiting', 'confirmed'],
-            ],
-            '|',
-            '|',
-            ['has_deadline_issue', '=', true],
-            ['date_deadline', '<', now],
-            ['scheduled_date', '<', now],
-          ]);
+        case 'has_return':
+          domain.add(['return_count', '>', 0]);
           break;
 
-        case 'planning_issue':
-          final now = DateTime.now()
-              .toUtc()
-              .toString()
-              .replaceFirst('Z', '')
-              .trim();
-          domain.addAll([
-            '|',
-            ['delay_alert_date', '!=', false],
-            '&',
-            ['scheduled_date', '<', now],
-            [
-              'state',
-              'in',
-              ['assigned', 'waiting', 'confirmed'],
-            ],
-          ]);
+        case 'no_return':
+          domain.add(['return_count', '=', 0]);
           break;
 
-        case 'backorder':
-          domain.addAll([
-            ['backorder_id', '!=', false],
-            [
-              'state',
-              'in',
-              ['assigned', 'waiting', 'confirmed'],
-            ],
-          ]);
+        case 'this_week':
+          domain.add(['scheduled_date', '>=', _formatDate(_startOfWeek())]);
+          break;
+
+        case 'this_month':
+          domain.add(['scheduled_date', '>=', _formatDate(_startOfMonth())]);
           break;
 
         case 'warning':
@@ -138,6 +76,21 @@ class OdooReturnManagementService {
     }
 
     return domain;
+  }
+
+  DateTime _startOfWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.subtract(Duration(days: today.weekday - 1));
+  }
+
+  DateTime _startOfMonth() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
+  }
+
+  String _formatDate(DateTime date) {
+    return date.toUtc().toString().replaceFirst('Z', '').trim();
   }
 
   /// Counts return-eligible pickings (usually `state = 'done'`) matching filters/search
@@ -195,26 +148,42 @@ class OdooReturnManagementService {
         domain.addAll(buildFilterDomain(filters, uid!));
       }
 
-      final pickingItems = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.picking',
-        'method': 'search_read',
-        'args': [domain],
-        'kwargs': {
-          'fields': [
-            'id',
-            'name',
-            'state',
-            'origin',
-            'partner_id',
-            'scheduled_date',
-            'picking_type_id',
-            'picking_type_code',
-            'return_count',
-          ],
-          'limit': itemsPerPage,
-          'offset': offset,
-        },
-      });
+      const baseFields = [
+        'id',
+        'name',
+        'state',
+        'origin',
+        'partner_id',
+        'scheduled_date',
+        'picking_type_id',
+        'picking_type_code',
+        'return_count',
+      ];
+
+      Future<dynamic> search(List<String> fields) {
+        return CompanySessionManager.callKwWithCompany({
+          'model': 'stock.picking',
+          'method': 'search_read',
+          'args': [domain],
+          'kwargs': {'fields': fields, 'limit': itemsPerPage, 'offset': offset},
+        });
+      }
+
+      dynamic pickingItems;
+      try {
+        pickingItems = await search([
+          ...baseFields,
+          'origin_returned_picking_id',
+        ]);
+      } catch (e) {
+        if (e.toString().toLowerCase().contains(
+          'origin_returned_picking_id',
+        )) {
+          pickingItems = await search(baseFields);
+        } else {
+          rethrow;
+        }
+      }
       return List<Map<String, dynamic>>.from(pickingItems ?? []);
     } catch (e) {
       throw Exception('Failed to fetch stock pickings: $e');

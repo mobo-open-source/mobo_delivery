@@ -252,6 +252,12 @@ class HiveService {
     await box.clear();
   }
 
+  /// Queues one product-line change for offline sync.
+  ///
+  /// Keyed by a unique id (not just [localId]/picking id) so that queuing
+  /// multiple product-line edits on the *same* picking while offline (a
+  /// normal workflow — e.g. editing quantities for several products on one
+  /// delivery) doesn't overwrite earlier queued edits at the same Hive key.
   Future<void> savePendingProductUpdates(
     int localId,
     Map<String, dynamic> productData,
@@ -265,7 +271,10 @@ class HiveService {
       productData: productData,
     );
 
-    await box.put('product_updates$localId', productUpdates);
+    await box.put(
+      'product_updates${localId}_${DateTime.now().microsecondsSinceEpoch}',
+      productUpdates,
+    );
     onPendingQueueChanged?.call();
   }
 
@@ -332,6 +341,10 @@ class HiveService {
     return box.values.whereType<ProductUpdates>().toList();
   }
 
+  /// Deprecated: entries are now keyed uniquely per queued edit, not per
+  /// picking id, so this can no longer target a specific entry. Delete a
+  /// queued [ProductUpdates] via its own `.delete()` (it's a `HiveObject`)
+  /// instead. Kept only for API/mock compatibility.
   Future<void> clearPendingProductUpdates(int pickingId) async {
     final box = Hive.box<ProductUpdates>(_productUpdatesBox);
     await box.delete('product_updates$pickingId');

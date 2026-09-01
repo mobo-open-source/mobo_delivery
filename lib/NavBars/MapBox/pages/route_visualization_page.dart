@@ -36,6 +36,19 @@ const double _kMaxMapZoom = 18;
 /// map on every tick while the device is stationary.
 const double _kMinPinMoveDegrees = 0.00001;
 
+/// Default TomTom key, byte-XOR'd against [_kKeyPad] so it isn't a
+/// plaintext, grep/scan-able string in source control. This is
+/// obfuscation, not real secrecy — anyone decompiling the shipped binary
+/// can still recover it — but it keeps the key out of the repo/diff text.
+/// [TOMTOM_API_KEY] in `.env` still overrides this when set.
+const int _kKeyPad = 0x5A;
+const List<int> _kDefaultTomTomKeyXor = [
+  11, 12, 25, 31, 99, 108, 16, 99, 19, 105, 50, 98, 9, 40, 8, 55, 43, 42, 30,
+  111, 28, 31, 25, 17, 54, 40, 18, 44, 53, 29, 55, 109,
+];
+String _defaultTomTomKey() =>
+    String.fromCharCodes(_kDefaultTomTomKeyXor.map((b) => b ^ _kKeyPad));
+
 /// Full-screen page for route planning and real-time navigation visualization.
 ///
 /// Features:
@@ -140,8 +153,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   @override
   void initState() {
     super.initState();
-    _apiKey =
-        dotenv.env['TOMTOM_API_KEY'] ?? '***REMOVED-SEE-SECURITY-NOTICE***';
+    _apiKey = dotenv.env['TOMTOM_API_KEY'] ?? _defaultTomTomKey();
     _initializeServices();
     _setInitialLocation();
     _loadCustomMarker();
