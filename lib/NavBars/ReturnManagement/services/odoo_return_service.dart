@@ -25,12 +25,9 @@ class OdooReturnManagementService {
 
   /// Builds Odoo domain clauses from user-friendly filter presets
   ///
-  /// Every return record queried by this service is already pinned to
-  /// `state = 'done'` (see [StockCount] / [fetchStockPickings]), so any
-  /// preset that filters on `state` (e.g. draft/waiting/ready/late/
-  /// backorder) would always AND against a contradictory state and match
-  /// nothing. Only presets compatible with a done-only domain are offered
-  /// here — operation type, ownership, return status, and date range.
+  /// The presets offered here — operation type, ownership, return status and
+  /// date range — are the ones that stay meaningful across every row the list
+  /// shows (see [_returnsDomain]), which is dominated by completed transfers.
   /// Used for both count and search_read operations.
   List<dynamic> buildFilterDomain(List<String> filters, int uid) {
     final List<dynamic> domain = [];
@@ -93,37 +90,77 @@ class OdooReturnManagementService {
     return date.toUtc().toString().replaceFirst('Z', '').trim();
   }
 
-  /// Counts return-eligible pickings (usually `state = 'done'`) matching filters/search
+  /// Completed transfers (the ones a return can be created *from*) plus every
+  /// actual return record regardless of state. The second clause matters:
+  /// Odoo's return wizard creates the return in `confirmed`/`assigned`, never
+  /// `done`, so a `state = 'done'` domain alone can never show a return that
+  /// was just created.
+  static const List<dynamic> _returnsDomain = [
+    '|',
+    ['state', '=', 'done'],
+    ['origin_returned_picking_id', '!=', false],
+  ];
+
+  /// Fallback for deployments where `origin_returned_picking_id` is not
+  /// exposed; preserves the original done-only behaviour.
+  static const List<dynamic> _doneOnlyDomain = [
+    ['state', '=', 'done'],
+  ];
+
+  bool _isMissingReturnField(Object e) =>
+      e.toString().toLowerCase().contains('origin_returned_picking_id');
+
+  List<dynamic> _buildDomain(
+    List<dynamic> base,
+    String? searchText,
+    List<String>? filters,
+    int? uid,
+  ) {
+    final domain = List<dynamic>.from(base);
+    if (searchText != null && searchText.isNotEmpty) {
+      domain.add(['name', 'ilike', searchText]);
+    }
+    if (filters != null && filters.isNotEmpty) {
+      domain.addAll(buildFilterDomain(filters, uid!));
+    }
+    return domain;
+  }
+
+  /// Counts the rows the returns list shows (see [_returnsDomain]) matching filters/search
   ///
   /// Used for pagination total count and progress indicators.
   /// Throws exception on RPC failure for UI error handling.
   Future<int> StockCount({String? searchText, List<String>? filters}) async {
     try {
-      List<dynamic> domain = [
-        ['state', '=', 'done'],
-      ];
       final session = await CompanySessionManager.getCurrentSession();
       final uid = session!.userId;
-      if (searchText != null && searchText.isNotEmpty) {
-        domain.add(['name', 'ilike', searchText]);
-      }
-      if (filters != null && filters.isNotEmpty) {
-        domain.addAll(buildFilterDomain(filters, uid!));
+
+      Future<dynamic> count(List<dynamic> base) {
+        return CompanySessionManager.callKwWithCompany({
+          'model': 'stock.picking',
+          'method': 'search_count',
+          'args': [_buildDomain(base, searchText, filters, uid)],
+          'kwargs': {},
+        });
       }
 
-      final pickingCount = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.picking',
-        'method': 'search_count',
-        'args': [domain],
-        'kwargs': {},
-      });
+      dynamic pickingCount;
+      try {
+        pickingCount = await count(_returnsDomain);
+      } catch (e) {
+        if (_isMissingReturnField(e)) {
+          pickingCount = await count(_doneOnlyDomain);
+        } else {
+          rethrow;
+        }
+      }
       return pickingCount ?? 0;
     } catch (e) {
       throw Exception('Failed to count stock pickings: $e');
     }
   }
 
-  /// Fetches paginated list of return-eligible pickings (`state = 'done'`)
+  /// Fetches the paginated returns list (see [_returnsDomain])
   ///
   /// Supports search, custom filters, and pagination via offset/limit.
   /// Returns flattened list of maps ready for UI display.
@@ -135,18 +172,8 @@ class OdooReturnManagementService {
   }) async {
     try {
       final offset = currentPage * itemsPerPage;
-      List<dynamic> domain = [
-        ['state', '=', 'done'],
-      ];
       final session = await CompanySessionManager.getCurrentSession();
       final uid = session!.userId;
-
-      if (searchText != null && searchText.isNotEmpty) {
-        domain.add(['name', 'ilike', searchText]);
-      }
-      if (filters != null && filters.isNotEmpty) {
-        domain.addAll(buildFilterDomain(filters, uid!));
-      }
 
       const baseFields = [
         'id',
@@ -160,26 +187,24 @@ class OdooReturnManagementService {
         'return_count',
       ];
 
-      Future<dynamic> search(List<String> fields) {
+      Future<dynamic> search(List<dynamic> base, List<String> fields) {
         return CompanySessionManager.callKwWithCompany({
           'model': 'stock.picking',
           'method': 'search_read',
-          'args': [domain],
+          'args': [_buildDomain(base, searchText, filters, uid)],
           'kwargs': {'fields': fields, 'limit': itemsPerPage, 'offset': offset},
         });
       }
 
       dynamic pickingItems;
       try {
-        pickingItems = await search([
+        pickingItems = await search(_returnsDomain, [
           ...baseFields,
           'origin_returned_picking_id',
         ]);
       } catch (e) {
-        if (e.toString().toLowerCase().contains(
-          'origin_returned_picking_id',
-        )) {
-          pickingItems = await search(baseFields);
+        if (_isMissingReturnField(e)) {
+          pickingItems = await search(_doneOnlyDomain, baseFields);
         } else {
           rethrow;
         }

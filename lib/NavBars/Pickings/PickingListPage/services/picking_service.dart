@@ -274,86 +274,82 @@ class PickingService {
     List<String>? filters,
     Map<String, int>? pageOverrides,
   }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      int version = prefs.getInt('version') ?? 0;
+    final prefs = await SharedPreferences.getInstance();
+    int version = prefs.getInt('version') ?? 0;
 
-      final warehouseItems = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.warehouse',
-        'method': 'search_read',
-        'args': [],
-        'kwargs': {
-          'fields': ['id', 'name'],
-        },
-      });
+    final warehouseItems = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.warehouse',
+      'method': 'search_read',
+      'args': [],
+      'kwargs': {
+        'fields': ['id', 'name'],
+      },
+    });
 
-      if (pageOverrides == null) {
-        allPickingsByLocation.clear();
-        currentPage.clear();
-        hasNextPage.clear();
-        totalPickingsCount.clear();
-      }
+    if (pageOverrides == null) {
+      allPickingsByLocation.clear();
+      currentPage.clear();
+      hasNextPage.clear();
+      totalPickingsCount.clear();
+    }
 
-      List<dynamic> baseDomain = [];
-      final session = await CompanySessionManager.getCurrentSession();
-      final uid = session!.userId;
+    List<dynamic> baseDomain = [];
+    final session = await CompanySessionManager.getCurrentSession();
+    final uid = session!.userId;
 
-      final hasExplicitTypeChip =
-          filters != null &&
-          filters.any(
-            (f) => f == 'receipt' || f == 'deliveries' || f == 'internal',
-          );
-
-      if (filters != null && filters.isNotEmpty) {
-        baseDomain.addAll(buildFilterDomain(filters, uid!));
-      }
-      if (searchTerm != null && searchTerm.isNotEmpty) {
-        baseDomain.add(['name', 'ilike', searchTerm]);
-      }
-      if (!hasExplicitTypeChip && type != null && type.isNotEmpty) {
-        baseDomain.add(['picking_type_code', '=', type]);
-      }
-
-      try {
-        final count = await CompanySessionManager.callKwWithCompany({
-          'model': 'stock.picking',
-          'method': 'search_count',
-          'args': [baseDomain],
-          'kwargs': {},
-        });
-        globalPickingCount = (count as int?) ?? 0;
-      } catch (_) {}
-
-      final warehouseTasks = <Future<void>>[];
-      for (var warehouse in warehouseItems ?? []) {
-        final String warehouseName = warehouse['name'];
-        final int warehouseId = warehouse['id'] is int
-            ? warehouse['id']
-            : int.parse(warehouse['id'].toString());
-
-        final int page =
-            pageOverrides?[warehouseName] ?? currentPage[warehouseName] ?? 0;
-        final int offset = page * pageSize;
-        currentPage[warehouseName] = page;
-
-        warehouseTasks.add(
-          _fetchWarehousePickings(
-            warehouseName: warehouseName,
-            warehouseId: warehouseId,
-            page: page,
-            offset: offset,
-            baseDomain: baseDomain,
-            type: type,
-            hasExplicitTypeChip: hasExplicitTypeChip,
-            version: version,
-          ),
+    final hasExplicitTypeChip =
+        filters != null &&
+        filters.any(
+          (f) => f == 'receipt' || f == 'deliveries' || f == 'internal',
         );
-      }
 
-      await Future.wait(warehouseTasks);
-    } on OdooSessionExpiredException {
-      rethrow;
+    if (filters != null && filters.isNotEmpty) {
+      baseDomain.addAll(buildFilterDomain(filters, uid!));
+    }
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      baseDomain.add(['name', 'ilike', searchTerm]);
+    }
+    if (!hasExplicitTypeChip && type != null && type.isNotEmpty) {
+      baseDomain.add(['picking_type_code', '=', type]);
+    }
+
+    try {
+      final count = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking',
+        'method': 'search_count',
+        'args': [baseDomain],
+        'kwargs': {},
+      });
+      globalPickingCount = (count as int?) ?? 0;
     } catch (_) {}
+
+    final warehouseTasks = <Future<void>>[];
+    for (var warehouse in warehouseItems ?? []) {
+      final String warehouseName = warehouse['name'];
+      final int warehouseId = warehouse['id'] is int
+          ? warehouse['id']
+          : int.parse(warehouse['id'].toString());
+
+      final int page =
+          pageOverrides?[warehouseName] ?? currentPage[warehouseName] ?? 0;
+      final int offset = page * pageSize;
+      currentPage[warehouseName] = page;
+
+      warehouseTasks.add(
+        _fetchWarehousePickings(
+          warehouseName: warehouseName,
+          warehouseId: warehouseId,
+          page: page,
+          offset: offset,
+          baseDomain: baseDomain,
+          type: type,
+          hasExplicitTypeChip: hasExplicitTypeChip,
+          version: version,
+        ),
+      );
+    }
+
+    await Future.wait(warehouseTasks);
   }
 
   /// Fetches one warehouse's pickings — picking types first, then count

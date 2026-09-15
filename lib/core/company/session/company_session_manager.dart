@@ -53,7 +53,12 @@ class CompanySessionManager {
         errorStr.contains('session expired') ||
         errorStr.contains('authentication') ||
         errorStr.contains('forbidden') ||
-        errorStr.contains('403');
+        errorStr.contains('403') ||
+        e is FormatException ||
+        errorStr.contains('formatexception') ||
+        errorStr.contains('unexpected character') ||
+        errorStr.contains('<html') ||
+        errorStr.contains('<!doctype html');
   }
 
   /// Forces reload of session from SharedPreferences.

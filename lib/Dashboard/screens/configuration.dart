@@ -6,6 +6,7 @@ import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../LoginPage/models/session_model.dart';
 import '../../LoginPage/services/storage_service.dart';
+import '../../LoginPage/views/totp_page.dart';
 import '../../core/company/services/connectivity_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/app_theme.dart';
@@ -633,7 +634,16 @@ class _ConfigurationState extends State<Configuration> {
   Future<void> _switchAccount(Map<String, dynamic> user) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    var dialogOpen = false;
+    void closeDialog() {
+      if (!dialogOpen) return;
+      dialogOpen = false;
+      if (rootNavigator.mounted) rootNavigator.pop();
+    }
+
     if (mounted) {
+      dialogOpen = true;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -700,9 +710,19 @@ class _ConfigurationState extends State<Configuration> {
         : userLogin;
 
     Future<void> abort(String message) async {
+      closeDialog();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
       CustomSnackbar.showError(context, message);
+    }
+
+    /// Whether an authentication error is Odoo asking for a TOTP code.
+    bool isTwoFactorChallenge(Object e) {
+      final raw = e.toString().toLowerCase();
+      return raw.contains('two factor') ||
+          raw.contains('2fa') ||
+          raw.contains('totp') ||
+          raw.contains('verification code required') ||
+          raw.contains('null');
     }
 
     if (url.isEmpty || database.isEmpty || userLogin.isEmpty) {
@@ -782,6 +802,24 @@ class _ConfigurationState extends State<Configuration> {
     } on ServerUnreachableException {
       reauthReason = 'Could not reach $url. Verify the server and try again.';
     } catch (e) {
+      if (isTwoFactorChallenge(e)) {
+        await _rollbackSwitch(prevSession, prevUrl, prevDatabase);
+        closeDialog();
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TotpPage(
+              protocol: '',
+              serverUrl: url,
+              database: database,
+              username: userLogin,
+              password: storedPassword,
+            ),
+          ),
+        );
+        return;
+      }
       reauthReason = 'Could not sign in to $displayName: ${_extractReason(e)}';
     }
 
@@ -796,6 +834,7 @@ class _ConfigurationState extends State<Configuration> {
 
     await HiveService().clearAllData();
 
+    closeDialog();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,

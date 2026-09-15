@@ -694,6 +694,14 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         );
         return;
       }
+      if (state != 'done') {
+        CustomSnackbar.showWarning(
+          context,
+          'Only completed transfers can be returned. '
+          'Validate this transfer first.',
+        );
+        return;
+      }
       final odooService = OdooReturnManagementService();
       final bloc = context.read<ReturnManagementBloc>();
 

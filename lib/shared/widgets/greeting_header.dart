@@ -106,6 +106,7 @@ class GreetingHeader extends StatelessWidget {
           _Avatar(
             imageBytes: imageBytes,
             fallbackName: trimmed,
+            isLoading: isLoading,
             onTap: onAvatarTap,
           ),
         ],
@@ -175,17 +176,20 @@ class _Avatar extends StatelessWidget {
 
   final Uint8List? imageBytes;
   final String fallbackName;
+  final bool isLoading;
   final VoidCallback? onTap;
 
   const _Avatar({
     required this.imageBytes,
     required this.fallbackName,
+    required this.isLoading,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final hasImage = imageBytes != null && imageBytes!.isNotEmpty;
+    final showSpinner = isLoading && !hasImage && fallbackName.isEmpty;
 
     final avatar = Container(
       decoration: BoxDecoration(
@@ -212,21 +216,34 @@ class _Avatar extends StatelessWidget {
                   placeholderColor: AppStyle.primaryColor,
                   iconColor: Colors.white,
                 )
+              : showSpinner
+              ? ColoredBox(
+                  color: AppStyle.primaryColor,
+                  child: const Center(
+                    child: SmallLoadingIndicator(color: Colors.white),
+                  ),
+                )
+              : fallbackName.isEmpty
+              ? OdooAvatar(
+                  key: const ValueKey('greeting_avatar_placeholder'),
+                  size: _diameter,
+                  iconSize: 26,
+                  placeholderColor: AppStyle.primaryColor,
+                  iconColor: Colors.white,
+                )
               : ColoredBox(
                   color: AppStyle.primaryColor,
                   child: Center(
-                    child: fallbackName.isEmpty
-                        ? const SmallLoadingIndicator(color: Colors.white)
-                        : Text(
-                            fallbackName.substring(0, 1).toUpperCase(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: _diameter * 0.4,
-                              fontWeight: FontWeight.bold,
-                              height: 1,
-                            ),
-                          ),
+                    child: Text(
+                      fallbackName.substring(0, 1).toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: _diameter * 0.4,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
+                    ),
                   ),
                 ),
         ),

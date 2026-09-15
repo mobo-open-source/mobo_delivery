@@ -17,6 +17,7 @@ import 'dart:convert';
 import '../../../services/storage_service.dart';
 import '../../../services/encryption_service.dart';
 import '../../../../NavBars/MapBox/services/odoo_map_service.dart';
+import '../../../infrastructure/profile_refresh_bus.dart';
 
 /// Profile detail/edit screen — self-contained, matches mobo_inv_app's UI exactly.
 ///
@@ -36,10 +37,24 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   bool _isSaving = false;
   bool _isShowingLoadingDialog = false;
   bool _saveSuccess = false;
+  String? _saveError;
   String? _pickedImageBase64;
 
   Map<String, dynamic>? _userData;
   int? _partnerId;
+
+  /// `res.partner.mobile` — present in Odoo 17 and 18, removed outright in
+  /// Odoo 19 (verified against Odoo's own source across all three versions).
+  /// Requesting or writing it on 19+ fails the whole call, taking phone and
+  /// every other field down with it, so it is only ever read or written when
+  /// this is true.
+  int _serverMajor = 0;
+  bool get _supportsMobile => _serverMajor == 0 || _serverMajor < 19;
+
+  int _parseServerMajor(String? version) {
+    final match = RegExp(r'\d+').firstMatch(version ?? '');
+    return int.tryParse(match?.group(0) ?? '') ?? 0;
+  }
 
   int? _relatedCompanyId;
   String? _relatedCompanyName;
@@ -156,6 +171,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         if (mounted) setState(() => _isLoading = false);
         return;
       }
+      _serverMajor = _parseServerMajor(session.serverVersion);
 
       final res = await CompanySessionManager.callKwWithCompany({
         'model': 'res.users',
@@ -189,7 +205,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 [partner[0]],
                 [
                   'phone',
-                  'mobile',
+                  if (_supportsMobile) 'mobile',
                   'street',
                   'street2',
                   'city',
@@ -204,7 +220,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             if (partnerRes is List && partnerRes.isNotEmpty) {
               final pd = partnerRes.first as Map<String, dynamic>;
               data['phone'] = pd['phone'];
-              data['mobile'] = pd['mobile'];
+              if (_supportsMobile) data['mobile'] = pd['mobile'];
               data['street'] = pd['street'];
               data['street2'] = pd['street2'];
               data['city'] = pd['city'];
@@ -398,8 +414,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           _normalizeForEdit(_userData?['phone'])) {
         partnerUpdates['phone'] = _phoneController.text.trim();
       }
-      if (_mobileController.text.trim() !=
-          _normalizeForEdit(_userData?['mobile'])) {
+      if (_supportsMobile &&
+          _mobileController.text.trim() !=
+              _normalizeForEdit(_userData?['mobile'])) {
         partnerUpdates['mobile'] = _mobileController.text.trim();
       }
       if (_websiteController.text.trim() !=
@@ -483,6 +500,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         OdooMapService().clearTokenCache();
       }
 
+      final effectivePartnerId = _partnerId ?? session.partnerId;
+
       if (userUpdates.isNotEmpty) {
         await CompanySessionManager.callKwWithCompany({
           'model': 'res.users',
@@ -494,12 +513,18 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           'kwargs': {},
         });
       }
-      if (partnerUpdates.isNotEmpty && _partnerId != null) {
+      if (partnerUpdates.isNotEmpty) {
+        if (effectivePartnerId == null || effectivePartnerId == 0) {
+          throw Exception(
+            'Could not determine your contact record, so phone/mobile/'
+            'website/job title were not saved. Please reload and try again.',
+          );
+        }
         await CompanySessionManager.callKwWithCompany({
           'model': 'res.partner',
           'method': 'write',
           'args': [
-            [_partnerId],
+            [effectivePartnerId],
             partnerUpdates,
           ],
           'kwargs': {},
@@ -511,8 +536,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       _pickedImageBase64 = null;
       setState(() => _isEditMode = false);
       await _fetchUserProfile(forceRefresh: true);
+      ProfileRefreshBus.notifyProfileRefresh();
     } catch (e) {
       isSuccess = false;
+      _saveError = e.toString().replaceFirst('Exception: ', '');
     } finally {
       setState(() => _isSaving = false);
     }
@@ -529,7 +556,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         type: SnackbarType.success,
       );
     } else {
-      CustomSnackbar.showError(context, 'Failed to save changes');
+      CustomSnackbar.showError(
+        context,
+        _saveError ?? 'Failed to save changes',
+      );
     }
   }
 
@@ -1316,15 +1346,17 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
                           ),
-                          const SizedBox(height: 16),
-                          _buildCustomTextField(
-                            context,
-                            'Mobile',
-                            _userData!['mobile']?.toString(),
-                            HugeIcons.strokeRoundedSmartPhone01,
-                            controller: _mobileController,
-                            keyboardType: TextInputType.phone,
-                          ),
+                          if (_supportsMobile) ...[
+                            const SizedBox(height: 16),
+                            _buildCustomTextField(
+                              context,
+                              'Mobile',
+                              _userData!['mobile']?.toString(),
+                              HugeIcons.strokeRoundedSmartPhone01,
+                              controller: _mobileController,
+                              keyboardType: TextInputType.phone,
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           _buildCustomTextField(
                             context,
