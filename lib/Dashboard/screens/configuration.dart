@@ -5,6 +5,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../LoginPage/models/session_model.dart';
+import '../../LoginPage/services/auth_service.dart';
 import '../../LoginPage/services/storage_service.dart';
 import '../../LoginPage/views/totp_page.dart';
 import '../../core/company/services/connectivity_service.dart';
@@ -702,7 +703,10 @@ class _ConfigurationState extends State<Configuration> {
       );
     }
 
-    final url = (user['url'] as String? ?? '').trim();
+    final rawUrl = (user['url'] as String? ?? '').trim();
+    final url = rawUrl.isEmpty || rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+        ? rawUrl
+        : 'https://$rawUrl';
     final database = (user['database'] as String? ?? '').trim();
     final userLogin = (user['userLogin'] as String? ?? '').trim();
     final displayName = (user['userName'] as String?)?.trim().isNotEmpty == true
@@ -716,14 +720,12 @@ class _ConfigurationState extends State<Configuration> {
     }
 
     /// Whether an authentication error is Odoo asking for a TOTP code.
-    bool isTwoFactorChallenge(Object e) {
-      final raw = e.toString().toLowerCase();
-      return raw.contains('two factor') ||
-          raw.contains('2fa') ||
-          raw.contains('totp') ||
-          raw.contains('verification code required') ||
-          raw.contains('null');
-    }
+    ///
+    /// [TwoFactorRequiredException] is thrown only once the credentials have
+    /// been independently confirmed correct (see
+    /// [AuthService.authenticateOdoo]), so this never misfires on a genuine
+    /// wrong password or an unrelated error.
+    bool isTwoFactorChallenge(Object e) => e is TwoFactorRequiredException;
 
     if (url.isEmpty || database.isEmpty || userLogin.isEmpty) {
       await abort(
@@ -787,40 +789,70 @@ class _ConfigurationState extends State<Configuration> {
 
     bool reauthOk = false;
     String? reauthReason;
-    try {
-      reauthOk = await CompanySessionManager.loginAndSaveSession(
-        serverUrl: url,
-        database: database,
-        userLogin: userLogin,
-        password: storedPassword,
-      ).timeout(const Duration(seconds: 20));
-    } on TimeoutException {
-      reauthReason =
-          'Server took too long to confirm the session. Account was not switched.';
-    } on NoInternetException {
-      reauthReason = 'No internet connection. Connect and try switching again.';
-    } on ServerUnreachableException {
-      reauthReason = 'Could not reach $url. Verify the server and try again.';
-    } catch (e) {
-      if (isTwoFactorChallenge(e)) {
-        await _rollbackSwitch(prevSession, prevUrl, prevDatabase);
-        closeDialog();
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => TotpPage(
-              protocol: '',
-              serverUrl: url,
-              database: database,
-              username: userLogin,
-              password: storedPassword,
-            ),
-          ),
-        );
-        return;
+
+    /// Resumes the account via its previously saved Odoo session id, if any.
+    ///
+    /// A password re-authentication is what makes Odoo demand a fresh TOTP
+    /// code, so switching to a two-factor account by password every time
+    /// meant being asked for a code every time. Resuming the session already
+    /// established for this account (still valid on the server) needs no
+    /// password and cannot trigger that challenge — matching how switching
+    /// accounts already behaves on Odoo's own web client.
+    Future<bool> tryResumeSavedSession() async {
+      final savedSessionId = (user['sessionId'] as String? ?? '').trim();
+      if (savedSessionId.isEmpty) return false;
+      try {
+        return await CompanySessionManager.loginAndSaveSession(
+          serverUrl: url,
+          database: database,
+          userLogin: userLogin,
+          password: storedPassword,
+          session_Id: savedSessionId,
+        ).timeout(const Duration(seconds: 20));
+      } catch (_) {
+        return false;
       }
-      reauthReason = 'Could not sign in to $displayName: ${_extractReason(e)}';
+    }
+
+    reauthOk = await tryResumeSavedSession();
+
+    if (!reauthOk) {
+      try {
+        reauthOk = await CompanySessionManager.loginAndSaveSession(
+          serverUrl: url,
+          database: database,
+          userLogin: userLogin,
+          password: storedPassword,
+        ).timeout(const Duration(seconds: 20));
+      } on TimeoutException {
+        reauthReason =
+            'Server took too long to confirm the session. Account was not switched.';
+      } on NoInternetException {
+        reauthReason =
+            'No internet connection. Connect and try switching again.';
+      } on ServerUnreachableException {
+        reauthReason = 'Could not reach $url. Verify the server and try again.';
+      } catch (e) {
+        if (isTwoFactorChallenge(e)) {
+          await _rollbackSwitch(prevSession, prevUrl, prevDatabase);
+          closeDialog();
+          if (!mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TotpPage(
+                protocol: '',
+                serverUrl: url,
+                database: database,
+                username: userLogin,
+                password: storedPassword,
+              ),
+            ),
+          );
+          return;
+        }
+        reauthReason = 'Could not sign in to $displayName: ${_extractReason(e)}';
+      }
     }
 
     if (!reauthOk) {
@@ -832,6 +864,8 @@ class _ConfigurationState extends State<Configuration> {
       return;
     }
 
+    await _refreshSavedSessionId(user, url, database);
+
     await HiveService().clearAllData();
 
     closeDialog();
@@ -841,6 +875,41 @@ class _ConfigurationState extends State<Configuration> {
       _buildPageRoute(const Dashboard()),
       (route) => false,
     );
+  }
+
+  /// Updates this account's saved entry with the session id just
+  /// established, so the next switch to it can resume that session instead
+  /// of asking for a password (and, for a two-factor account, a TOTP code)
+  /// all over again.
+  Future<void> _refreshSavedSessionId(
+    Map<String, dynamic> user,
+    String url,
+    String database,
+  ) async {
+    try {
+      final current = await CompanySessionManager.getCurrentSession();
+      if (current == null || current.sessionId.isEmpty) return;
+
+      final storedUrl = (user['url'] as String? ?? '').trim();
+      if (storedUrl.isNotEmpty && storedUrl != url) {
+        try {
+          await storageService.removeAccount(
+            userLogin: (user['userLogin'] as String? ?? ''),
+            userName: (user['userName'] as String? ?? ''),
+            userId: (user['userId'] as int?) ?? 0,
+            url: storedUrl,
+            database: database,
+          );
+        } catch (_) {}
+      }
+
+      await storageService.saveAccount({
+        ...user,
+        'sessionId': current.sessionId,
+        'url': url,
+        'database': database,
+      });
+    } catch (_) {}
   }
 
   /// Restores the previous account's session prefs after a failed switch.

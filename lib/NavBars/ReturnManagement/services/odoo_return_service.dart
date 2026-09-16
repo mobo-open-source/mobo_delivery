@@ -95,20 +95,29 @@ class OdooReturnManagementService {
   /// Odoo's return wizard creates the return in `confirmed`/`assigned`, never
   /// `done`, so a `state = 'done'` domain alone can never show a return that
   /// was just created.
+  ///
+  /// `return_id` ("Return of") is the field Odoo itself sets on a return
+  /// picking to point back at the picking it returns — present on
+  /// `stock.picking` in 17, 18 and 19 alike (verified against Odoo's own
+  /// source, not assumed). An earlier version of this domain used
+  /// `origin_returned_picking_id`, a field that does not exist anywhere in
+  /// stock's model — every query silently fell back to [_doneOnlyDomain]
+  /// below, so returns never actually showed before they were validated.
   static const List<dynamic> _returnsDomain = [
     '|',
     ['state', '=', 'done'],
-    ['origin_returned_picking_id', '!=', false],
+    ['return_id', '!=', false],
   ];
 
-  /// Fallback for deployments where `origin_returned_picking_id` is not
-  /// exposed; preserves the original done-only behaviour.
+  /// Fallback for a deployment where `return_id` has been removed or
+  /// renamed by a customization; preserves the original done-only
+  /// behaviour rather than failing the list outright.
   static const List<dynamic> _doneOnlyDomain = [
     ['state', '=', 'done'],
   ];
 
   bool _isMissingReturnField(Object e) =>
-      e.toString().toLowerCase().contains('origin_returned_picking_id');
+      e.toString().toLowerCase().contains('return_id');
 
   List<dynamic> _buildDomain(
     List<dynamic> base,
@@ -200,7 +209,7 @@ class OdooReturnManagementService {
       try {
         pickingItems = await search(_returnsDomain, [
           ...baseFields,
-          'origin_returned_picking_id',
+          'return_id',
         ]);
       } catch (e) {
         if (_isMissingReturnField(e)) {
@@ -357,8 +366,12 @@ class OdooReturnManagementService {
   /// Creates a new return picking via Odoo's `stock.return.picking`
   /// wizard. Replaces the wizard's auto-populated lines with the
   /// user-supplied ones, then triggers return creation (method differs
-  /// pre/post Odoo 18). Throws on RPC / wizard failure.
-  Future<void> createReturn(
+  /// pre/post Odoo 18). Returns the new return picking's id — both
+  /// `create_returns` (17) and `action_create_returns` (18/19) hand back an
+  /// `ir.actions.act_window` with `res_id` set to it (verified against
+  /// Odoo's own source) — or `null` if that id could not be determined.
+  /// Throws on RPC / wizard failure.
+  Future<int?> createReturn(
     int pickingId,
     List<List<Object>> returnLines,
   ) async {
@@ -412,7 +425,7 @@ class OdooReturnManagementService {
     });
 
     final method = version < 18 ? 'create_returns' : 'action_create_returns';
-    await CompanySessionManager.callKwWithCompany({
+    final actionResult = await CompanySessionManager.callKwWithCompany({
       'model': 'stock.return.picking',
       'method': method,
       'args': [
@@ -420,5 +433,11 @@ class OdooReturnManagementService {
       ],
       'kwargs': {},
     });
+
+    if (actionResult is Map) {
+      final resId = actionResult['res_id'];
+      if (resId is int) return resId;
+    }
+    return null;
   }
 }

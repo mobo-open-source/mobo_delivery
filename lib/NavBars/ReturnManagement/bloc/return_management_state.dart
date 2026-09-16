@@ -67,6 +67,12 @@ class ReturnManagementState extends Equatable {
     List<Map<String, dynamic>>? filteredPickings,
     int? currentPage,
     int? highlightedPickingId,
+
+    /// `highlightedPickingId: null` alone can't clear the field — it is
+    /// indistinguishable from not passing it, so the `?? this.…` fallback
+    /// below would just keep the old value forever. This is the explicit
+    /// way to actually clear it.
+    bool clearHighlightedPickingId = false,
     String? error,
     int? totalCount,
     int? displayedCount,
@@ -82,7 +88,9 @@ class ReturnManagementState extends Equatable {
       pickings: pickings ?? this.pickings,
       filteredPickings: filteredPickings ?? this.filteredPickings,
       currentPage: currentPage ?? this.currentPage,
-      highlightedPickingId: highlightedPickingId ?? this.highlightedPickingId,
+      highlightedPickingId: clearHighlightedPickingId
+          ? null
+          : (highlightedPickingId ?? this.highlightedPickingId),
       error: error,
       totalCount: totalCount ?? this.totalCount,
       displayedCount: displayedCount ?? this.displayedCount,

@@ -45,17 +45,6 @@ class SearchPickings extends ReturnManagementEvent {
   List<Object?> get props => [query];
 }
 
-/// Create new return picking from move lines
-class CreateReturn extends ReturnManagementEvent {
-  final int pickingId;
-  final List<List<Object>> returnLines;
-
-  const CreateReturn(this.pickingId, this.returnLines);
-
-  @override
-  List<Object?> get props => [pickingId, returnLines];
-}
-
 /// Temporarily highlight a picking in UI
 class HighlightPicking extends ReturnManagementEvent {
   final int? pickingId;

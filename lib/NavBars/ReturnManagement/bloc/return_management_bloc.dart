@@ -23,7 +23,6 @@ class ReturnManagementBloc
     : super(const ReturnManagementState()) {
     on<InitializeReturnManagement>(_onInitialize);
     on<FetchStockPickings>(_onFetchStockPickings);
-    on<CreateReturn>(_onCreateReturn);
     on<HighlightPicking>(_onHighlightPicking);
 
     on<SearchPickings>((event, emit) async {
@@ -77,7 +76,7 @@ class ReturnManagementBloc
     try {
       emit(state.copyWith(isLoading: true));
 
-      odooService.initializeClient();
+      await odooService.initializeClient();
 
       add(FetchStockPickings(0));
     } catch (e) {
@@ -198,32 +197,6 @@ class ReturnManagementBloc
 
   /// Creates a new return picking from selected move lines. Errors are
   /// surfaced via `state.error` for the UI to show.
-  Future<void> _onCreateReturn(
-    CreateReturn event,
-    Emitter<ReturnManagementState> emit,
-  ) async {
-    try {
-      emit(state.copyWith(error: null));
-      await odooService.createReturn(event.pickingId, event.returnLines);
-      add(FetchStockPickings(state.currentPage));
-      add(HighlightPicking(event.pickingId));
-    } catch (e) {
-      emit(state.copyWith(error: _formatReturnError(e)));
-    }
-  }
-
-  /// Maps low-level RPC/wizard errors to a user-friendly message.
-  String _formatReturnError(Object e) {
-    final raw = e.toString();
-    if (raw.contains('404')) {
-      return 'This picking can no longer be returned. It may already have a return in progress, or the source moves are no longer available.';
-    }
-    if (raw.contains('Session expired') || raw.contains('SessionExpired')) {
-      return 'Session expired. Please log in again to create a return.';
-    }
-    return 'Failed to create return: $raw';
-  }
-
   /// Temporarily highlights a picking (e.g. after return creation)
   Future<void> _onHighlightPicking(
     HighlightPicking event,
@@ -231,6 +204,6 @@ class ReturnManagementBloc
   ) async {
     emit(state.copyWith(highlightedPickingId: event.pickingId));
     await Future.delayed(const Duration(seconds: 2));
-    emit(state.copyWith(highlightedPickingId: null));
+    emit(state.copyWith(clearHighlightedPickingId: true));
   }
 }

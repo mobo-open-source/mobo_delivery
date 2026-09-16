@@ -6,6 +6,18 @@ import '../../core/security/self_signed.dart';
 import '../models/auth_model.dart';
 import '../models/session_model.dart';
 
+/// Credentials were correct, but the account has TOTP-based two-factor
+/// authentication enabled — Odoo handed back a partial (`uid: false`)
+/// session pending a verification code, identified by [pendingSessionId].
+class TwoFactorRequiredException implements Exception {
+  final String pendingSessionId;
+
+  TwoFactorRequiredException(this.pendingSessionId);
+
+  @override
+  String toString() => 'TwoFactorRequiredException: verification code required';
+}
+
 /// Handles all authentication-related operations:
 /// - Biometric authentication (Local device security)
 /// - Odoo session authentication (Server-side login)
@@ -72,11 +84,72 @@ class AuthService {
     return 0;
   }
 
-  /// Retrieves session info directly using existing session cookie.
+  /// Tells "wrong password" apart from "correct password, 2FA pending".
   ///
-  /// Used for:
-  /// - Restoring existing session
-  /// - Validating session without re-login
+  /// Odoo's `/web/session/authenticate` reports both identically — `uid:
+  /// false` either way — so a failed [OdooClient.authenticate] call alone
+  /// cannot distinguish them. This repeats the same request directly and
+  /// reads the raw response: Odoo only issues a `session_id` when the
+  /// credentials were actually accepted and a TOTP code is still pending.
+  /// Returns that pending session id, or `null` if this was a genuine
+  /// authentication failure (or the probe itself could not be completed).
+  Future<String?> _detectPendingTwoFactor({
+    required String url,
+    required String database,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final response = await ioClient.post(
+        Uri.parse('$url/web/session/authenticate'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: jsonEncode({
+          'jsonrpc': '2.0',
+          'method': 'call',
+          'params': {'db': database, 'login': username, 'password': password},
+          'id': 1,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      final result = data['result'];
+      if (result is! Map || (result['uid'] != false && result['uid'] != null)) {
+        return null;
+      }
+
+      final cookieSessionId = _sessionIdFromSetCookie(
+        response.headers['set-cookie'],
+      );
+      if (cookieSessionId != null && cookieSessionId.isNotEmpty) {
+        return cookieSessionId;
+      }
+
+      final bodySessionId = result['session_id'];
+      if (bodySessionId is String && bodySessionId.isNotEmpty) {
+        return bodySessionId;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _sessionIdFromSetCookie(String? setCookie) {
+    if (setCookie == null) return null;
+    return RegExp(r'session_id=([^;]+)').firstMatch(setCookie)?.group(1);
+  }
+
+  /// Validates [sessionId] against the server and returns its session info.
+  ///
+  /// A session Odoo has not fully authenticated — pending 2FA, expired, or
+  /// never valid — reports this by either an RPC error or a `uid` of `null`/
+  /// `false` in an otherwise-normal response; both are treated as failure
+  /// here rather than being passed through, since a caller that only reads
+  /// `uid` off the returned map cannot otherwise tell "not signed in" apart
+  /// from a real session.
   Future<Map<String, dynamic>> getSessionInfo(
     String url,
     String sessionId,
@@ -98,7 +171,14 @@ class AuthService {
     );
 
     final data = jsonDecode(response.body);
-    return Map<String, dynamic>.from(data['result']);
+    if (data['error'] != null) {
+      throw Exception('Session is no longer valid.');
+    }
+    final result = data['result'];
+    if (result is! Map || result['uid'] == null || result['uid'] == false) {
+      throw Exception('Session is no longer valid.');
+    }
+    return Map<String, dynamic>.from(result);
   }
 
   /// Generic RPC call using existing session cookie.
@@ -324,7 +404,20 @@ class AuthService {
         /// -------------------------
         /// USERNAME PASSWORD LOGIN
         /// -------------------------
-        session = await client.authenticate(database, username, password);
+        try {
+          session = await client.authenticate(database, username, password);
+        } catch (e) {
+          final pendingSessionId = await _detectPendingTwoFactor(
+            url: url,
+            database: database,
+            username: username,
+            password: password,
+          );
+          if (pendingSessionId != null) {
+            throw TwoFactorRequiredException(pendingSessionId);
+          }
+          rethrow;
+        }
         userId = session.userId;
 
         if (session != null) {

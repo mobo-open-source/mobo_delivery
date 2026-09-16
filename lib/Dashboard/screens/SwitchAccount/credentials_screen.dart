@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../LoginPage/models/session_model.dart';
 import '../../../LoginPage/services/app_install_check.dart';
+import '../../../LoginPage/services/auth_service.dart';
 import '../../../LoginPage/views/totp_page.dart';
 import '../../../core/company/services/connectivity_service.dart';
 import '../../../core/company/session/company_session_manager.dart';
@@ -356,10 +357,7 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
         }
       }
     } catch (e) {
-      final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('two factor') ||
-          errorStr.contains('2fa') ||
-          errorStr.contains('null')) {
+      if (e is TwoFactorRequiredException) {
         if (context.mounted) {
           Navigator.push(
             context,

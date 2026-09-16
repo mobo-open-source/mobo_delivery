@@ -7,10 +7,10 @@ import '../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/snackbar.dart';
-import '../../Pickings/PickingFormPage/pages/picking_details_page.dart';
 import '../../Pickings/PickingFormPage/services/odoo_picking_form_service.dart';
 import '../bloc/return_management_bloc.dart';
 import '../bloc/return_management_event.dart';
+import '../infrastructure/return_refresh_bus.dart';
 import '../services/odoo_return_service.dart';
 
 /// Bottom sheet dialog for creating a return (reverse picking) from an existing picking.
@@ -22,7 +22,9 @@ import '../services/odoo_return_service.dart';
 /// • Collects lines with positive return quantities
 /// • Awaits the wizard RPCs directly via `OdooReturnManagementService`
 /// • On success, dispatches `FetchStockPickings` to refresh the list and
-///   navigates to `PickingDetailsPage` for the source picking
+///   closes — invoked from the Return Management list, this pops with the
+///   new return's id so the list can highlight it; invoked from a picking's
+///   own detail page, it pops plain and lets that page refresh itself
 /// • Shows success/error snackbar based on the actual result
 ///
 /// Features:
@@ -424,9 +426,13 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
     });
 
     final odooPickingFormService = OdooPickingFormService();
+    int? newPickingId;
     try {
       await odooPickingFormService.initializeOdooClient();
-      await widget.odooService.createReturn(_pickingId, returnLines);
+      newPickingId = await widget.odooService.createReturn(
+        _pickingId,
+        returnLines,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -441,27 +447,11 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
     final bloc = widget.bloc;
     if (bloc != null) {
       bloc.add(FetchStockPickings(bloc.state.currentPage));
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              PickingDetailsPage(
-                picking: widget.picking,
-                odooService: odooPickingFormService,
-                isPickingForm: false,
-                isReturnPicking: false,
-                isReturnCreate: true,
-              ),
-          transitionDuration: const Duration(milliseconds: 300),
-          reverseTransitionDuration: const Duration(milliseconds: 300),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
+      Navigator.of(context).pop(newPickingId);
     } else {
       Navigator.of(context).pop();
       widget.onReturnCreated?.call();
+      ReturnRefreshBus.notifyReturnCreated(newPickingId);
     }
     CustomSnackbar.showSuccess(context, 'Return created successfully.');
   }

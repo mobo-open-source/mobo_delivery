@@ -18,6 +18,7 @@ import '../../shared/utils/globals.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
+import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
 /// Login screen where users enter username + password after selecting server/database.
@@ -530,11 +531,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
         setState(() => _errorMessage = 'Authentication failed.');
       }
     } catch (e) {
-      final errorStr = e.toString().toLowerCase();
-
-      if (errorStr.contains('two factor') ||
-          errorStr.contains('2fa') ||
-          errorStr.contains('null')) {
+      if (e is TwoFactorRequiredException) {
         Navigator.push(
           context,
           MaterialPageRoute(

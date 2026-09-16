@@ -17,9 +17,12 @@ import '../../../../shared/widgets/loaders/delivery_shimmers.dart';
 import '../bloc/return_management_bloc.dart';
 import '../bloc/return_management_event.dart';
 import '../bloc/return_management_state.dart';
+import '../infrastructure/return_refresh_bus.dart';
 import '../services/odoo_return_service.dart';
 import '../widgets/picking_bottom_sheet.dart';
 import '../../../shared/widgets/buttons/mobo_button.dart';
+import '../../Pickings/PickingFormPage/pages/picking_details_page.dart';
+import '../../Pickings/PickingFormPage/services/odoo_picking_form_service.dart';
 
 /// Main screen for managing return pickings (reverse transfers / customer returns).
 ///
@@ -74,6 +77,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   };
 
   StreamSubscription? _profileSub;
+  StreamSubscription? _returnSub;
 
   @override
   void initState() {
@@ -86,11 +90,29 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       if (!mounted) return;
       _initAll(forceRefresh: true);
     });
+
+    _returnSub = ReturnRefreshBus.onReturnCreated.listen((newPickingId) {
+      if (!mounted) return;
+      _bloc.add(
+        FetchStockPickings(
+          0,
+          searchText: _searchController.text.trim().isNotEmpty
+              ? _searchController.text.trim()
+              : null,
+          filters: _selectedFilters,
+          groupBy: _selectedGroupBy,
+        ),
+      );
+      if (newPickingId != null) {
+        _bloc.add(HighlightPicking(newPickingId));
+      }
+    });
   }
 
   @override
   void dispose() {
     _companySub?.cancel();
+    _returnSub?.cancel();
     _profileSub?.cancel();
     _bloc.close();
     super.dispose();
@@ -642,7 +664,12 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                         horizontal: 8,
                         vertical: 4,
                       ),
-                      child: _buildReturnTile(picking, isDark, context),
+                      child: _buildReturnTile(
+                        picking,
+                        isDark,
+                        context,
+                        highlightedPickingId: state.highlightedPickingId,
+                      ),
                     ),
                   ),
               ],
@@ -656,8 +683,11 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
   Widget _buildReturnTile(
     Map<String, dynamic> picking,
     bool isDark,
-    BuildContext context,
-  ) {
+    BuildContext context, {
+    int? highlightedPickingId,
+  }) {
+    final isHighlighted =
+        highlightedPickingId != null && picking['id'] == highlightedPickingId;
     final reference = picking['name'] ?? 'Return #${picking['id']}';
     final state = picking['state'] ?? 'unknown';
     final rawOrigin = picking['origin'];
@@ -667,7 +697,7 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
         rawOrigin.toString().trim().isNotEmpty;
     final origin = hasOrigin ? rawOrigin.toString() : 'None';
 
-    final returnedFrom = picking['origin_returned_picking_id'];
+    final returnedFrom = picking['return_id'];
     final isReturn = returnedFrom is List && returnedFrom.length > 1;
     final returnedFromName = isReturn ? returnedFrom[1].toString() : null;
 
@@ -687,6 +717,24 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
     final valueColor = isDark ? Colors.grey[300]! : Colors.grey[800]!;
 
     Future<void> handleTap() async {
+      if (isReturn) {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, _) => PickingDetailsPage(
+              picking: {...picking, 'item': picking['name'] ?? 'Return Picking'},
+              odooService: OdooPickingFormService(),
+              isPickingForm: false,
+              isReturnCreate: false,
+              isReturnPicking: true,
+            ),
+            transitionsBuilder: (context, animation, _, child) =>
+                FadeTransition(opacity: animation, child: child),
+          ),
+        );
+        return;
+      }
+
       if (!isOnline) {
         CustomSnackbar.showError(
           context,
@@ -731,18 +779,35 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
       );
 
       if (result != null && mounted) {
+        bloc.add(
+          FetchStockPickings(
+            0,
+            searchText: _searchController.text.trim().isNotEmpty
+                ? _searchController.text.trim()
+                : null,
+            filters: _selectedFilters,
+            groupBy: _selectedGroupBy,
+          ),
+        );
         bloc.add(HighlightPicking(result));
       }
     }
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
+        color: isHighlighted
+            ? (isDark
+                  ? AppStyle.primaryColor.withValues(alpha: 0.16)
+                  : AppStyle.primaryColor.withValues(alpha: 0.08))
+            : (isDark ? Colors.grey[850] : Colors.white),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-          width: 0.5,
+          color: isHighlighted
+              ? AppStyle.primaryColor
+              : (isDark ? Colors.grey[800]! : Colors.grey[200]!),
+          width: isHighlighted ? 1.5 : 0.5,
         ),
         boxShadow: [
           BoxShadow(
@@ -1057,14 +1122,18 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
 
           return Scaffold(
             backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
-            body: BlocListener<ReturnManagementBloc, ReturnManagementState>(
-              listenWhen: (prev, curr) =>
-                  prev.error != curr.error &&
-                  curr.error != null &&
-                  curr.pickings.isNotEmpty,
-              listener: (context, state) {
-                CustomSnackbar.showError(context, state.error!);
-              },
+            body: MultiBlocListener(
+              listeners: [
+                BlocListener<ReturnManagementBloc, ReturnManagementState>(
+                  listenWhen: (prev, curr) =>
+                      prev.error != curr.error &&
+                      curr.error != null &&
+                      curr.pickings.isNotEmpty,
+                  listener: (context, state) {
+                    CustomSnackbar.showError(context, state.error!);
+                  },
+                ),
+              ],
               child: BlocBuilder<ReturnManagementBloc, ReturnManagementState>(
                 builder: (context, state) {
                   final displayedPickings = state.searchText?.isNotEmpty == true
@@ -1138,6 +1207,8 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
                                         picking,
                                         isDark,
                                         context,
+                                        highlightedPickingId:
+                                            state.highlightedPickingId,
                                       );
                                     },
                                   ),

@@ -65,6 +65,94 @@ class _TotpPageState extends State<TotpPage> {
   final CommonStorageService _commonStorageService = CommonStorageService();
   final HiveService _hiveService = HiveService();
 
+  /// The scheme in use for this attempt, defaulting to `https`. Mutable
+  /// because an account without an explicit scheme on record may need the
+  /// other one tried — see [_retryWithOtherSchemeIfPossible].
+  late String _activeServerUrl;
+
+  /// Whether a same-scheme retry after a failed load has already happened,
+  /// so a server that fails under both schemes reports the failure instead
+  /// of retrying forever.
+  bool _schemeFallbackAttempted = false;
+
+  /// [widget.serverUrl] with a scheme, so it can always be parsed as a URI.
+  ///
+  /// A saved account's URL is not guaranteed to carry one — a caller that
+  /// forwards it unmodified (as switching accounts does) can hand this
+  /// screen a bare host:port, which crashes every `WebUri(...)` call in this
+  /// file outright rather than merely failing to connect.
+  static String _withDefaultScheme(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return 'https://$trimmed';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _activeServerUrl = _withDefaultScheme(widget.serverUrl);
+    _clearStaleCookies();
+  }
+
+  /// Clears cookies left on this server's domain from an earlier attempt.
+  ///
+  /// Odoo issues a `session_id` cookie the moment credentials are accepted,
+  /// before the TOTP code is ever checked, and — if a prior attempt ticked
+  /// "trust this device" — a long-lived `td_id` cookie that skips the TOTP
+  /// challenge outright. Either one left over from a previous run of this
+  /// screen would let a fresh attempt look successful, or actually bypass
+  /// verification, regardless of the code just entered.
+  Future<void> _clearStaleCookies() async {
+    try {
+      await CookieManager.instance().deleteCookies(
+        url: WebUri(_activeServerUrl),
+      );
+    } catch (_) {}
+  }
+
+  /// Retries the initial page load under the other scheme, once, when the
+  /// failure looks like a transport/TLS problem rather than a genuine 404 or
+  /// similar application-level response.
+  ///
+  /// A saved account's URL may carry no scheme at all, in which case `https`
+  /// was only ever this screen's default guess — not something the account
+  /// was actually verified against. A server that only speaks plain HTTP (or
+  /// whose HTTPS Android's WebView refuses to negotiate, independently of
+  /// whether other HTTP clients in this app tolerate it) fails exactly this
+  /// way, so the other scheme is worth one try before reporting failure.
+  /// Returns `true` if a retry was started.
+  Future<bool> _retryWithOtherSchemeIfPossible(String errorDescription) async {
+    if (_schemeFallbackAttempted || !_loading) return false;
+    if (errorDescription.contains('CLEARTEXT')) return false;
+
+    final current = _activeServerUrl;
+    final String flipped;
+    if (current.startsWith('https://')) {
+      flipped = 'http://${current.substring('https://'.length)}';
+    } else if (current.startsWith('http://')) {
+      flipped = 'https://${current.substring('http://'.length)}';
+    } else {
+      return false;
+    }
+
+    _schemeFallbackAttempted = true;
+    _activeServerUrl = flipped;
+    _credentialsInjected = false;
+
+    try {
+      await _webController?.loadUrl(
+        urlRequest: URLRequest(
+          url: WebUri('$_activeServerUrl/web/login?db=${widget.database}'),
+        ),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -98,7 +186,7 @@ class _TotpPageState extends State<TotpPage> {
               child: InAppWebView(
                 initialUrlRequest: URLRequest(
                   url: WebUri(
-                    '${widget.serverUrl}/web/login?db=${widget.database}',
+                    '$_activeServerUrl/web/login?db=${widget.database}',
                   ),
                 ),
                 initialOptions: InAppWebViewGroupOptions(
@@ -134,9 +222,22 @@ class _TotpPageState extends State<TotpPage> {
                   return NavigationActionPolicy.ALLOW;
                 },
 
-                onLoadError: (controller, url, code, message) {},
+                onReceivedError: (controller, request, error) async {
+                  if (!mounted || _verifying) return;
 
-                onReceivedError: (controller, request, errorResponse) {},
+                  if (await _retryWithOtherSchemeIfPossible(error.description)) {
+                    return;
+                  }
+
+                  final description = error.description;
+                  setState(() {
+                    _loading = false;
+                    _error = description.contains('CLEARTEXT')
+                        ? 'This server uses plain HTTP, which the device '
+                              'blocks. Use an HTTPS address instead.'
+                        : 'Failed to load: $description';
+                  });
+                },
                 onLoadStop: (controller, url) async {
                   final urlStr = url?.toString() ?? '';
 
@@ -345,11 +446,12 @@ class _TotpPageState extends State<TotpPage> {
   /// Performs these steps:
   ///   1. Validates input format (6 digits)
   ///   2. Injects code into the most likely TOTP field
-  ///   3. Checks/trusts device if checkbox exists
-  ///   4. Submits form (button click or native submit)
-  ///   5. Polls DOM for success indicators (user menu, web client)
-  ///   6. Extracts session cookie
-  ///   7. Saves session & navigates (or shows module error)
+  ///   3. Submits form (button click or native submit)
+  ///   4. Waits for the DOM to settle on a result (error banner or logged in)
+  ///   5. Asks [_saveSessionData] — the sole source of truth on whether the
+  ///      code was correct — to validate the resulting session and save it
+  ///   6. Navigates (or shows a portal/module-missing dialog) only if that
+  ///      validation succeeded
   ///
   /// Shows appropriate error messages on failure.
   Future<void> _submitTotp() async {
@@ -385,12 +487,6 @@ class _TotpPageState extends State<TotpPage> {
       input.dispatchEvent(new KeyboardEvent(eventType, {key: 'Enter', bubbles: true, cancelable: true}));
     });
 
-    const trustCheckbox = document.querySelector('input[name="trust_device"], input[type="checkbox"], [name="trust"]');
-    if (trustCheckbox && !trustCheckbox.checked) {
-      trustCheckbox.checked = true;
-      trustCheckbox.dispatchEvent(new Event('change', {bubbles: true}));
-    }
-
     const form = input.closest('form') || document.querySelector('form[action*="/web/login"]');
     if (form) {
       const btn = form.querySelector('button[type="submit"], button.btn-primary, button[name="submit"], button.btn-block');
@@ -409,78 +505,30 @@ class _TotpPageState extends State<TotpPage> {
       await Future.delayed(const Duration(seconds: 2));
 
       for (int i = 0; i < 20; i++) {
-        final isLoggedIn = await _webController!.evaluateJavascript(
+        final domState = await _webController!.evaluateJavascript(
           source: """
     (function() {
       const userMenu = document.querySelector('.o_user_menu, .oe_topbar_avatar, .o_apps_switcher, [data-menu="account"]');
       const webClient = document.querySelector('.o_web_client, .o_action_manager');
       const error = document.querySelector('.alert-danger, .o_error_dialog');
-      if (userMenu || webClient) return true;
       if (error) return 'error';
-      return false;
+      if (userMenu || webClient) return 'signed_in';
+      return 'pending';
     })();
     """,
         );
-        if (isLoggedIn == 'error') {
+        if (domState == 'error') {
           setState(
-            () => _error = "Invalid code or login failed. Please try again.",
+            () => _error = 'Invalid code or login failed. Please try again.',
           );
           return;
         }
+        if (domState == 'signed_in') break;
         await Future.delayed(const Duration(milliseconds: 500));
       }
 
-      await Future.delayed(const Duration(seconds: 4));
-
-      final currentUrl = await _webController!.getUrl();
-      final urlStr = currentUrl?.toString() ?? '';
-
-      final cookies = await CookieManager.instance().getCookies(
-        url: currentUrl!,
-      );
-
-      final sessionCookie = cookies.firstWhere(
-        (c) => c.name == 'session_id',
-        orElse: () => Cookie(name: '', value: ''),
-      );
-
-      if (sessionCookie.value.isEmpty) {
-        setState(() => _error = "Login failed or invalid TOTP.");
-        return;
-      }
-
-      final domSuccess = await _webController!.evaluateJavascript(
-        source: """
-      (function() {
-        const hasUserMenu = !!document.querySelector('.o_user_menu, .oe_topbar_avatar');
-        const hasWebClient = !!document.querySelector('.o_web_client');
-        return hasUserMenu || hasWebClient;
-      })();
-    """,
-      );
-
-      if (domSuccess == true ||
-          currentUrl.toString().contains('/web?') ||
-          currentUrl.toString().contains('/odoo/discuss?') ||
-          currentUrl.toString().contains('/odoo') ||
-          currentUrl.toString().contains('/odoo/apps?')) {
-        await _saveSessionData();
-      }
-
-      final isSuccess =
-          sessionCookie.value.isNotEmpty &&
-          sessionCookie.value.length > 20 &&
-          ((urlStr.contains('/web') ||
-                  (urlStr.contains('/odoo/discuss')) ||
-                  (urlStr.contains('/odoo')) ||
-                  (urlStr.contains('/odoo/apps'))) &&
-              !urlStr.contains('/login') &&
-              !urlStr.contains('/totp'));
-
-      if (!isSuccess) {
-        setState(() {
-          _error = 'Invalid code or login failed. Please try again.';
-        });
+      final success = await _saveSessionData();
+      if (!success) {
         return;
       }
 
@@ -587,12 +635,22 @@ class _TotpPageState extends State<TotpPage> {
     await prefs.setStringList('urlHistory', history.take(10).toList());
   }
 
-  /// Extracts session cookie, saves full session via CompanySessionManager,
-  /// stores account info, updates shared preferences flags and timestamp.
-  Future<void> _saveSessionData() async {
+  /// Validates the session Odoo issued, and if genuine, saves it.
+  ///
+  /// This is the sole authority on whether the TOTP code was correct. It
+  /// passes the cookie's `session_id` through
+  /// [CompanySessionManager.loginAndSaveSession], which resolves it against
+  /// the server (`getSessionInfo`) rather than trusting the cookie's mere
+  /// presence — Odoo issues a `session_id` cookie as soon as the password is
+  /// accepted, well before the TOTP code is checked, so an empty or
+  /// short-lived cookie is not evidence of anything. A pending or rejected
+  /// 2FA session fails that resolution and is reported as `_error` here;
+  /// nothing above this method may override that with a weaker check of its
+  /// own.
+  Future<bool> _saveSessionData() async {
     try {
       final cookies = await CookieManager.instance().getCookies(
-        url: WebUri(widget.serverUrl),
+        url: WebUri(_activeServerUrl),
       );
 
       final sessionCookie = cookies.firstWhere(
@@ -600,90 +658,98 @@ class _TotpPageState extends State<TotpPage> {
         orElse: () => Cookie(name: '', value: ''),
       );
 
-      if (sessionCookie.value.isNotEmpty) {
-        sessionId = sessionCookie.value;
-        final success = await CompanySessionManager.loginAndSaveSession(
-          serverUrl: widget.serverUrl,
-          database: widget.database,
-          userLogin: widget.username.trim(),
-          password: widget.password.trim(),
-          session_Id: sessionId,
-        ).timeout(const Duration(seconds: 20));
-        await _saveUrlHistory(
-          protocol: widget.protocol,
-          url: widget.serverUrl,
-          database: widget.database,
-          username: widget.password.trim(),
-        );
-        if (!success) {
-          return;
-        }
-        final session = await CompanySessionManager.getCurrentSession();
-        String profileImage = '';
-        if (session?.userId != null) {
-          try {
-            final res = await CompanySessionManager.callKwWithCompany({
-              'model': 'res.users',
-              'method': 'read',
-              'args': [
-                [session!.userId],
-                ['image_1920'],
-              ],
-              'kwargs': {},
-            });
-            if (res is List && res.isNotEmpty) {
-              final raw = (res.first as Map)['image_1920'];
-              if (raw is String && raw.isNotEmpty && raw != 'false') {
-                profileImage = raw;
-              }
-            }
-          } catch (_) {}
-        }
-        await _commonStorageService.saveAccount({
-          'userName': session?.userName,
-          'userLogin': session?.userLogin,
-          'userId': session?.userId,
-          'sessionId': session?.sessionId,
-          'serverVersion': session?.serverVersion,
-          'userLang': session?.userLang,
-          'partnerId': session?.partnerId,
-          'userTimezone': session?.userTimezone,
-          'companyId': session?.companyId,
-          'companyName': session?.companyName,
-          'isSystem': session?.isSystem,
-          'allowedCompanyIds': session?.allowedCompanyIds,
-          'url': widget.serverUrl,
-          'database': widget.database,
-          'image': profileImage,
-        });
-
-        final prefs = await SharedPreferences.getInstance();
-
-        await prefs.remove('logoutAction');
-
-        await prefs.setString('sessionId', sessionId!);
-        await prefs.setString('username', widget.username);
-        await prefs.setString('url', widget.serverUrl);
-        await prefs.setString('database', widget.database);
-        await prefs.setBool('logoutAction', false);
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('lastUsername', widget.username.trim());
-
-        await prefs.setInt(
-          'loginTimestamp',
-          DateTime.now().millisecondsSinceEpoch,
-        );
-      } else {
+      if (sessionCookie.value.isEmpty) {
         setState(() {
           _error = 'Invalid code or login failed. Please try again.';
         });
-        return;
+        return false;
       }
+
+      sessionId = sessionCookie.value;
+      final success = await CompanySessionManager.loginAndSaveSession(
+        serverUrl: _activeServerUrl,
+        database: widget.database,
+        userLogin: widget.username.trim(),
+        password: widget.password.trim(),
+        session_Id: sessionId,
+      ).timeout(const Duration(seconds: 20));
+
+      if (!success) {
+        setState(() {
+          _error = 'Invalid code or login failed. Please try again.';
+        });
+        return false;
+      }
+
+      await _saveUrlHistory(
+        protocol: widget.protocol,
+        url: _activeServerUrl,
+        database: widget.database,
+        username: widget.password.trim(),
+      );
+
+      final session = await CompanySessionManager.getCurrentSession();
+      String profileImage = '';
+      if (session?.userId != null) {
+        try {
+          final res = await CompanySessionManager.callKwWithCompany({
+            'model': 'res.users',
+            'method': 'read',
+            'args': [
+              [session!.userId],
+              ['image_1920'],
+            ],
+            'kwargs': {},
+          });
+          if (res is List && res.isNotEmpty) {
+            final raw = (res.first as Map)['image_1920'];
+            if (raw is String && raw.isNotEmpty && raw != 'false') {
+              profileImage = raw;
+            }
+          }
+        } catch (_) {}
+      }
+      await _commonStorageService.saveAccount({
+        'userName': session?.userName,
+        'userLogin': session?.userLogin,
+        'userId': session?.userId,
+        'sessionId': session?.sessionId,
+        'serverVersion': session?.serverVersion,
+        'userLang': session?.userLang,
+        'partnerId': session?.partnerId,
+        'userTimezone': session?.userTimezone,
+        'companyId': session?.companyId,
+        'companyName': session?.companyName,
+        'isSystem': session?.isSystem,
+        'allowedCompanyIds': session?.allowedCompanyIds,
+        'url': _activeServerUrl,
+        'database': widget.database,
+        'image': profileImage,
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.remove('logoutAction');
+
+      await prefs.setString('sessionId', sessionId!);
+      await prefs.setString('username', widget.username);
+      await prefs.setString('url', _activeServerUrl);
+      await prefs.setString('database', widget.database);
+      await prefs.setBool('logoutAction', false);
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('lastUsername', widget.username.trim());
+
+      await prefs.setInt(
+        'loginTimestamp',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+
+      return true;
     } catch (e) {
       setState(() {
         _error = 'Invalid code or login failed. Please try again.';
       });
-      return;
+      return false;
     }
   }
 
