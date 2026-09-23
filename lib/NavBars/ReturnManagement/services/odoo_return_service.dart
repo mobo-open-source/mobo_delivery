@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/company/session/company_session_manager.dart';
+import '../../../shared/utils/odoo_domain_error.dart';
 
 /// Service layer for managing **return pickings** (reverse transfers / customer returns) in Odoo.
 ///
@@ -51,11 +52,11 @@ class OdooReturnManagementService {
           break;
 
         case 'has_return':
-          domain.add(['return_count', '>', 0]);
+          domain.add(['return_ids', '!=', false]);
           break;
 
         case 'no_return':
-          domain.add(['return_count', '=', 0]);
+          domain.add(['return_ids', '=', false]);
           break;
 
         case 'this_week':
@@ -119,6 +120,33 @@ class OdooReturnManagementService {
   bool _isMissingReturnField(Object e) =>
       e.toString().toLowerCase().contains('return_id');
 
+  /// Filters the server refused to search on during the last fetch.
+  ///
+  /// Populated when Odoo rejects the domain itself (see
+  /// [isUnsupportedDomainError]) and the query is retried without filters,
+  /// so the UI can say which filter this server does not support instead of
+  /// reporting that the whole list failed.
+  List<String> unsupportedFilters = [];
+
+  /// Runs [attempt] with the chosen filters, and again without them if this
+  /// server rejects the domain they produce.
+  Future<T> _withFilterFallback<T>(
+    List<String>? filters,
+    Future<T> Function(List<String>? filters) attempt,
+  ) async {
+    try {
+      final result = await attempt(filters);
+      unsupportedFilters = [];
+      return result;
+    } catch (e) {
+      if (!isUnsupportedDomainError(e) || filters == null || filters.isEmpty) {
+        rethrow;
+      }
+      unsupportedFilters = List<String>.from(filters);
+      return await attempt(null);
+    }
+  }
+
   List<dynamic> _buildDomain(
     List<dynamic> base,
     String? searchText,
@@ -144,25 +172,25 @@ class OdooReturnManagementService {
       final session = await CompanySessionManager.getCurrentSession();
       final uid = session!.userId;
 
-      Future<dynamic> count(List<dynamic> base) {
+      Future<dynamic> count(List<dynamic> base, List<String>? active) {
         return CompanySessionManager.callKwWithCompany({
           'model': 'stock.picking',
           'method': 'search_count',
-          'args': [_buildDomain(base, searchText, filters, uid)],
+          'args': [_buildDomain(base, searchText, active, uid)],
           'kwargs': {},
         });
       }
 
-      dynamic pickingCount;
-      try {
-        pickingCount = await count(_returnsDomain);
-      } catch (e) {
-        if (_isMissingReturnField(e)) {
-          pickingCount = await count(_doneOnlyDomain);
-        } else {
+      final pickingCount = await _withFilterFallback(filters, (active) async {
+        try {
+          return await count(_returnsDomain, active);
+        } catch (e) {
+          if (_isMissingReturnField(e)) {
+            return await count(_doneOnlyDomain, active);
+          }
           rethrow;
         }
-      }
+      });
       return pickingCount ?? 0;
     } catch (e) {
       throw Exception('Failed to count stock pickings: $e');
@@ -196,28 +224,32 @@ class OdooReturnManagementService {
         'return_count',
       ];
 
-      Future<dynamic> search(List<dynamic> base, List<String> fields) {
+      Future<dynamic> search(
+        List<dynamic> base,
+        List<String> fields,
+        List<String>? active,
+      ) {
         return CompanySessionManager.callKwWithCompany({
           'model': 'stock.picking',
           'method': 'search_read',
-          'args': [_buildDomain(base, searchText, filters, uid)],
+          'args': [_buildDomain(base, searchText, active, uid)],
           'kwargs': {'fields': fields, 'limit': itemsPerPage, 'offset': offset},
         });
       }
 
-      dynamic pickingItems;
-      try {
-        pickingItems = await search(_returnsDomain, [
-          ...baseFields,
-          'return_id',
-        ]);
-      } catch (e) {
-        if (_isMissingReturnField(e)) {
-          pickingItems = await search(_doneOnlyDomain, baseFields);
-        } else {
+      final pickingItems = await _withFilterFallback(filters, (active) async {
+        try {
+          return await search(_returnsDomain, [
+            ...baseFields,
+            'return_id',
+          ], active);
+        } catch (e) {
+          if (_isMissingReturnField(e)) {
+            return await search(_doneOnlyDomain, baseFields, active);
+          }
           rethrow;
         }
-      }
+      });
       return List<Map<String, dynamic>>.from(pickingItems ?? []);
     } catch (e) {
       throw Exception('Failed to fetch stock pickings: $e');

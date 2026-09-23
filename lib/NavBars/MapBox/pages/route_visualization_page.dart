@@ -11,6 +11,7 @@ import 'package:location/location.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:http/http.dart' as http;
 import '../../../shared/utils/globals.dart';
+import '../../../core/colors/app_colors.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../services/map_service.dart';
 import '../services/odoo_map_service.dart';
@@ -43,8 +44,38 @@ const double _kMinPinMoveDegrees = 0.00001;
 /// [TOMTOM_API_KEY] in `.env` still overrides this when set.
 const int _kKeyPad = 0x5A;
 const List<int> _kDefaultTomTomKeyXor = [
-  11, 12, 25, 31, 99, 108, 16, 99, 19, 105, 50, 98, 9, 40, 8, 55, 43, 42, 30,
-  111, 28, 31, 25, 17, 54, 40, 18, 44, 53, 29, 55, 109,
+  11,
+  12,
+  25,
+  31,
+  99,
+  108,
+  16,
+  99,
+  19,
+  105,
+  50,
+  98,
+  9,
+  40,
+  8,
+  55,
+  43,
+  42,
+  30,
+  111,
+  28,
+  31,
+  25,
+  17,
+  54,
+  40,
+  18,
+  44,
+  53,
+  29,
+  55,
+  109,
 ];
 String _defaultTomTomKey() =>
     String.fromCharCodes(_kDefaultTomTomKeyXor.map((b) => b ^ _kKeyPad));
@@ -132,6 +163,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   LatLng? _currentLatLng;
   bool _showLayer = true;
   List<Map<String, dynamic>> pickings = [];
+  bool _pickingsLoading = true;
+  bool _pickingsLoadFailed = false;
+
+  /// Lets [_fetchPickings] push a rebuild into the "Enter Route" sheet if
+  /// it's open when the fetch finishes — the sheet is a separate route, so
+  /// the outer `setState` this widget normally uses does not reach it.
+  void Function(VoidCallback)? _activeSheetSetState;
   List<int> selectedPickings = [];
   List<String> selectedPickingNames = [];
   bool shouldValidate = false;
@@ -181,19 +219,55 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
 
     if (!online) {
-      if (mounted) setState(() => isOnline = false);
+      if (mounted) {
+        setState(() {
+          isOnline = false;
+          _pickingsLoading = false;
+        });
+      } else {
+        _pickingsLoading = false;
+      }
       return;
     }
     if (mounted) setState(() => isOnline = true);
 
+    await _fetchPickings();
+  }
+
+  /// Fetches the pickings list for the "Enter Route" sheet's picker.
+  ///
+  /// Reports its loading/failure state so the sheet can show a proper
+  /// loading/retry UI instead of a bare, indistinguishable "No data found"
+  /// — and pushes a rebuild into the sheet via [_activeSheetSetState] if
+  /// it's already open when this finishes, since it lives in a separate
+  /// route that the outer `setState` below does not reach.
+  Future<void> _fetchPickings() async {
+    void update(VoidCallback fn) {
+      if (mounted) setState(fn);
+      try {
+        _activeSheetSetState?.call(fn);
+      } catch (_) {}
+    }
+
+    update(() {
+      _pickingsLoading = true;
+      _pickingsLoadFailed = false;
+    });
+
     try {
       await odooService.initializeOdooClient();
-      final fetched = await odooService.fetchStockPickings();
-      if (mounted)
-        setState(() {
-          pickings = fetched;
-        });
+      final fetched = await odooService.fetchStockPickings().timeout(
+        const Duration(seconds: 20),
+      );
+      update(() {
+        pickings = fetched;
+        _pickingsLoading = false;
+      });
     } catch (e) {
+      update(() {
+        _pickingsLoading = false;
+        _pickingsLoadFailed = true;
+      });
       if (mounted) {
         CustomSnackbar.showError(
           context,
@@ -428,12 +502,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           'https://api.tomtom.com/routing/1/calculateRoute/${allCoords.join(':')}/json'
           '?travelMode=$travelMode&key=$_apiKey';
 
-      debugPrint('[TomTom] Routing URL: $url');
-
       final response = await http.get(Uri.parse(url));
-      debugPrint(
-        '[TomTom] Routing response (${response.statusCode}): ${response.body.substring(0, response.body.length.clamp(0, 300))}',
-      );
 
       if (response.statusCode != 200) {
         if (!mounted) return;
@@ -585,7 +654,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             json['detailedError']?['message'] ??
             json['message'] ??
             'No route found between these locations.';
-        debugPrint('[TomTom] Routing error: $errorMsg');
         if (mounted) {
           CustomSnackbar.showError(context, 'Route error: $errorMsg');
           setState(() {
@@ -599,9 +667,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           });
         }
       }
-    } catch (e, stack) {
-      debugPrint('[TomTom] _getOptimizedRoute exception: $e\n$stack');
-
+    } catch (e) {
       surfaceError(
         'Something went wrong while computing the route. Please check your '
         'connection and try again.',
@@ -784,8 +850,9 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           });
         }
       }
-    } catch (e) {
-      debugPrint('[TomTom] _updateRemainingDistanceAndTime error: $e');
+    } catch (_) {
+      // Distance/time refresh is cosmetic; a failure must not interrupt
+      // navigation already in progress.
     }
   }
 
@@ -950,15 +1017,26 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         reverseCurve: Curves.easeInCubic,
       ),
       builder: (BuildContext context) {
+        if (pickings.isEmpty && !_pickingsLoading && !_pickingsLoadFailed) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _fetchPickings());
+        }
         bool isFetchingStops = false;
         bool didAddStopField = false;
         bool isPickingDropdownOpen = false;
+
+        /// Shown inline in the sheet rather than via [CustomSnackbar]: a
+        /// SnackBar anchors to the page's own Scaffold, which sits in the
+        /// Overlay *below* this modal bottom sheet's route, so it renders
+        /// invisibly behind the sheet for as long as the sheet stays open —
+        /// exactly the case right after tapping "Done" here.
+        String? pickingsNotice;
         final pickingsDropdownKey =
             GlobalKey<DropdownSearchState<Map<String, dynamic>>>();
         final pickingsSearchCtrl = TextEditingController();
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter sheetSetState) {
+            _activeSheetSetState = sheetSetState;
             if (fromAddStop && !didAddStopField) {
               didAddStopField = true;
               if (_stopSearchControllers.last.text.trim().isNotEmpty) {
@@ -1037,357 +1115,261 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                     isDark,
                                     isRequired: true,
                                   ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isPickingDropdownOpen
-                                            ? AppStyle.primaryColor
-                                            : Colors.transparent,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: DropdownSearch<Map<String, dynamic>>.multiSelection(
-                                      key: pickingsDropdownKey,
-                                      items: [
-                                        ...pickings.where(
-                                          (p) => selectedPickings.contains(
-                                            p['id'],
-                                          ),
-                                        ),
-                                        ...pickings.where(
-                                          (p) => !selectedPickings.contains(
-                                            p['id'],
-                                          ),
-                                        ),
-                                      ],
-                                      itemAsString: (p) =>
-                                          p['name']?.toString() ?? '',
-                                      compareFn: (a, b) => a['id'] == b['id'],
-                                      selectedItems: pickings
-                                          .where(
-                                            (p) => selectedPickings.contains(
-                                              p['id'],
-                                            ),
-                                          )
-                                          .toList(),
-                                      onBeforePopupOpening: (_) async {
-                                        pickingsSearchCtrl.clear();
-                                        sheetSetState(
-                                          () => isPickingDropdownOpen = true,
-                                        );
-                                        return true;
-                                      },
-                                      onChanged: (items) {
-                                        sheetSetState(() {
-                                          selectedPickings = items
-                                              .map((e) => e['id'] as int)
-                                              .toList();
-                                          selectedPickingNames = items
-                                              .map((e) => e['name'] as String)
-                                              .toList();
-                                        });
-                                      },
-
-                                      dropdownBuilder: (context, selectedItems) {
-                                        const int maxVisible = 2;
-                                        final visibleItems = selectedItems
-                                            .take(maxVisible)
-                                            .toList();
-                                        final extraCount =
-                                            selectedItems.length - maxVisible;
-                                        return Container(
-                                          constraints: const BoxConstraints(
-                                            minHeight: 24,
-                                          ),
-                                          alignment: Alignment.centerLeft,
-                                          child: selectedItems.isEmpty
-                                              ? Text(
-                                                  'Select Pickings',
-                                                  style: TextStyle(
-                                                    color: isDark
-                                                        ? Colors.white38
-                                                        : Colors.grey[500],
-                                                    fontStyle: FontStyle.italic,
-                                                    fontWeight: FontWeight.w400,
-                                                    fontSize: 14,
-                                                  ),
-                                                )
-                                              : Wrap(
-                                                  spacing: 6,
-                                                  runSpacing: 6,
-                                                  children: [
-                                                    ...visibleItems.map((item) {
-                                                      return Container(
-                                                        padding:
-                                                            const EdgeInsets.only(
-                                                              left: 10,
-                                                              right: 6,
-                                                              top: 4,
-                                                              bottom: 4,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: AppStyle
-                                                              .primaryColor
-                                                              .withValues(
-                                                                alpha: 0.12,
-                                                              ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                20,
-                                                              ),
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            Text(
-                                                              item['name']
-                                                                      ?.toString() ??
-                                                                  '',
-                                                              style: const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                                color: AppStyle
-                                                                    .primaryColor,
-                                                              ),
-                                                            ),
-                                                            const SizedBox(
-                                                              width: 4,
-                                                            ),
-                                                            GestureDetector(
-                                                              behavior:
-                                                                  HitTestBehavior
-                                                                      .opaque,
-                                                              onTap: () {
-                                                                final updated =
-                                                                    List<
-                                                                        Map<
-                                                                          String,
-                                                                          dynamic
-                                                                        >
-                                                                      >.from(
-                                                                        selectedItems,
-                                                                      )
-                                                                      ..removeWhere(
-                                                                        (s) =>
-                                                                            s['id'] ==
-                                                                            item['id'],
-                                                                      );
-                                                                sheetSetState(() {
-                                                                  selectedPickings = updated
-                                                                      .map(
-                                                                        (e) =>
-                                                                            e['id']
-                                                                                as int,
-                                                                      )
-                                                                      .toList();
-                                                                  selectedPickingNames = updated
-                                                                      .map(
-                                                                        (e) =>
-                                                                            e['name']
-                                                                                as String,
-                                                                      )
-                                                                      .toList();
-                                                                });
-                                                                pickingsDropdownKey
-                                                                    .currentState
-                                                                    ?.changeSelectedItems(
-                                                                      updated,
-                                                                    );
-                                                              },
-                                                              child: const Icon(
-                                                                HugeIcons
-                                                                    .strokeRoundedCancel01,
-                                                                size: 14,
-                                                                color: AppStyle
-                                                                    .primaryColor,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      );
-                                                    }),
-                                                    if (extraCount > 0)
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 10,
-                                                              vertical: 4,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: isDark
-                                                              ? Colors.white12
-                                                              : Colors
-                                                                    .grey[200],
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                20,
-                                                              ),
-                                                        ),
-                                                        child: Text(
-                                                          '+$extraCount more',
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            color: isDark
-                                                                ? Colors.white54
-                                                                : Colors
-                                                                      .grey[700],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                        );
-                                      },
-                                      dropdownDecoratorProps: DropDownDecoratorProps(
-                                        dropdownSearchDecoration:
-                                            InputDecoration(
-                                              isDense: true,
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 14,
-                                                    vertical: 14,
-                                                  ),
-                                              filled: true,
-                                              fillColor: isDark
-                                                  ? const Color(0xFF2A2A2A)
-                                                  : const Color(0xffF8FAFB),
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                borderSide: BorderSide.none,
-                                              ),
-                                              enabledBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                borderSide: BorderSide.none,
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                borderSide: BorderSide.none,
-                                              ),
-                                            ),
-                                      ),
-                                      popupProps: PopupPropsMultiSelection.menu(
-                                        onDismissed: () => sheetSetState(
-                                          () => isPickingDropdownOpen = false,
-                                        ),
-                                        showSearchBox: false,
-                                        searchFieldProps: TextFieldProps(
-                                          controller: pickingsSearchCtrl,
-                                        ),
-                                        showSelectedItems: true,
-                                        menuProps: MenuProps(
-                                          backgroundColor: isDark
-                                              ? Colors.grey[850]
-                                              : Colors.white,
-                                          elevation: 4,
-                                          shape: RoundedRectangleBorder(
+                                  _pickingsLoading
+                                      ? _buildPickingsLoadingField(isDark)
+                                      : (_pickingsLoadFailed &&
+                                            pickings.isEmpty)
+                                      ? _buildPickingsErrorField(isDark)
+                                      : Container(
+                                          decoration: BoxDecoration(
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
-                                          ),
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          maxHeight: 380,
-                                        ),
-                                        validationWidgetBuilder:
-                                            (context, __) =>
-                                                const SizedBox.shrink(),
-                                        selectionWidget:
-                                            (context, item, isSelected) =>
-                                                const SizedBox.shrink(),
-                                        onItemAdded: (selectedItems, _) {
-                                          sheetSetState(() {
-                                            selectedPickings = selectedItems
-                                                .map((e) => e['id'] as int)
-                                                .toList();
-                                            selectedPickingNames = selectedItems
-                                                .map((e) => e['name'] as String)
-                                                .toList();
-                                          });
-                                        },
-                                        onItemRemoved: (selectedItems, _) {
-                                          sheetSetState(() {
-                                            selectedPickings = selectedItems
-                                                .map((e) => e['id'] as int)
-                                                .toList();
-                                            selectedPickingNames = selectedItems
-                                                .map((e) => e['name'] as String)
-                                                .toList();
-                                          });
-                                        },
-                                        title: Container(
-                                          decoration: BoxDecoration(
-                                            border: Border(
-                                              bottom: BorderSide(
-                                                color: isDark
-                                                    ? Colors.white12
-                                                    : const Color(0xFFE0E0E0),
-                                                width: 0.8,
-                                              ),
+                                            border: Border.all(
+                                              color: isPickingDropdownOpen
+                                                  ? AppStyle.primaryColor
+                                                  : Colors.transparent,
+                                              width: 1.5,
                                             ),
                                           ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                      16,
-                                                      12,
-                                                      16,
-                                                      8,
-                                                    ),
-                                                child: Text(
-                                                  'Select Pickings',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : Colors.black87,
-                                                  ),
-                                                ),
+                                          child: DropdownSearch<Map<String, dynamic>>.multiSelection(
+                                            key: pickingsDropdownKey,
+                                            items: [
+                                              ...pickings.where(
+                                                (p) => selectedPickings
+                                                    .contains(p['id']),
                                               ),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
+                                              ...pickings.where(
+                                                (p) => !selectedPickings
+                                                    .contains(p['id']),
+                                              ),
+                                            ],
+                                            itemAsString: (p) =>
+                                                p['name']?.toString() ?? '',
+                                            compareFn: (a, b) =>
+                                                a['id'] == b['id'],
+                                            selectedItems: pickings
+                                                .where(
+                                                  (p) => selectedPickings
+                                                      .contains(p['id']),
+                                                )
+                                                .toList(),
+                                            onBeforePopupOpening: (_) async {
+                                              pickingsSearchCtrl.clear();
+                                              sheetSetState(
+                                                () => isPickingDropdownOpen =
+                                                    true,
+                                              );
+                                              return true;
+                                            },
+                                            onChanged: (items) {
+                                              sheetSetState(() {
+                                                selectedPickings = items
+                                                    .map((e) => e['id'] as int)
+                                                    .toList();
+                                                selectedPickingNames = items
+                                                    .map(
+                                                      (e) =>
+                                                          e['name'] as String,
+                                                    )
+                                                    .toList();
+                                              });
+                                            },
+
+                                            dropdownBuilder: (context, selectedItems) {
+                                              const int maxVisible = 2;
+                                              final visibleItems = selectedItems
+                                                  .take(maxVisible)
+                                                  .toList();
+                                              final extraCount =
+                                                  selectedItems.length -
+                                                  maxVisible;
+                                              return Container(
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minHeight: 24,
                                                     ),
-                                                child: TextField(
-                                                  controller:
-                                                      pickingsSearchCtrl,
-                                                  decoration: InputDecoration(
-                                                    hintText: 'Search...',
-                                                    filled: true,
-                                                    fillColor: isDark
-                                                        ? Colors.grey[800]
-                                                        : const Color(
-                                                            0xFFF3F4F6,
-                                                          ),
-                                                    prefixIcon: Icon(
-                                                      HugeIcons
-                                                          .strokeRoundedSearch01,
-                                                      size: 20,
-                                                      color: isDark
-                                                          ? Colors.white54
-                                                          : Colors.grey[600],
-                                                    ),
-                                                    contentPadding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 12,
-                                                          vertical: 10,
+                                                alignment: Alignment.centerLeft,
+                                                child: selectedItems.isEmpty
+                                                    ? Text(
+                                                        'Select Pickings',
+                                                        style: TextStyle(
+                                                          color: isDark
+                                                              ? Colors.white38
+                                                              : Colors
+                                                                    .grey[500],
+                                                          fontStyle:
+                                                              FontStyle.italic,
+                                                          fontWeight:
+                                                              FontWeight.w400,
+                                                          fontSize: 14,
                                                         ),
-                                                    border: OutlineInputBorder(
+                                                      )
+                                                    : Wrap(
+                                                        spacing: 6,
+                                                        runSpacing: 6,
+                                                        children: [
+                                                          ...visibleItems.map((
+                                                            item,
+                                                          ) {
+                                                            return Container(
+                                                              padding:
+                                                                  const EdgeInsets.only(
+                                                                    left: 10,
+                                                                    right: 6,
+                                                                    top: 4,
+                                                                    bottom: 4,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color: AppStyle
+                                                                    .primaryColor
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.12,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      20,
+                                                                    ),
+                                                              ),
+                                                              child: Row(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  Text(
+                                                                    item['name']
+                                                                            ?.toString() ??
+                                                                        '',
+                                                                    style: const TextStyle(
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w500,
+                                                                      color: AppStyle
+                                                                          .primaryColor,
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    width: 4,
+                                                                  ),
+                                                                  GestureDetector(
+                                                                    behavior:
+                                                                        HitTestBehavior
+                                                                            .opaque,
+                                                                    onTap: () {
+                                                                      final updated =
+                                                                          List<
+                                                                              Map<
+                                                                                String,
+                                                                                dynamic
+                                                                              >
+                                                                            >.from(
+                                                                              selectedItems,
+                                                                            )
+                                                                            ..removeWhere(
+                                                                              (
+                                                                                s,
+                                                                              ) =>
+                                                                                  s['id'] ==
+                                                                                  item['id'],
+                                                                            );
+                                                                      sheetSetState(() {
+                                                                        selectedPickings = updated
+                                                                            .map(
+                                                                              (
+                                                                                e,
+                                                                              ) =>
+                                                                                  e['id']
+                                                                                      as int,
+                                                                            )
+                                                                            .toList();
+                                                                        selectedPickingNames = updated
+                                                                            .map(
+                                                                              (
+                                                                                e,
+                                                                              ) =>
+                                                                                  e['name']
+                                                                                      as String,
+                                                                            )
+                                                                            .toList();
+                                                                      });
+                                                                      pickingsDropdownKey
+                                                                          .currentState
+                                                                          ?.changeSelectedItems(
+                                                                            updated,
+                                                                          );
+                                                                    },
+                                                                    child: const Icon(
+                                                                      HugeIcons
+                                                                          .strokeRoundedCancel01,
+                                                                      size: 14,
+                                                                      color: AppStyle
+                                                                          .primaryColor,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            );
+                                                          }),
+                                                          if (extraCount > 0)
+                                                            Container(
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        10,
+                                                                    vertical: 4,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color: isDark
+                                                                    ? Colors
+                                                                          .white12
+                                                                    : Colors
+                                                                          .grey[200],
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      20,
+                                                                    ),
+                                                              ),
+                                                              child: Text(
+                                                                '+$extraCount more',
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
+                                                                  color: isDark
+                                                                      ? Colors
+                                                                            .white54
+                                                                      : Colors
+                                                                            .grey[700],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                              );
+                                            },
+                                            dropdownDecoratorProps: DropDownDecoratorProps(
+                                              dropdownSearchDecoration: InputDecoration(
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 14,
+                                                    ),
+                                                filled: true,
+                                                fillColor: isDark
+                                                    ? const Color(0xFF2A2A2A)
+                                                    : const Color(0xffF8FAFB),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  borderSide: BorderSide.none,
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             12,
@@ -1395,235 +1377,450 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                       borderSide:
                                                           BorderSide.none,
                                                     ),
-                                                  ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                      borderSide:
+                                                          BorderSide.none,
+                                                    ),
+                                              ),
+                                            ),
+                                            popupProps: PopupPropsMultiSelection.menu(
+                                              onDismissed: () => sheetSetState(
+                                                () => isPickingDropdownOpen =
+                                                    false,
+                                              ),
+                                              showSearchBox: false,
+                                              searchFieldProps: TextFieldProps(
+                                                controller: pickingsSearchCtrl,
+                                              ),
+                                              showSelectedItems: true,
+                                              menuProps: MenuProps(
+                                                backgroundColor: isDark
+                                                    ? Colors.grey[850]
+                                                    : Colors.white,
+                                                elevation: 4,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                               ),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                      16,
-                                                      6,
-                                                      16,
-                                                      10,
+                                              constraints: const BoxConstraints(
+                                                maxHeight: 380,
+                                              ),
+                                              validationWidgetBuilder:
+                                                  (context, __) =>
+                                                      const SizedBox.shrink(),
+                                              selectionWidget:
+                                                  (context, item, isSelected) =>
+                                                      const SizedBox.shrink(),
+                                              onItemAdded: (selectedItems, _) {
+                                                sheetSetState(() {
+                                                  selectedPickings =
+                                                      selectedItems
+                                                          .map(
+                                                            (e) =>
+                                                                e['id'] as int,
+                                                          )
+                                                          .toList();
+                                                  selectedPickingNames =
+                                                      selectedItems
+                                                          .map(
+                                                            (e) =>
+                                                                e['name']
+                                                                    as String,
+                                                          )
+                                                          .toList();
+                                                });
+                                              },
+                                              onItemRemoved: (selectedItems, _) {
+                                                sheetSetState(() {
+                                                  selectedPickings =
+                                                      selectedItems
+                                                          .map(
+                                                            (e) =>
+                                                                e['id'] as int,
+                                                          )
+                                                          .toList();
+                                                  selectedPickingNames =
+                                                      selectedItems
+                                                          .map(
+                                                            (e) =>
+                                                                e['name']
+                                                                    as String,
+                                                          )
+                                                          .toList();
+                                                });
+                                              },
+                                              title: Container(
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    bottom: BorderSide(
+                                                      color: isDark
+                                                          ? Colors.white12
+                                                          : const Color(
+                                                              0xFFE0E0E0,
+                                                            ),
+                                                      width: 0.8,
                                                     ),
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
                                                   children: [
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        pickingsDropdownKey
-                                                            .currentState
-                                                            ?.changeSelectedItems(
-                                                              [],
-                                                            );
-                                                        sheetSetState(() {
-                                                          selectedPickings
-                                                              .clear();
-                                                          selectedPickingNames
-                                                              .clear();
-                                                        });
-                                                      },
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            16,
+                                                            12,
+                                                            16,
+                                                            8,
+                                                          ),
                                                       child: Text(
-                                                        'Clear',
+                                                        'Select Pickings',
                                                         style: TextStyle(
-                                                          fontSize: 15,
+                                                          fontSize: 16,
                                                           fontWeight:
-                                                              FontWeight.w500,
+                                                              FontWeight.w600,
                                                           color: isDark
-                                                              ? Colors.white38
-                                                              : Colors
-                                                                    .grey[500],
+                                                              ? Colors.white
+                                                              : Colors.black87,
                                                         ),
                                                       ),
                                                     ),
-
-                                                    GestureDetector(
-                                                      onTap: () async {
-                                                        pickingsSearchCtrl
-                                                            .clear();
-                                                        pickingsDropdownKey
-                                                            .currentState
-                                                            ?.closeDropDownSearch();
-                                                        sheetSetState(
-                                                          () =>
-                                                              isFetchingStops =
-                                                                  true,
-                                                        );
-                                                        try {
-                                                          final value = pickings
-                                                              .where(
-                                                                (
-                                                                  p,
-                                                                ) => selectedPickings
-                                                                    .contains(
-                                                                      p['id'],
-                                                                    ),
-                                                              )
-                                                              .toList();
-                                                          _stops.clear();
-                                                          for (var c
-                                                              in _stopSearchControllers) {
-                                                            c.dispose();
-                                                          }
-                                                          _stopSearchControllers
-                                                              .clear();
-                                                          _stopSuggestions
-                                                              .clear();
-                                                          final Set<String>
-                                                          uniqueDestinations =
-                                                              {};
-                                                          for (var picking
-                                                              in value) {
-                                                            final raw =
-                                                                picking['destination_point']
-                                                                    as String? ??
-                                                                '';
-
-                                                            final dest = raw
-                                                                .split(',')
-                                                                .map(
-                                                                  (s) =>
-                                                                      s.trim(),
-                                                                )
-                                                                .where(
-                                                                  (s) =>
-                                                                      s.isNotEmpty &&
-                                                                      s.toLowerCase() !=
-                                                                          'false',
-                                                                )
-                                                                .join(', ');
-
-                                                            if (dest.isNotEmpty &&
-                                                                uniqueDestinations
-                                                                    .add(
-                                                                      dest,
-                                                                    )) {
-                                                              _stopSearchControllers
-                                                                  .add(
-                                                                    TextEditingController(
-                                                                      text:
-                                                                          dest,
-                                                                    ),
-                                                                  );
-                                                              _stopSuggestions
-                                                                  .add([]);
-                                                              final stopLatLng =
-                                                                  await mapService
-                                                                      .getLatLngFromPlace(
-                                                                        dest,
-                                                                        _apiKey,
-                                                                        proximity:
-                                                                            _currentLatLng,
-                                                                      );
-                                                              if (stopLatLng !=
-                                                                  null) {
-                                                                _stops.add(
-                                                                  stopLatLng,
-                                                                );
-                                                              }
-                                                            }
-                                                          }
-                                                          if (_stopSearchControllers
-                                                              .isEmpty) {
-                                                            _stopSearchControllers
-                                                                .add(
-                                                                  TextEditingController(),
-                                                                );
-                                                            _stopSuggestions
-                                                                .add([]);
-                                                          }
-                                                        } catch (_) {
-                                                        } finally {
-                                                          setState(() {});
-                                                          sheetSetState(() {
-                                                            shouldValidate =
-                                                                false;
-                                                            isFetchingStops =
-                                                                false;
-                                                          });
-                                                        }
-                                                      },
-                                                      child: Text(
-                                                        'Done',
-                                                        style: TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: AppStyle
-                                                              .primaryColor,
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 12,
+                                                          ),
+                                                      child: TextField(
+                                                        controller:
+                                                            pickingsSearchCtrl,
+                                                        decoration: InputDecoration(
+                                                          hintText: 'Search...',
+                                                          filled: true,
+                                                          fillColor: isDark
+                                                              ? Colors.grey[800]
+                                                              : const Color(
+                                                                  0xFFF3F4F6,
+                                                                ),
+                                                          prefixIcon: Icon(
+                                                            HugeIcons
+                                                                .strokeRoundedSearch01,
+                                                            size: 20,
+                                                            color: isDark
+                                                                ? Colors.white54
+                                                                : Colors
+                                                                      .grey[600],
+                                                          ),
+                                                          contentPadding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 12,
+                                                                vertical: 10,
+                                                              ),
+                                                          border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  12,
+                                                                ),
+                                                            borderSide:
+                                                                BorderSide.none,
+                                                          ),
                                                         ),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            16,
+                                                            6,
+                                                            16,
+                                                            10,
+                                                          ),
+                                                      child: Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
+                                                        children: [
+                                                          GestureDetector(
+                                                            onTap: () {
+                                                              pickingsDropdownKey
+                                                                  .currentState
+                                                                  ?.changeSelectedItems(
+                                                                    [],
+                                                                  );
+                                                              sheetSetState(() {
+                                                                selectedPickings
+                                                                    .clear();
+                                                                selectedPickingNames
+                                                                    .clear();
+                                                              });
+                                                            },
+                                                            child: Text(
+                                                              'Clear',
+                                                              style: TextStyle(
+                                                                fontSize: 15,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: isDark
+                                                                    ? Colors
+                                                                          .white38
+                                                                    : Colors
+                                                                          .grey[500],
+                                                              ),
+                                                            ),
+                                                          ),
+
+                                                          GestureDetector(
+                                                            onTap: () async {
+                                                              if (isFetchingStops) {
+                                                                return;
+                                                              }
+                                                              pickingsSearchCtrl
+                                                                  .clear();
+                                                              pickingsDropdownKey
+                                                                  .currentState
+                                                                  ?.closeDropDownSearch();
+                                                              sheetSetState(
+                                                                () =>
+                                                                    isFetchingStops =
+                                                                        true,
+                                                              );
+                                                              try {
+                                                                final value = pickings
+                                                                    .where(
+                                                                      (
+                                                                        p,
+                                                                      ) => selectedPickings
+                                                                          .contains(
+                                                                            p['id'],
+                                                                          ),
+                                                                    )
+                                                                    .toList();
+                                                                _stops.clear();
+                                                                for (var c
+                                                                    in _stopSearchControllers) {
+                                                                  c.dispose();
+                                                                }
+                                                                _stopSearchControllers
+                                                                    .clear();
+                                                                _stopSuggestions
+                                                                    .clear();
+                                                                final Set<
+                                                                  String
+                                                                >
+                                                                uniqueDestinations =
+                                                                    {};
+                                                                final List<
+                                                                  String
+                                                                >
+                                                                unresolvedDestinations =
+                                                                    [];
+                                                                final List<
+                                                                  String
+                                                                >
+                                                                missingAddressPickings =
+                                                                    [];
+                                                                for (var picking
+                                                                    in value) {
+                                                                  final raw =
+                                                                      picking['destination_point']
+                                                                          as String? ??
+                                                                      '';
+
+                                                                  final dest = raw
+                                                                      .split(
+                                                                        ',',
+                                                                      )
+                                                                      .map(
+                                                                        (s) => s
+                                                                            .trim(),
+                                                                      )
+                                                                      .where(
+                                                                        (s) =>
+                                                                            s.isNotEmpty &&
+                                                                            s.toLowerCase() !=
+                                                                                'false',
+                                                                      )
+                                                                      .join(
+                                                                        ', ',
+                                                                      );
+
+                                                                  if (dest
+                                                                      .isEmpty) {
+                                                                    missingAddressPickings.add(
+                                                                      picking['name']
+                                                                              ?.toString() ??
+                                                                          'Unknown',
+                                                                    );
+                                                                  }
+
+                                                                  if (dest.isNotEmpty &&
+                                                                      uniqueDestinations
+                                                                          .add(
+                                                                            dest,
+                                                                          )) {
+                                                                    _stopSearchControllers.add(
+                                                                      TextEditingController(
+                                                                        text:
+                                                                            dest,
+                                                                      ),
+                                                                    );
+                                                                    _stopSuggestions
+                                                                        .add(
+                                                                          [],
+                                                                        );
+                                                                    final stopLatLng = await mapService.getLatLngFromPlace(
+                                                                      dest,
+                                                                      _apiKey,
+                                                                      proximity:
+                                                                          _currentLatLng,
+                                                                    );
+                                                                    if (stopLatLng !=
+                                                                        null) {
+                                                                      _stops.add(
+                                                                        stopLatLng,
+                                                                      );
+                                                                    } else {
+                                                                      unresolvedDestinations
+                                                                          .add(
+                                                                            dest,
+                                                                          );
+                                                                    }
+                                                                  }
+                                                                }
+                                                                if (_stopSearchControllers
+                                                                    .isEmpty) {
+                                                                  _stopSearchControllers
+                                                                      .add(
+                                                                        TextEditingController(),
+                                                                      );
+                                                                  _stopSuggestions
+                                                                      .add([]);
+                                                                }
+                                                                if (missingAddressPickings
+                                                                    .isNotEmpty) {
+                                                                  pickingsNotice =
+                                                                      '${missingAddressPickings.join(', ')} '
+                                                                      '${missingAddressPickings.length == 1 ? 'has' : 'have'} '
+                                                                      'no destination address set in Odoo. '
+                                                                      'Add stops manually below.';
+                                                                } else if (unresolvedDestinations
+                                                                    .isNotEmpty) {
+                                                                  pickingsNotice =
+                                                                      'Could not locate: '
+                                                                      '${unresolvedDestinations.join(', ')}';
+                                                                } else {
+                                                                  pickingsNotice =
+                                                                      null;
+                                                                }
+                                                              } catch (_) {
+                                                                pickingsNotice =
+                                                                    'Failed to fetch stop locations. '
+                                                                    'Please check your connection and try again.';
+                                                              } finally {
+                                                                setState(() {});
+                                                                sheetSetState(() {
+                                                                  shouldValidate =
+                                                                      false;
+                                                                  isFetchingStops =
+                                                                      false;
+                                                                });
+                                                              }
+                                                            },
+                                                            child: Text(
+                                                              'Done',
+                                                              style: TextStyle(
+                                                                fontSize: 15,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: AppStyle
+                                                                    .primaryColor,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                            ],
+                                              itemBuilder: (context, item, isSelected) {
+                                                return Container(
+                                                  color: Colors.transparent,
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        left: 16,
+                                                        right: 4,
+                                                        top: 4,
+                                                        bottom: 4,
+                                                      ),
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          item['name']
+                                                                  ?.toString() ??
+                                                              '-',
+                                                          style: TextStyle(
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .normal,
+                                                            color: isDark
+                                                                ? Colors.white
+                                                                : Colors
+                                                                      .black87,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Checkbox(
+                                                        value: isSelected,
+                                                        onChanged: (_) {},
+                                                        checkColor:
+                                                            Colors.white,
+                                                        fillColor:
+                                                            WidgetStateProperty.resolveWith<
+                                                              Color
+                                                            >(
+                                                              (states) =>
+                                                                  states.contains(
+                                                                    WidgetState
+                                                                        .selected,
+                                                                  )
+                                                                  ? AppStyle
+                                                                        .primaryColor
+                                                                  : Colors
+                                                                        .transparent,
+                                                            ),
+                                                        side: const BorderSide(
+                                                          color: AppStyle
+                                                              .primaryColor,
+                                                          width: 1.5,
+                                                        ),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
                                           ),
                                         ),
-                                        itemBuilder: (context, item, isSelected) {
-                                          return Container(
-                                            color: Colors.transparent,
-                                            padding: const EdgeInsets.only(
-                                              left: 16,
-                                              right: 4,
-                                              top: 4,
-                                              bottom: 4,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    item['name']?.toString() ??
-                                                        '-',
-                                                    style: TextStyle(
-                                                      fontSize: 15,
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                      color: isDark
-                                                          ? Colors.white
-                                                          : Colors.black87,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Checkbox(
-                                                  value: isSelected,
-                                                  onChanged: (_) {},
-                                                  checkColor: Colors.white,
-                                                  fillColor:
-                                                      WidgetStateProperty.resolveWith<
-                                                        Color
-                                                      >(
-                                                        (states) =>
-                                                            states.contains(
-                                                              WidgetState
-                                                                  .selected,
-                                                            )
-                                                            ? AppStyle
-                                                                  .primaryColor
-                                                            : Colors
-                                                                  .transparent,
-                                                      ),
-                                                  side: const BorderSide(
-                                                    color:
-                                                        AppStyle.primaryColor,
-                                                    width: 1.5,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
 
                                   if (shouldValidate) ...[
                                     const SizedBox(height: 8),
@@ -1635,6 +1832,46 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           color: Colors.red[400],
                                           fontSize: 12,
                                         ),
+                                      ),
+                                    ),
+                                  ],
+
+                                  if (pickingsNotice != null) ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warningIconBackground,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: AppColors.warning.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(
+                                            HugeIcons.strokeRoundedAlert02,
+                                            size: 16,
+                                            color: AppColors.warning,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              pickingsNotice!,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isDark
+                                                    ? AppColors.warningIcon
+                                                    : AppColors.warning,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -2239,6 +2476,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         );
       },
     ).whenComplete(() {
+      _activeSheetSetState = null;
       if (!needsAutoRoute || !mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -2265,6 +2503,88 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       child: Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 6),
         child: RequiredLabel(text, isRequired: isRequired),
+      ),
+    );
+  }
+
+  /// Placeholder shown in the Pickings field while [_fetchPickings] is in
+  /// flight, so opening the sheet before it finishes reads as "loading"
+  /// rather than the indistinguishable, seemingly-empty "No data found".
+  Widget _buildPickingsLoadingField(bool isDark) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: isDark ? Colors.grey[850] : Colors.grey[100],
+      ),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppStyle.primaryColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Loading pickings…',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white60 : Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shown in the Pickings field when [_fetchPickings] fails, with a tap
+  /// target to retry instead of leaving the field looking like it simply
+  /// has no pickings to offer.
+  Widget _buildPickingsErrorField(bool isDark) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: _fetchPickings,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: isDark ? Colors.grey[850] : Colors.grey[100],
+        ),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            Icon(
+              HugeIcons.strokeRoundedAlert02,
+              size: 16,
+              color: Colors.red[400],
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Could not load pickings.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white60 : Colors.grey[600],
+                ),
+              ),
+            ),
+            Text(
+              'Retry',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppStyle.primaryColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

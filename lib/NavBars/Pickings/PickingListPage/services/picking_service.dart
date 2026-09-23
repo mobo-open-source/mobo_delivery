@@ -1,6 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_ce/hive.dart';
 
@@ -65,26 +64,22 @@ class PickingService {
     if (session == null) throw Exception("No active session");
   }
 
-  /// Checks both device network and Odoo server reachability
+  /// Reports whether the device has a network connection at all.
   ///
-  /// Returns `true` only if network exists **and** `$url/web` responds 200 within 5s.
+  /// Deliberately only the radio state — this decides whether to attempt the
+  /// server at all (and fall back to the Hive cache when genuinely offline),
+  /// not whether the server will answer. It used to additionally require
+  /// `GET $url/web` to return exactly 200 within 5s, which reported "offline"
+  /// on a healthy connection whenever Odoo redirected, used a custom path, or
+  /// simply took longer than 5s to render that page — reliably so on a cold
+  /// start, stranding this screen on "Can't Reach Server" until the user
+  /// pulled to refresh. A real server problem surfaces from the actual RPC,
+  /// which reports what went wrong far more accurately than a probe can.
   Future<bool> checkNetworkConnectivity() async {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('url') ?? '';
     final connectivityResult = await Connectivity().checkConnectivity();
-
-    if (connectivityResult.any((r) => r != ConnectivityResult.none)) {
-      try {
-        final response = await http
-            .get(Uri.parse('$url/web'))
-            .timeout(const Duration(seconds: 5));
-
-        return response.statusCode == 200;
-      } catch (e) {
-        return false;
-      }
-    }
-    return false;
+    return connectivityResult.any((r) => r != ConnectivityResult.none);
   }
 
   /// Primary method to load pickings — combines online + offline paths

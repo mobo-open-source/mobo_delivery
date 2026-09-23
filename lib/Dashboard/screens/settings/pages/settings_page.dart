@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:local_auth/local_auth.dart';
@@ -87,58 +88,86 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   /// Turns the biometric app lock on or off, reporting each outcome distinctly.
-  Future<void> _toggleBiometric(bool value) async {
+  ///
+  /// Persists both `biometricEnabled` (read by this screen) and
+  /// `useLocalAuth` (read by [AuthController] on app resume/relaunch to
+  /// decide whether to actually prompt for biometrics) — these had drifted
+  /// into two separate keys, so toggling this switch never affected whether
+  /// the app lock was actually enforced.
+  Future<void> _persistBiometricEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('biometricEnabled', value);
+    await prefs.setBool('useLocalAuth', value);
+  }
 
+  Future<void> _toggleBiometric(bool value) async {
     if (!value) {
       setState(() => _biometricEnabled = false);
-      await prefs.setBool('biometricEnabled', false);
+      await _persistBiometricEnabled(false);
       if (mounted) {
         CustomSnackbar.showSuccess(context, 'App lock turned off.');
       }
       return;
     }
 
-    final canCheck = await _auth.canCheckBiometrics;
-    final isSupported = await _auth.isDeviceSupported();
+    try {
+      final canCheck = await _auth.canCheckBiometrics;
+      final isSupported = await _auth.isDeviceSupported();
 
-    if (!canCheck && !isSupported) {
+      if (!canCheck && !isSupported) {
+        setState(() => _biometricEnabled = false);
+        await _persistBiometricEnabled(false);
+        if (mounted) {
+          CustomSnackbar.showError(
+            context,
+            'Biometric authentication not supported on this device.',
+          );
+        }
+        return;
+      }
+
+      final authenticated = await _auth.authenticate(
+        localizedReason: 'Enable biometric authentication',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (!authenticated) {
+        setState(() => _biometricEnabled = false);
+        await _persistBiometricEnabled(false);
+        if (mounted) {
+          CustomSnackbar.showInfo(
+            context,
+            'App lock not enabled — verification was cancelled.',
+          );
+        }
+        return;
+      }
+
+      setState(() => _biometricEnabled = true);
+      await _persistBiometricEnabled(true);
+      if (mounted) {
+        CustomSnackbar.showSuccess(context, 'App lock turned on.');
+      }
+    } catch (e) {
       setState(() => _biometricEnabled = false);
-      await prefs.setBool('biometricEnabled', false);
+      await _persistBiometricEnabled(false);
       if (mounted) {
         CustomSnackbar.showError(
           context,
-          'Biometric authentication not supported on this device.',
+          'Failed to enable biometric authentication: ${_extractReason(e)}',
         );
       }
-      return;
     }
+  }
 
-    final authenticated = await _auth.authenticate(
-      localizedReason: 'Enable biometric authentication',
-      options: const AuthenticationOptions(
-        biometricOnly: true,
-        stickyAuth: true,
-      ),
-    );
-
-    if (!authenticated) {
-      setState(() => _biometricEnabled = false);
-      await prefs.setBool('biometricEnabled', false);
-      if (mounted) {
-        CustomSnackbar.showInfo(
-          context,
-          'App lock not enabled — verification was cancelled.',
-        );
-      }
-      return;
+  String _extractReason(Object e) {
+    if (e is PlatformException) {
+      return e.message ?? e.code;
     }
-
-    setState(() => _biometricEnabled = true);
-    await prefs.setBool('biometricEnabled', true);
-    if (mounted) {
-      CustomSnackbar.showSuccess(context, 'App lock turned on.');
-    }
+    return e.toString();
   }
 
   Future<void> _initAll() async {

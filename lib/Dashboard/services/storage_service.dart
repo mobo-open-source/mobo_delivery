@@ -35,7 +35,11 @@ class DashboardStorageService {
     await prefs.setString('userLang', session.userLang ?? '');
     await prefs.setInt('partnerId', session.partnerId ?? 0);
     await prefs.setString('userTimezone', session.userTimezone ?? '');
-    await prefs.setInt('companyId', session.companyId ?? 1);
+    if (session.companyId != null) {
+      await prefs.setInt('companyId', session.companyId!);
+    } else {
+      await prefs.remove('companyId');
+    }
     await prefs.setString('company_name', session.companyName ?? '');
     await prefs.setBool('isSystem', session.isSystem);
     await prefs.setInt('version', session.version ?? 0);
@@ -111,17 +115,33 @@ class DashboardStorageService {
   /// Saves the latest user profile map (from Odoo) as JSON.
   Future<void> saveUserProfile(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString('user_profile', jsonEncode(user));
+    prefs.setString(await _userProfileKey(prefs), jsonEncode(user));
   }
 
   /// Retrieves the last cached user profile (offline fallback).
   Future<Map<String, dynamic>?> getSavedUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString('user_profile');
+    final data = prefs.getString(await _userProfileKey(prefs));
     if (data != null) {
       return Map<String, dynamic>.from(jsonDecode(data));
     }
     return null;
+  }
+
+  /// Cache key for the profile, scoped to the database and user it belongs to.
+  ///
+  /// A single shared key hands whoever signs in next the previous account's
+  /// name and photo until their own profile loads. Falls back to the shared
+  /// key when the account isn't identifiable yet, so an early read still finds
+  /// anything written under it.
+  Future<String> _userProfileKey(SharedPreferences prefs) async {
+    final db = (prefs.getString('selectedDatabase') ?? '').replaceAll(
+      RegExp(r'[^A-Za-z0-9]'),
+      '',
+    );
+    final uid = prefs.getInt('userId');
+    if (db.isEmpty || uid == null || uid == 0) return 'user_profile';
+    return 'user_profile_${db}_$uid';
   }
 
   static const _accountsKey = 'loggedInAccounts';

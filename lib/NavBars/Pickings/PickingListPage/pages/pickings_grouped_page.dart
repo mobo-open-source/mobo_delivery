@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../Dashboard/infrastructure/profile_refresh_bus.dart';
@@ -185,7 +184,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       if (mounted) {
         setState(() => isLoading = false);
       }
-    } on OdooSessionExpiredException {
+    } on SessionUnrecoverableException {
       if (mounted) {
         CompanySessionManager.logout(context);
       }

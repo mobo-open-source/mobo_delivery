@@ -12,6 +12,25 @@ import '../services/connectivity_service.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 
+/// The session could not be recovered: re-authentication failed, or the call
+/// still failed as an auth error after a successful one.
+///
+/// This is the *only* condition that should sign a user out. A single request
+/// seeing a session error is not evidence of anything — the first request to
+/// hit one triggers a re-login, and re-logging in rotates the Odoo session id,
+/// so every other request already in flight fails exactly the same way. Acting
+/// on that directly is what logged people out mid-use.
+class SessionUnrecoverableException implements Exception {
+  final String message;
+
+  const SessionUnrecoverableException([
+    this.message = 'Your session has expired. Please sign in again.',
+  ]);
+
+  @override
+  String toString() => message;
+}
+
 /// Central manager for Odoo session lifecycle and RPC safety handling.
 ///
 /// Handles:
@@ -31,8 +50,34 @@ class CompanySessionManager {
   /// Last successful authentication time.
   static DateTime? _lastAuthTime;
 
+  /// Bumped every time the session is successfully re-authenticated.
+  ///
+  /// Re-authenticating rotates the Odoo session id, so every request already
+  /// in flight fails as session-expired. Without a way to tell "the session
+  /// died" from "somebody just replaced it", each of those failures would
+  /// start a re-authentication of its own, rotating the session again and
+  /// stranding the next batch — a loop that ends in a spurious logout.
+  /// Comparing this counter tells a caller its failure was already answered,
+  /// so it retries on the new session instead of rotating it again.
+  static int _sessionGeneration = 0;
+
   /// Duration for which cached client/session is considered valid.
   static const Duration _sessionCacheValidDuration = Duration(minutes: 5);
+
+  /// Whether the current company selection has been checked against the
+  /// companies this user actually has, during this run.
+  ///
+  /// The persisted selection cannot be trusted on its own: `companyId` falls
+  /// back to a hardcoded `1` when nothing was stored, and
+  /// `allowed_company_ids` is only ever written when non-empty, so a list
+  /// belonging to a previously signed-in account survives indefinitely.
+  /// Sending an unvalidated selection makes Odoo reject *every* request with
+  /// "Access to unauthorized or invalid companies."
+  ///
+  /// So nothing is sent until [updateCompanySelection] reports a selection
+  /// that `CompanyProvider` has confirmed against the server. Odoo then
+  /// falls back to the user's own companies, which are valid by definition.
+  static bool _companyContextValidated = false;
 
   /// Optional listener for session updates (UI refresh / state sync).
   static Function(SessionModel)? _onSessionUpdated;
@@ -45,6 +90,9 @@ class CompanySessionManager {
   /// Detects whether an error is authentication/session related.
   static bool _isAuthError(Object e) {
     final errorStr = e.toString().toLowerCase();
+
+    if (_isInvalidCompanyContext(e)) return false;
+
     return e is OdooSessionExpiredException ||
         errorStr.contains('401') ||
         errorStr.contains('unauthorized') ||
@@ -226,14 +274,6 @@ class CompanySessionManager {
       normalizedUrl = 'https://$normalizedUrl';
     }
 
-    try {
-      /// Validate connectivity before login attempt.
-      await ConnectivityService.instance.ensureInternetOrThrow();
-      await ConnectivityService.instance.ensureServerReachable(normalizedUrl);
-    } catch (e) {
-      rethrow;
-    }
-
     final authService = AuthService();
     final SessionModel? sessionModel = await authService.authenticateOdoo(
       url: normalizedUrl,
@@ -311,6 +351,8 @@ class CompanySessionManager {
     _client = null;
     _lastAuthTime = null;
     _refreshFuture = null;
+
+    _companyContextValidated = false;
   }
 
   /// Restores session for selected company context.
@@ -414,6 +456,9 @@ class CompanySessionManager {
 
     await StorageService().saveSession(updated);
     _cachedSession = updated;
+
+    _companyContextValidated = true;
+
     _onSessionUpdated?.call(updated);
   }
 
@@ -529,7 +574,7 @@ class CompanySessionManager {
           : await getSelectedAllowedCompanyIds();
     }
 
-    if (selectedCompany != null) {
+    if (selectedCompany != null && _companyContextValidated) {
       ctx['company_id'] = selectedCompany;
 
       List<int> finalAllowed = [...allowed];
@@ -543,7 +588,31 @@ class CompanySessionManager {
     kwargs['context'] = ctx;
     map['kwargs'] = kwargs;
 
-    return callWithSession((client) => client.callKw(map));
+    try {
+      return await callWithSession((client) => client.callKw(map));
+    } catch (e) {
+      if (!_isInvalidCompanyContext(e)) rethrow;
+
+      _companyContextValidated = false;
+      _cachedSession = null;
+      final retryCtx = Map<String, dynamic>.from(ctx)
+        ..remove('company_id')
+        ..remove('allowed_company_ids');
+      final retryKwargs = Map<String, dynamic>.from(kwargs)
+        ..['context'] = retryCtx;
+      final retryMap = Map<String, dynamic>.from(map)..['kwargs'] = retryKwargs;
+
+      return await callWithSession((client) => client.callKw(retryMap));
+    }
+  }
+
+  /// Whether Odoo rejected the request's company context rather than the
+  /// request itself — raised by `env.companies` when `allowed_company_ids`
+  /// names a company this user cannot access.
+  static bool _isInvalidCompanyContext(Object e) {
+    return e.toString().toLowerCase().contains(
+      'unauthorized or invalid companies',
+    );
   }
 
   /// Refreshes session using stored credentials from secure storage.
@@ -558,7 +627,9 @@ class CompanySessionManager {
     }
     _refreshFuture = _performRefresh();
     try {
-      return await _refreshFuture!;
+      final refreshed = await _refreshFuture!;
+      if (refreshed) _sessionGeneration++;
+      return refreshed;
     } finally {
       _refreshFuture = null;
     }
@@ -695,70 +766,97 @@ class CompanySessionManager {
       return _client!;
     }
 
-    try {
-      await ConnectivityService.instance.ensureInternetOrThrow();
-      await ConnectivityService.instance.ensureServerReachable(url);
+    final db =
+        prefs.getString('selectedDatabase') ??
+        prefs.getString('database') ??
+        '';
+    final sessionId = prefs.getString('sessionId') ?? '';
+    final serverVersion = prefs.getString('serverVersion') ?? '';
+    final userLang = prefs.getString('userLang') ?? '';
+    final allowedCompaniesStringList =
+        prefs.getStringList('allowedCompanies') ?? [];
 
-      final prefs = await SharedPreferences.getInstance();
-      final db =
-          prefs.getString('selectedDatabase') ??
-          prefs.getString('database') ??
-          '';
-      final sessionId = prefs.getString('sessionId') ?? '';
-      final serverVersion = prefs.getString('serverVersion') ?? '';
-      final userLang = prefs.getString('userLang') ?? '';
-      final allowedCompaniesStringList =
-          prefs.getStringList('allowedCompanies') ?? [];
+    final allowedCompanies = allowedCompaniesStringList
+        .map((jsonString) => Company.fromJson(jsonDecode(jsonString)))
+        .toList();
+    final odooSession = OdooSession(
+      id: sessionId,
+      userId: prefs.getInt('userId') ?? 0,
+      partnerId: prefs.getInt('partnerId') ?? 0,
+      userLogin: prefs.getString('userLogin') ?? '',
+      userName: prefs.getString('userName') ?? '',
+      userLang: userLang,
+      userTz: '',
+      isSystem: prefs.getBool('isSystem') ?? false,
+      dbName: db,
+      serverVersion: serverVersion,
+      companyId: prefs.getInt('companyId') ?? 1,
+      allowedCompanies: allowedCompanies,
+    );
 
-      final allowedCompanies = allowedCompaniesStringList
-          .map((jsonString) => Company.fromJson(jsonDecode(jsonString)))
-          .toList();
-      final session = OdooSession(
-        id: sessionId,
-        userId: prefs.getInt('userId') ?? 0,
-        partnerId: prefs.getInt('partnerId') ?? 0,
-        userLogin: prefs.getString('userLogin') ?? '',
-        userName: prefs.getString('userName') ?? '',
-        userLang: userLang,
-        userTz: '',
-        isSystem: prefs.getBool('isSystem') ?? false,
-        dbName: db,
-        serverVersion: serverVersion,
-        companyId: prefs.getInt('companyId') ?? 1,
-        allowedCompanies: allowedCompanies,
-      );
+    final client = OdooClient(url, sessionId: odooSession);
 
-      final client = OdooClient(url, sessionId: session);
+    _client = client;
+    _lastAuthTime = DateTime.now();
+    return client;
+  }
 
-      _client = client;
-      _lastAuthTime = DateTime.now();
-      return client;
-    } on NoInternetException {
-      final client = OdooClient(url);
-      _client = client;
-      return client;
-    } on ServerUnreachableException {
-      final client = OdooClient(url);
-      _client = client;
-      return client;
-    }
+  /// Detects an exception that looks like it came from a dead/reset
+  /// connection rather than a genuinely unreachable server — the kind
+  /// `_client`'s cached, pooled keep-alive socket produces once it's gone
+  /// stale (e.g. after the app sits backgrounded, or during a dev hot
+  /// reload's edit-save gap) while still inside its 5-minute cache window.
+  static bool _looksLikeStaleConnection(Object e) {
+    final s = e.toString().toLowerCase();
+    return s.contains('socketexception') ||
+        s.contains('clientexception') ||
+        s.contains('connection closed') ||
+        s.contains('connection reset') ||
+        s.contains('connection refused') ||
+        s.contains('failed to connect') ||
+        s.contains('connection failed') ||
+        s.contains('broken pipe');
   }
 
   /// Executes RPC call with automatic session recovery.
   static Future<T> callWithSession<T>(
     Future<T> Function(OdooClient client) action,
   ) async {
+    final generation = _sessionGeneration;
     final client = await getClientEnsured();
+
+    Future<T> retryOnCurrentSession() async {
+      final newClient = await getClientEnsured();
+      try {
+        return await action(newClient);
+      } catch (retryError) {
+        if (_isAuthError(retryError)) {
+          throw const SessionUnrecoverableException();
+        }
+        rethrow;
+      }
+    }
+
     try {
       return await action(client);
     } catch (e) {
       if (e is NoInternetException || e is ServerUnreachableException) rethrow;
+
       if (_isAuthError(e)) {
-        final refreshed = await refreshSession();
-        if (refreshed) {
-          final newClient = await getClientEnsured();
-          return await action(newClient);
+        if (_sessionGeneration != generation) {
+          return await retryOnCurrentSession();
         }
+
+        final refreshed = await refreshSession();
+        if (!refreshed) {
+          throw const SessionUnrecoverableException();
+        }
+        return await retryOnCurrentSession();
+      }
+      if (_looksLikeStaleConnection(e)) {
+        _client = null;
+        final freshClient = await getClientEnsured();
+        return await action(freshClient);
       }
       rethrow;
     }

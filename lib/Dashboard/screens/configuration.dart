@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../LoginPage/models/session_model.dart';
 import '../../LoginPage/services/auth_service.dart';
@@ -123,7 +122,7 @@ class _ConfigurationState extends State<Configuration> {
       if (!mounted) return;
       setState(() => _isLoading = false);
     } catch (e) {
-      if (e is OdooSessionExpiredException && mounted) {
+      if (e is SessionUnrecoverableException && mounted) {
         CompanySessionManager.logout(context);
         return;
       }
@@ -704,7 +703,10 @@ class _ConfigurationState extends State<Configuration> {
     }
 
     final rawUrl = (user['url'] as String? ?? '').trim();
-    final url = rawUrl.isEmpty || rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+    final url =
+        rawUrl.isEmpty ||
+            rawUrl.startsWith('http://') ||
+            rawUrl.startsWith('https://')
         ? rawUrl
         : 'https://$rawUrl';
     final database = (user['database'] as String? ?? '').trim();
@@ -851,7 +853,8 @@ class _ConfigurationState extends State<Configuration> {
           );
           return;
         }
-        reauthReason = 'Could not sign in to $displayName: ${_extractReason(e)}';
+        reauthReason =
+            'Could not sign in to $displayName: ${_extractReason(e)}';
       }
     }
 

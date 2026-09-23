@@ -1,6 +1,4 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../PickingFormPage/services/hive_service.dart';
@@ -17,29 +15,16 @@ class OdooCreatePickingService {
 
   OdooCreatePickingService(this.url);
 
-  /// Checks whether the device has an active internet connection and
-  /// whether the Odoo server is reachable by performing a quick GET request
-  /// to the /web endpoint with a short timeout.
+  /// Reports whether the device has a network connection at all.
   ///
-  /// Returns `true` only if both network is available and server responds with 200 OK.
-  /// Uses SharedPreferences to retrieve the latest stored server URL.
+  /// Radio state only — see the note on the matching check in
+  /// `PickingService.checkNetworkConnectivity`: requiring `GET $url/web` to
+  /// return 200 within 5s reported "offline" on healthy connections.
   Future<bool> checkNetworkConnectivity() async {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('url') ?? '';
     final connectivityResult = await Connectivity().checkConnectivity();
-
-    if (connectivityResult.any((r) => r != ConnectivityResult.none)) {
-      try {
-        final response = await http
-            .get(Uri.parse('$url/web'))
-            .timeout(const Duration(seconds: 5));
-
-        return response.statusCode == 200;
-      } catch (e) {
-        return false;
-      }
-    }
-    return false;
+    return connectivityResult.any((r) => r != ConnectivityResult.none);
   }
 
   /// Loads all available products from Odoo using `product.product` model's
@@ -66,8 +51,7 @@ class OdooCreatePickingService {
       return cached
           .map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id))
           .toList();
-    } catch (e) {
-      debugPrint('loadProducts error: $e');
+    } catch (_) {
       final cached = await HiveService().getProducts();
       return cached
           .map((p) => ProductModel(id: p.id, name: p.name, uom_id: p.uom_id))
@@ -167,8 +151,7 @@ class OdooCreatePickingService {
         );
       }
       return list;
-    } catch (e) {
-      debugPrint('loadOperationTypes error: $e');
+    } catch (_) {
       return [];
     }
   }

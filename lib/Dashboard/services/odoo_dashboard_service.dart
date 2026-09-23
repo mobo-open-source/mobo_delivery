@@ -85,9 +85,20 @@ class OdooDashboardService {
       final partner = data['partner_id'];
       if (partner is List && partner.isNotEmpty) {
         try {
+          final session = await CompanySessionManager.getCurrentSession();
+          final serverMajor =
+              int.tryParse(
+                RegExp(
+                      r'\d+',
+                    ).firstMatch(session?.serverVersion ?? '')?.group(0) ??
+                    '',
+              ) ??
+              0;
+          final supportsMobile = serverMajor == 0 || serverMajor < 19;
+
           final partnerFields = <String>[
             'phone',
-            'mobile',
+            if (supportsMobile) 'mobile',
             'street',
             'street2',
             'city',
@@ -109,7 +120,7 @@ class OdooDashboardService {
           if (partnerRes is List && partnerRes.isNotEmpty) {
             final pd = partnerRes.first as Map<String, dynamic>;
             data['phone'] = pd['phone'];
-            data['mobile'] = pd['mobile'];
+            if (supportsMobile) data['mobile'] = pd['mobile'];
             data['street'] = pd['street'];
             data['street2'] = pd['street2'];
             data['city'] = pd['city'];

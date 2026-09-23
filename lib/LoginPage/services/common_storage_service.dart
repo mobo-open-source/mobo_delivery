@@ -21,7 +21,11 @@ class CommonStorageService {
     await prefs.setString('userLang', session.userLang ?? '');
     await prefs.setInt('partnerId', session.partnerId ?? 0);
     await prefs.setString('userTimezone', session.userTimezone ?? '');
-    await prefs.setInt('companyId', session.companyId ?? 1);
+    if (session.companyId != null) {
+      await prefs.setInt('companyId', session.companyId!);
+    } else {
+      await prefs.remove('companyId');
+    }
     await prefs.setString('company_name', session.companyName ?? '');
     await prefs.setBool('isSystem', session.isSystem);
     await prefs.setInt('version', session.version ?? 0);

@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../LoginPage/models/session_model.dart';
 import '../../../LoginPage/services/app_install_check.dart';
 import '../../../LoginPage/services/auth_service.dart';
+import '../../../shared/utils/odoo_error_message.dart';
 import '../../../LoginPage/views/totp_page.dart';
 import '../../../core/company/services/connectivity_service.dart';
 import '../../../core/company/session/company_session_manager.dart';
@@ -201,7 +202,11 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
             'userTimezone',
             widget.session.userTimezone ?? '',
           );
-          await prefs.setInt('companyId', widget.session.companyId ?? 1);
+          if (widget.session.companyId != null) {
+            await prefs.setInt('companyId', widget.session.companyId!);
+          } else {
+            await prefs.remove('companyId');
+          }
           await prefs.setString(
             'company_name',
             widget.session.companyName ?? '',
@@ -570,14 +575,14 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
       return 'Connection timed out. The server may be slow or unreachable.';
     } else if (errorStr.contains('unauthorized') || errorStr.contains('403')) {
       return 'Access denied. Your account may not have permission to access this database.';
-    } else if (errorStr.contains('server') || errorStr.contains('500')) {
-      return 'Server error occurred. Please try again later or contact your administrator.';
     } else if (errorStr.contains('ssl') || errorStr.contains('certificate')) {
       return 'SSL connection failed. Try using HTTP instead of HTTPS.';
     } else if (errorStr.contains('connection refused')) {
       return 'Server is not responding. Please verify the server URL and try again.';
+    } else if (errorStr.contains('server') || errorStr.contains('500')) {
+      return 'Server error: ${briefOdooMessage(error)}';
     } else {
-      return 'Login failed. Please check your credentials and server settings.';
+      return 'Login failed: ${briefOdooMessage(error)}';
     }
   }
 

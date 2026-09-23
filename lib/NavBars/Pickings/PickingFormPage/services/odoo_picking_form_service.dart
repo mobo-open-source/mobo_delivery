@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../models/picking_form.dart';
@@ -167,8 +166,7 @@ class OdooPickingFormService {
         return productItems.map((item) => Product.fromJson(item)).toList();
       }
       return await _hiveService.getProducts();
-    } catch (e) {
-      debugPrint('loadProducts error: $e');
+    } catch (_) {
       return await _hiveService.getProducts();
     }
   }
@@ -231,8 +229,7 @@ class OdooPickingFormService {
       return normalised.isNotEmpty
           ? normalised
           : await loadOperationTypesFromCache();
-    } catch (e) {
-      debugPrint('loadOperationTypes error: $e');
+    } catch (_) {
       return await loadOperationTypesFromCache();
     }
   }
@@ -279,8 +276,7 @@ class OdooPickingFormService {
         return partnerItems.map((item) => Partner.fromJson(item)).toList();
       }
       return await _hiveService.getPartners();
-    } catch (e) {
-      debugPrint('loadPartners error: $e');
+    } catch (_) {
       return await _hiveService.getPartners();
     }
   }
@@ -431,11 +427,7 @@ class OdooPickingFormService {
         return moveItems.map((item) => StockMove.fromJson(item)).toList();
       }
       return [];
-    } catch (e, st) {
-      debugPrint(
-        '[OdooPickingFormService.loadProductMoves] '
-        'picking=$pickingId ERROR: $e\n$st',
-      );
+    } catch (_) {
       rethrow;
     }
   }
@@ -760,10 +752,7 @@ class OdooPickingFormService {
           ],
           'kwargs': {},
         }, companyId: freshCompanyId);
-      } catch (e) {
-        debugPrint(
-          '[addProductToLine] action_confirm failed for picking=$pickingId: $e',
-        );
+      } catch (_) {
         rethrow;
       }
     }
@@ -809,9 +798,6 @@ class OdooPickingFormService {
   /// Calls `stock.picking.write()` with the updates map.
   /// Returns `true` if write succeeded.
   Future<bool> saveChanges(int pickingId, Map<String, dynamic> updates) async {
-    debugPrint(
-      '[PickingForm.saveChanges] id=$pickingId fields=${updates.keys.toList()}',
-    );
     try {
       final response = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.picking',
@@ -822,10 +808,8 @@ class OdooPickingFormService {
         ],
         'kwargs': {},
       });
-      debugPrint('[PickingForm.saveChanges] id=$pickingId response=$response');
       return response == true;
-    } catch (e, st) {
-      debugPrint('[PickingForm.saveChanges] id=$pickingId ERROR: $e\n$st');
+    } catch (_) {
       return false;
     }
   }

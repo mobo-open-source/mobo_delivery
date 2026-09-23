@@ -9,7 +9,6 @@ import '../../../../shared/widgets/forms/custom_dropdown_field.dart';
 import '../../../../shared/widgets/forms/custom_text_field.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
@@ -256,7 +255,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      if (e is OdooSessionExpiredException && mounted) {
+      if (e is SessionUnrecoverableException && mounted) {
         CompanySessionManager.logout(context);
         return;
       }
@@ -556,10 +555,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         type: SnackbarType.success,
       );
     } else {
-      CustomSnackbar.showError(
-        context,
-        _saveError ?? 'Failed to save changes',
-      );
+      CustomSnackbar.showError(context, _saveError ?? 'Failed to save changes');
     }
   }
 

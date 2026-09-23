@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
@@ -32,28 +31,16 @@ class OdooMapService {
     if (session == null) throw Exception("No active session");
   }
 
-  /// Checks if the device has internet access **and** can reach the Odoo server.
+  /// Reports whether the device has a network connection at all.
   ///
-  /// First checks general connectivity via `connectivity_plus`.
-  /// Then performs a quick GET request to `$url/web` with 5-second timeout.
-  /// Returns `true` only if both conditions are satisfied.
+  /// Radio state only — see the note on the matching check in
+  /// `PickingService.checkNetworkConnectivity`: requiring `GET $url/web` to
+  /// return 200 within 5s reported "offline" on healthy connections.
   Future<bool> checkNetworkConnectivity() async {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('url') ?? '';
     final connectivityResult = await Connectivity().checkConnectivity();
-
-    if (connectivityResult.any((r) => r != ConnectivityResult.none)) {
-      try {
-        final response = await http
-            .get(Uri.parse('$url/web'))
-            .timeout(const Duration(seconds: 5));
-
-        return response.statusCode == 200;
-      } catch (e) {
-        return false;
-      }
-    }
-    return false;
+    return connectivityResult.any((r) => r != ConnectivityResult.none);
   }
 
   /// Decrypts AES-CBC encrypted text (used for Google Maps API key).

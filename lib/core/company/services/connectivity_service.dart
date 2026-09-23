@@ -95,12 +95,33 @@ class ConnectivityService {
     return results.any((r) => r != ConnectivityResult.none);
   }
 
+  /// Looks up [host], retrying once after a short delay on failure.
+  ///
+  /// Right after a fresh process start (cold launch, or a hot restart while
+  /// developing) the OS network stack/DNS resolver can still be settling —
+  /// the very first lookup can spuriously fail or time out while a second
+  /// one, moments later, succeeds instantly. Every screen on the dashboard
+  /// probes this independently on startup (`IndexedStack` builds them all
+  /// at once), so without this a single flaky first lookup used to doom
+  /// every screen's initial load at once, recovering only once the user
+  /// manually pulled to refresh.
+  Future<List<InternetAddress>> _lookupWithRetry(String host) async {
+    try {
+      return await InternetAddress.lookup(
+        host,
+      ).timeout(const Duration(seconds: 3));
+    } on Exception {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return await InternetAddress.lookup(
+        host,
+      ).timeout(const Duration(seconds: 3));
+    }
+  }
+
   /// Verifies real internet access using DNS lookup.
   Future<bool> hasInternetAccess({String host = 'example.com'}) async {
     try {
-      final result = await InternetAddress.lookup(
-        host,
-      ).timeout(const Duration(seconds: 3));
+      final result = await _lookupWithRetry(host);
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } on SocketException {
       return false;
@@ -130,9 +151,7 @@ class ConnectivityService {
     try {
       final uri = Uri.parse(serverUrl);
       final host = uri.host.isNotEmpty ? uri.host : serverUrl;
-      final res = await InternetAddress.lookup(
-        host,
-      ).timeout(const Duration(seconds: 3));
+      final res = await _lookupWithRetry(host);
       if (res.isEmpty) {
         throw ServerUnreachableException('Unable to reach server host: $host');
       }

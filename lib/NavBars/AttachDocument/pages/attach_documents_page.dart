@@ -1,7 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -10,7 +9,6 @@ import '../../../shared/widgets/error_state_widget.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/loaders/delivery_shimmers.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../Dashboard/infrastructure/profile_refresh_bus.dart';
 import '../../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../../Dashboard/services/storage_service.dart';
@@ -95,29 +93,14 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
     await _initializeServices();
   }
 
-  /// Checks real network connectivity + tries to reach the Odoo server URL.
+  /// Reports whether the device has a network connection at all.
   ///
-  /// Returns `true` if connected to internet **and** Odoo server is reachable.
-  /// Uses a quick GET request to `/web` with 5-second timeout.
+  /// Radio state only — see the note on the matching check in
+  /// `PickingService.checkNetworkConnectivity`: requiring `GET $url/web` to
+  /// return 200 within 5s reported "offline" on healthy connections.
   Future<bool> checkNetworkConnectivity() async {
-    final prefs = await SharedPreferences.getInstance();
-    final url = prefs.getString('url') ?? '';
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult.every((r) => r == ConnectivityResult.none)) {
-      return false;
-    }
-    try {
-      final response = await http
-          .get(Uri.parse('$url/web'))
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
+    return connectivityResult.any((r) => r != ConnectivityResult.none);
   }
 
   /// Sets online status based on connectivity check and triggers UI rebuild.

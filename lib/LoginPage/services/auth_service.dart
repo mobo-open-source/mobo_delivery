@@ -204,6 +204,83 @@ class AuthService {
     return data['result'];
   }
 
+  /// Reads the user's current and allowed companies in a single call,
+  /// returning empty values rather than throwing if the server refuses.
+  ///
+  /// Mirrors `OdooSessionManager._fetchUserCompanies` in mobo_inventory.
+  Future<Map<String, dynamic>> _fetchUserCompanies(
+    String url,
+    String sessionId,
+    int userId,
+  ) async {
+    try {
+      final result = await callKwWithSession(
+        url: url,
+        sessionId: sessionId,
+        payload: {
+          "jsonrpc": "2.0",
+          "method": "call",
+          "params": {
+            "model": "res.users",
+            "method": "read",
+            "args": [
+              [userId],
+              ["company_id", "company_ids"],
+            ],
+            "kwargs": {},
+          },
+          "id": 1,
+        },
+      );
+
+      if (result is List && result.isNotEmpty) {
+        final userData = result[0];
+        return {
+          'company_id': userData['company_id'],
+          'company_ids':
+              (userData['company_ids'] as List?)?.whereType<int>().toList() ??
+              <int>[],
+        };
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Whether this user is a portal user, defaulting to `false` when the
+  /// server will not answer — the app only uses this to turn portal users
+  /// away, so an unanswered check must not lock out a legitimate user.
+  Future<bool> _isPortalUser({
+    required String url,
+    required String sessionId,
+    required int userId,
+    required int majorVersion,
+  }) async {
+    try {
+      final result = await callKwWithSession(
+        url: url,
+        sessionId: sessionId,
+        payload: {
+          "jsonrpc": "2.0",
+          "method": "call",
+          "params": {
+            "model": "res.users",
+            "method": "has_group",
+            "args": majorVersion >= 18
+                ? [userId, "base.group_portal"]
+                : ["base.group_portal"],
+            "kwargs": {},
+          },
+          "id": 1,
+        },
+      );
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Parses company field from Odoo responses.
   ///
   /// Handles both formats:
@@ -259,130 +336,18 @@ class AuthService {
         final String serverVersion = sessionInfo['server_version'];
         final int majorVersion = parseMajorVersion(serverVersion);
 
-        /// Fetch company info
-        final userData = await callKwWithSession(
+        final companyData = await _fetchUserCompanies(url, sessionId, userId);
+        final company = _parseCompany(companyData['company_id']);
+        final List<int> allowedCompanyIds =
+            (companyData['company_ids'] as List<int>?) ?? [];
+
+        final bool isSystem = sessionInfo['is_system'] == true;
+        final bool isPortal = await _isPortalUser(
           url: url,
           sessionId: sessionId,
-          payload: {
-            "jsonrpc": "2.0",
-            "method": "call",
-            "params": {
-              "model": "res.users",
-              "method": "read",
-              "args": [
-                [userId],
-                ["company_id"],
-              ],
-              "kwargs": {},
-            },
-            "id": 1,
-          },
+          userId: userId,
+          majorVersion: majorVersion,
         );
-
-        final company = _parseCompany(userData[0]['company_id']);
-
-        /// System user permission check (version dependent)
-        bool isSystem = false;
-        bool isPortal = false;
-        if (majorVersion >= 18) {
-          isSystem =
-              await callKwWithSession(
-                url: url,
-                sessionId: sessionId,
-                payload: {
-                  "jsonrpc": "2.0",
-                  "method": "call",
-                  "params": {
-                    "model": "res.users",
-                    "method": "has_group",
-                    "args": [userId, "base.group_system"],
-                    "kwargs": {},
-                  },
-                  "id": 1,
-                },
-              ) ==
-              true;
-          isPortal =
-              await callKwWithSession(
-                url: url,
-                sessionId: sessionId,
-                payload: {
-                  "jsonrpc": "2.0",
-                  "method": "call",
-                  "params": {
-                    "model": "res.users",
-                    "method": "has_group",
-                    "args": [userId, "base.group_portal"],
-                    "kwargs": {},
-                  },
-                  "id": 1,
-                },
-              ) ==
-              true;
-        } else {
-          isSystem =
-              await callKwWithSession(
-                url: url,
-                sessionId: sessionId,
-                payload: {
-                  "jsonrpc": "2.0",
-                  "method": "call",
-                  "params": {
-                    "model": "res.users",
-                    "method": "has_group",
-                    "args": ["base.group_system"],
-                    "kwargs": {},
-                  },
-                  "id": 1,
-                },
-              ) ==
-              true;
-          isPortal =
-              await callKwWithSession(
-                url: url,
-                sessionId: sessionId,
-                payload: {
-                  "jsonrpc": "2.0",
-                  "method": "call",
-                  "params": {
-                    "model": "res.users",
-                    "method": "has_group",
-                    "args": ["base.group_portal"],
-                    "kwargs": {},
-                  },
-                  "id": 1,
-                },
-              ) ==
-              true;
-        }
-
-        /// Fetch allowed companies
-        List<int> allowedCompanyIds = [];
-        if (majorVersion >= 13) {
-          final companiesRes = await callKwWithSession(
-            url: url,
-            sessionId: sessionId,
-            payload: {
-              "jsonrpc": "2.0",
-              "method": "call",
-              "params": {
-                "model": "res.users",
-                "method": "read",
-                "args": [
-                  [userId],
-                  ["company_ids"],
-                ],
-                "kwargs": {},
-              },
-              "id": 1,
-            },
-          );
-
-          if (companiesRes is List && companiesRes.isNotEmpty) {
-            allowedCompanyIds =
-                (companiesRes[0]['company_ids'] as List?)?.cast<int>() ?? [];
-          }
-        }
 
         return SessionModel(
           sessionId: sessionId,

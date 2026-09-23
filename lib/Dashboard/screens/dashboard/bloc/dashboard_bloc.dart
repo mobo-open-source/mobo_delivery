@@ -172,6 +172,18 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   Future<void> _loadUserProfile(Emitter<DashboardState> emit) async {
     final sessionData = await storageService.getSessionData();
     final userId = sessionData['userId'];
+
+    /// Greet the user from the session before going near the network. Their
+    /// name was stored at login, so waiting on a `res.users` read to show it
+    /// means an unreachable server, an expired session or a cold cache all
+    /// leave the header greeting nobody at all.
+    final sessionName = safeString(sessionData['userName']);
+    if (sessionName.isNotEmpty &&
+        (state.userName?.isEmpty ?? true) &&
+        !emit.isDone) {
+      emit(state.copyWith(userName: sessionName));
+    }
+
     final isOnline = await odooService.checkNetworkConnectivity();
     if (!emit.isDone) {
       emit(state.copyWith(isServerReachable: isOnline));
@@ -222,13 +234,17 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final currentAccounts = await storageService.getAccounts();
 
     final existing = currentAccounts.firstWhere(
-      (a) => a['userId'] == userDetails?['id'],
+      (a) =>
+          a['userId'] == userDetails?['id'] &&
+          a['url'] == sessionData['url'] &&
+          a['database'] == sessionData['db'],
       orElse: () => {},
     );
 
-    final accountWithImage = {...existing, 'image': base64Image};
-
-    await storageService.saveAccount(accountWithImage);
+    if (existing.isNotEmpty) {
+      final accountWithImage = {...existing, 'image': base64Image};
+      await storageService.saveAccount(accountWithImage);
+    }
 
     if (isOnline && !liveFetchSucceeded && !_didProfileAutoRetry) {
       final stillEmpty =

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../shared/utils/odoo_error_message.dart';
 import '../services/odoo_return_service.dart';
 import 'return_management_event.dart';
 import 'return_management_state.dart';
@@ -63,7 +64,11 @@ class ReturnManagementBloc
           ),
         );
       } catch (e) {
-        emit(state.copyWith(error: 'Failed to apply search: $e'));
+        emit(
+          state.copyWith(
+            error: 'Failed to apply search: ${briefOdooMessage(e)}',
+          ),
+        );
       }
     });
   }
@@ -144,8 +149,14 @@ class ReturnManagementBloc
           ? state.displayedCount + filtered.length
           : state.displayedCount - (state.filteredPickings.length);
 
+      final unsupported = odooService.unsupportedFilters;
+
       emit(
         state.copyWith(
+          error: unsupported.isEmpty
+              ? null
+              : 'This Odoo server does not support one of the selected '
+                    'filters. Showing unfiltered results.',
           pickings: items,
           filteredPickings: filtered,
           isLoading: false,
@@ -165,7 +176,7 @@ class ReturnManagementBloc
         state.copyWith(
           isFetchingMore: false,
           isLoading: false,
-          error: 'Failed to fetch stock pickings: $e',
+          error: 'Failed to fetch stock pickings: ${briefOdooMessage(e)}',
         ),
       );
     }

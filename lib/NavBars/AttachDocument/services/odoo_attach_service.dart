@@ -38,9 +38,14 @@ class OdooAttachService {
         return false;
       }
       final prefs = await SharedPreferences.getInstance();
-      var host = (prefs.getString('url') ?? '').trim();
-      host = host.replaceFirst(RegExp(r'^https?://'), '').split('/').first;
-      if (host.isEmpty) host = 'example.com';
+      final rawUrl = (prefs.getString('url') ?? '').trim();
+      final withScheme = rawUrl.isEmpty
+          ? ''
+          : (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))
+          ? rawUrl
+          : 'https://$rawUrl';
+      final parsedHost = withScheme.isEmpty ? '' : Uri.parse(withScheme).host;
+      final host = parsedHost.isNotEmpty ? parsedHost : 'example.com';
       final result = await InternetAddress.lookup(
         host,
       ).timeout(const Duration(seconds: 3));

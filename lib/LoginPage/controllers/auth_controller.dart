@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
+import '../../shared/widgets/snackbar.dart';
 import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -60,6 +61,14 @@ class AuthController {
             authResult == AuthenticationResult.unavailable) {
           await _navigateToDashboard(context);
         } else {
+          if (context.mounted) {
+            CustomSnackbar.showError(
+              context,
+              authResult == AuthenticationResult.error
+                  ? 'Unexpected authentication error. Please sign in again.'
+                  : 'Authentication failed or was cancelled. Please sign in again.',
+            );
+          }
           await _navigateToLogin(context);
         }
       } else {

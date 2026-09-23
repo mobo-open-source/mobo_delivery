@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -165,6 +166,10 @@ class _StatGrid extends StatelessWidget {
           genericDetail: 'Failed to load dashboard data. Please try again.',
         ),
         icon: HugeIcons.strokeRoundedDashboardSquare02,
+        showLogout: homeSectionNeedsReLogin(
+          online: state.online,
+          error: state.errorMessage,
+        ),
       );
     }
 
@@ -310,6 +315,10 @@ class _AttentionList extends StatelessWidget {
           genericDetail: 'Failed to load pickings. Please try again.',
         ),
         icon: HugeIcons.strokeRoundedAlert02,
+        showLogout: homeSectionNeedsReLogin(
+          online: state.online,
+          error: state.errorMessage,
+        ),
       );
     }
 

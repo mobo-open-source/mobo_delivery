@@ -33,7 +33,11 @@ class StorageService {
     await prefs.setString('userLang', session.userLang ?? '');
     await prefs.setInt('partnerId', session.partnerId ?? 0);
     await prefs.setString('userTimezone', session.userTimezone ?? '');
-    await prefs.setInt('companyId', session.companyId ?? 1);
+    if (session.companyId != null) {
+      await prefs.setInt('companyId', session.companyId!);
+    } else {
+      await prefs.remove('companyId');
+    }
     await prefs.setString('company_name', session.companyName ?? '');
     await prefs.setBool('isSystem', session.isSystem);
     await prefs.setBool('isPortal', session.isPortal);
@@ -74,7 +78,10 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     return {
       'isLoggedIn': prefs.getBool('isLoggedIn') ?? false,
-      'useLocalAuth': prefs.getBool('useLocalAuth') ?? false,
+      'useLocalAuth':
+          prefs.getBool('useLocalAuth') ??
+          prefs.getBool('biometricEnabled') ??
+          false,
       'selectedDatabase': prefs.getString('selectedDatabase') ?? '',
       'url': prefs.getString('url') ?? '',
       'password': prefs.getString('pass') ?? '',

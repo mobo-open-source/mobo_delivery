@@ -68,7 +68,9 @@ class MapService {
         'https://api.tomtom.com/search/2/search/$encoded.json'
         '?limit=1$proximityParam&key=$apiKey';
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 10));
       final json = jsonDecode(response.body);
       if (json['results'] != null && (json['results'] as List).isNotEmpty) {
         final pos = json['results'][0]['position'];
