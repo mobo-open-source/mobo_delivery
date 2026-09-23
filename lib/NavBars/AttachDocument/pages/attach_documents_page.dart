@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +50,8 @@ class AttachDocumentsPage extends StatefulWidget {
 ///   - Displays empty/error/loading states with Lottie animations
 class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   late DashboardStorageService storageService;
+  late final AttachDocumentsBloc _bloc;
+  StreamSubscription<void>? _companySub;
   int? userId;
   int? companyId;
   bool? isSystem;
@@ -85,7 +89,34 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   void initState() {
     super.initState();
     storageService = DashboardStorageService();
+    _bloc = AttachDocumentsBloc(
+      odooService: OdooAttachService(),
+      hiveService: HiveService(),
+    )..add(InitializeAttachDocuments());
+
+    _companySub = CompanyRefreshBus.stream.listen((_) {
+      if (!mounted) return;
+      _reloadForCompany();
+    });
+
     _initAll();
+  }
+
+  /// Refetches the first page under the newly selected company.
+  ///
+  /// Dispatches the same event as pull-to-refresh rather than
+  /// [InitializeAttachDocuments]: initialize emits the Hive cache first, and
+  /// that cache still holds the previous company's pickings, so it would flash
+  /// the wrong records before the server response replaced them.
+  void _reloadForCompany() {
+    _bloc.add(
+      FetchDocumentStockPickings(
+        0,
+        _bloc.itemsPerPage,
+        searchQuery: _searchController.text,
+        filters: _selectedFilters,
+      ),
+    );
   }
 
   /// Initializes services and checks connectivity on first build.
@@ -111,6 +142,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
 
   @override
   void dispose() {
+    _companySub?.cancel();
+    _bloc.close();
     _searchController.dispose();
     super.dispose();
   }
@@ -810,11 +843,8 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return BlocProvider(
-      create: (context) => AttachDocumentsBloc(
-        odooService: OdooAttachService(),
-        hiveService: HiveService(),
-      )..add(InitializeAttachDocuments()),
+    return BlocProvider.value(
+      value: _bloc,
       child: Builder(
         builder: (blocContext) {
           return WillPopScope(

@@ -10,6 +10,7 @@ import '../../LoginPage/views/totp_page.dart';
 import '../../core/company/services/connectivity_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../shared/utils/app_theme.dart';
+import '../../shared/utils/server_url_utils.dart';
 import '../../shared/widgets/action_tile.dart';
 import '../../shared/widgets/buttons/mobo_button.dart';
 import '../../shared/widgets/odoo_avatar.dart';
@@ -55,6 +56,7 @@ class _ConfigurationState extends State<Configuration> {
   Map<String, dynamic>? profile;
   String? currentUrl;
   String? currentDatabase;
+  int? currentUserId;
   bool _isLoading = true;
 
   @override
@@ -69,6 +71,7 @@ class _ConfigurationState extends State<Configuration> {
     final prefs = await SharedPreferences.getInstance();
     currentUrl = prefs.getString('url') ?? '';
     currentDatabase = prefs.getString('selectedDatabase') ?? '';
+    currentUserId = prefs.getInt('userId');
     await _loadProfile();
   }
 
@@ -302,14 +305,11 @@ class _ConfigurationState extends State<Configuration> {
             builder: (context, snapshot) {
               final accounts = snapshot.data ?? [];
               final otherAccounts = accounts.where((user) {
-                final userUrl = user['url'] ?? '';
-                final userDatabase = user['database'] ?? '';
-                final accountUserId = user['userId'];
-
                 final isSameAccount =
-                    userUrl == currentUrl &&
-                    userDatabase == currentDatabase &&
-                    accountUserId == profile?['id'];
+                    normalizeServerUrl(user['url']?.toString()) ==
+                        normalizeServerUrl(currentUrl) &&
+                    user['database'] == currentDatabase &&
+                    user['userId']?.toString() == currentUserId?.toString();
 
                 final userName = user['userName'] ?? '';
                 return !isSameAccount && userName.isNotEmpty;
@@ -703,12 +703,7 @@ class _ConfigurationState extends State<Configuration> {
     }
 
     final rawUrl = (user['url'] as String? ?? '').trim();
-    final url =
-        rawUrl.isEmpty ||
-            rawUrl.startsWith('http://') ||
-            rawUrl.startsWith('https://')
-        ? rawUrl
-        : 'https://$rawUrl';
+    final url = normalizeServerUrl(rawUrl);
     final database = (user['database'] as String? ?? '').trim();
     final userLogin = (user['userLogin'] as String? ?? '').trim();
     final displayName = (user['userName'] as String?)?.trim().isNotEmpty == true

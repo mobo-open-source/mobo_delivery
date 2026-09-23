@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 
 import '../../core/company/session/company_session_manager.dart';
+import '../../shared/utils/odoo_version.dart';
 
 /// Service that handles all Odoo RPC calls specific to the dashboard/profile/settings flow.
 ///
@@ -86,15 +87,9 @@ class OdooDashboardService {
       if (partner is List && partner.isNotEmpty) {
         try {
           final session = await CompanySessionManager.getCurrentSession();
-          final serverMajor =
-              int.tryParse(
-                RegExp(
-                      r'\d+',
-                    ).firstMatch(session?.serverVersion ?? '')?.group(0) ??
-                    '',
-              ) ??
-              0;
-          final supportsMobile = serverMajor == 0 || serverMajor < 19;
+          final supportsMobile = odooHasPartnerMobile(
+            odooMajorVersion(session?.serverVersion),
+          );
 
           final partnerFields = <String>[
             'phone',

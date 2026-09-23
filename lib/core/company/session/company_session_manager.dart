@@ -9,6 +9,7 @@ import '../../../LoginPage/services/auth_service.dart';
 import '../../../LoginPage/services/storage_service.dart';
 import '../../security/secure_storage_service.dart';
 import '../services/connectivity_service.dart';
+import '../../../shared/utils/server_url_utils.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 
@@ -267,12 +268,7 @@ class CompanySessionManager {
     session_Id,
     bool autoLoadCompanies = true,
   }) async {
-    /// Ensure URL contains protocol.
-    String normalizedUrl = serverUrl.trim();
-    if (!normalizedUrl.startsWith('http://') &&
-        !normalizedUrl.startsWith('https://')) {
-      normalizedUrl = 'https://$normalizedUrl';
-    }
+    final normalizedUrl = normalizeServerUrl(serverUrl);
 
     final authService = AuthService();
     final SessionModel? sessionModel = await authService.authenticateOdoo(
@@ -577,12 +573,8 @@ class CompanySessionManager {
     if (selectedCompany != null && _companyContextValidated) {
       ctx['company_id'] = selectedCompany;
 
-      List<int> finalAllowed = [...allowed];
-      if (!finalAllowed.contains(selectedCompany)) {
-        finalAllowed.add(selectedCompany);
-      }
-
-      ctx['allowed_company_ids'] = <int>{...finalAllowed}.toList();
+      final rest = {...allowed}..remove(selectedCompany);
+      ctx['allowed_company_ids'] = <int>[selectedCompany, ...rest];
     }
 
     kwargs['context'] = ctx;

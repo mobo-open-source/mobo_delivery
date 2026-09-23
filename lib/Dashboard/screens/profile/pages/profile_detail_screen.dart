@@ -8,6 +8,7 @@ import '../../../../shared/widgets/odoo_avatar.dart';
 import '../../../../shared/widgets/forms/custom_dropdown_field.dart';
 import '../../../../shared/widgets/forms/custom_text_field.dart';
 import '../../../../core/company/session/company_session_manager.dart';
+import '../../../../shared/utils/odoo_version.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -48,12 +49,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   /// every other field down with it, so it is only ever read or written when
   /// this is true.
   int _serverMajor = 0;
-  bool get _supportsMobile => _serverMajor == 0 || _serverMajor < 19;
-
-  int _parseServerMajor(String? version) {
-    final match = RegExp(r'\d+').firstMatch(version ?? '');
-    return int.tryParse(match?.group(0) ?? '') ?? 0;
-  }
+  bool get _supportsMobile => odooHasPartnerMobile(_serverMajor);
 
   int? _relatedCompanyId;
   String? _relatedCompanyName;
@@ -170,7 +166,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         if (mounted) setState(() => _isLoading = false);
         return;
       }
-      _serverMajor = _parseServerMajor(session.serverVersion);
+      _serverMajor = odooMajorVersion(session.serverVersion);
 
       final res = await CompanySessionManager.callKwWithCompany({
         'model': 'res.users',

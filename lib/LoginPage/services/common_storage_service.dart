@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/session_model.dart';
+import '../../shared/utils/server_url_utils.dart';
 
 /// Service class to handle persistent storage of user session,
 /// login state, profiles, accounts, and app-specific tokens using SharedPreferences.
@@ -118,15 +119,19 @@ class CommonStorageService {
 
   /// Saves a single account to the list of logged-in accounts.
   ///
-  /// Ensures uniqueness by `userLogin` and sets a default empty image if missing.
+  /// Shares the `loggedInAccounts` store with [DashboardStorageService], so it
+  /// has to agree with it on what makes two entries the same account —
+  /// otherwise a login through one path leaves the other path's entry behind
+  /// as a duplicate.
   Future<void> saveAccount(Map<String, dynamic> account) async {
     final prefs = await SharedPreferences.getInstance();
     final accounts = await getAccounts();
 
+    account['url'] = normalizeServerUrl(account['url']?.toString());
     accounts.removeWhere(
       (a) =>
           a['userLogin'] == account['userLogin'] &&
-          a['url'] == account['url'] &&
+          normalizeServerUrl(a['url']?.toString()) == account['url'] &&
           a['database'] == account['database'],
     );
 

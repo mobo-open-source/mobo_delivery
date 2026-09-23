@@ -5,6 +5,7 @@ import 'package:odoo_rpc/odoo_rpc.dart';
 import '../../core/security/self_signed.dart';
 import '../models/auth_model.dart';
 import '../models/session_model.dart';
+import '../../shared/utils/odoo_version.dart';
 
 /// Credentials were correct, but the account has TOTP-based two-factor
 /// authentication enabled — Odoo handed back a partial (`uid: false`)
@@ -76,13 +77,8 @@ class AuthService {
   /// Example:
   /// - "17.0+e" → 17
   /// - "16.3" → 16
-  int parseMajorVersion(String serverVersion) {
-    final match = RegExp(r'\d+').firstMatch(serverVersion);
-    if (match != null) {
-      return int.tryParse(match.group(0)!) ?? 0;
-    }
-    return 0;
-  }
+  int parseMajorVersion(String serverVersion) =>
+      odooMajorVersion(serverVersion);
 
   /// Tells "wrong password" apart from "correct password, 2FA pending".
   ///

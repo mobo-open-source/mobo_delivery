@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../LoginPage/models/session_model.dart';
+import '../../shared/utils/server_url_utils.dart';
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 
 /// Central storage service for dashboard/session-related persistent data.
@@ -146,20 +147,21 @@ class DashboardStorageService {
 
   static const _accountsKey = 'loggedInAccounts';
 
+  /// Identity key for a stored account, used for both upsert and removal.
+  bool _isSameAccount(Map<String, dynamic> a, Map<String, dynamic> b) {
+    return a['userLogin'] == b['userLogin'] &&
+        normalizeServerUrl(a['url']?.toString()) ==
+            normalizeServerUrl(b['url']?.toString()) &&
+        a['database'] == b['database'];
+  }
+
   /// Saves or updates an account entry (used for account switcher).
-  ///
-  /// Removes any existing entry with the same `userLogin` before adding.
-  /// Ensures 'image' key exists (even if empty).
   Future<void> saveAccount(Map<String, dynamic> account) async {
     final prefs = await SharedPreferences.getInstance();
     final accounts = await getAccounts();
 
-    accounts.removeWhere(
-      (a) =>
-          a['userLogin'] == account['userLogin'] &&
-          a['url'] == account['url'] &&
-          a['database'] == account['database'],
-    );
+    account['url'] = normalizeServerUrl(account['url']?.toString());
+    accounts.removeWhere((a) => _isSameAccount(a, account));
 
     if (!account.containsKey('image')) {
       account['image'] = '';
@@ -208,12 +210,11 @@ class DashboardStorageService {
     final accounts = await getAccounts();
 
     accounts.removeWhere(
-      (a) =>
-          a['userLogin'] == userLogin &&
-          a['userName'] == userName &&
-          a['userId'] == userId &&
-          a['url'] == url &&
-          a['database'] == database,
+      (a) => _isSameAccount(a, {
+        'userLogin': userLogin,
+        'url': url,
+        'database': database,
+      }),
     );
 
     await prefs.setString(_accountsKey, jsonEncode(accounts));
