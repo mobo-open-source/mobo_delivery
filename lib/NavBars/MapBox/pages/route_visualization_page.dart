@@ -121,6 +121,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
   /// Ensures the "location unavailable" notice is only shown once.
   bool _locationNoticeShown = false;
+  bool _locationNoticePending = false;
 
   final MapController _mapController = MapController();
   final TextEditingController sourceController = TextEditingController();
@@ -919,13 +920,29 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       _initialCameraPosition = _fallbackCenter;
       _isLoading = false;
     });
-    if (!_locationNoticeShown) {
-      _locationNoticeShown = true;
-      CustomSnackbar.showWarning(
-        context,
-        'Location unavailable. Set your source manually in "Enter Route".',
-      );
+    // The notice is held, not shown. Every tab lives in an IndexedStack, so
+    // this page builds and asks for a location while Home is on screen — and
+    // on iOS that first attempt fails before the permission prompt resolves,
+    // which put the warning in front of a user who was not looking at the
+    // map. It is raised instead when they actually open Enter Route, which
+    // is the only place its advice can be acted on.
+    _locationNoticePending = true;
+  }
+
+  /// Shows the held location notice, once, now that the route UI is in front
+  /// of the user.
+  void _showPendingLocationNotice() {
+    if (!mounted || !_locationNoticePending || _locationNoticeShown) return;
+    if (_sourceLatLng != null) {
+      _locationNoticePending = false;
+      return;
     }
+    _locationNoticeShown = true;
+    _locationNoticePending = false;
+    CustomSnackbar.showWarning(
+      context,
+      'Location unavailable. Set your source manually in "Enter Route".',
+    );
   }
 
   /// Places the pin representing the current/source location.
@@ -996,6 +1013,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// Supports multi-select pickings (auto-fills stops from destination_point),
   /// source field with Mapbox autocomplete, and dynamic stop fields.
   void _showEnterRootPopup({bool fromAddStop = false}) {
+    _showPendingLocationNotice();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     bool popCalled = false;
     bool needsAutoRoute = false;

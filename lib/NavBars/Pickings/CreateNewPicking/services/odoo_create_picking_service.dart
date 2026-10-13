@@ -6,6 +6,8 @@ import '../models/product.dart';
 import '../models/partner.dart';
 import '../models/user.dart';
 import '../models/operation_type.dart';
+import '../../../../shared/utils/odoo_version.dart';
+import '../../../../shared/services/odoo_defaults_service.dart';
 
 /// Service class responsible for creating and managing stock pickings in Odoo
 /// through XML-RPC calls, while handling connectivity checks, data loading,
@@ -88,10 +90,23 @@ class OdooCreatePickingService {
   /// Usually used to assign responsible users to stock pickings/operations.
   Future<List<UserModel>> loadUsers() async {
     try {
+      // Odoo's own Responsible dropdown is restricted to warehouse staff by
+      // the domain on `stock.picking.user_id`. Read without it, this list
+      // offered portal users, OdooBot and anyone else on the system — people
+      // Odoo would refuse to accept. The domain is fetched rather than
+      // written out because its field name differs between releases; a null
+      // means it could not be read, and the list falls back to unfiltered.
+      final domain =
+          await OdooDefaultsService.instance.relationDomain(
+            'stock.picking',
+            'user_id',
+          ) ??
+          const <dynamic>[];
+
       final userItems = await CompanySessionManager.callKwWithCompany({
         'model': 'res.users',
         'method': 'search_read',
-        'args': [[]],
+        'args': [domain],
         'kwargs': {
           'fields': ['id', 'name'],
         },
@@ -126,6 +141,10 @@ class OdooCreatePickingService {
             'default_location_src_id',
             'default_location_dest_id',
             'company_id',
+            // Shipping Policy on a picking is computed from its operation
+            // type (`_compute_move_type`), not defaulted, so the form has to
+            // follow the selected type rather than assume 'direct'.
+            'move_type',
           ],
         },
       });
@@ -251,7 +270,7 @@ class OdooCreatePickingService {
       if (version < 19) 'name': name,
       'product_id': productId,
       'product_uom_qty': productUomQty,
-      'product_uom': productUomId,
+      stockMoveUomField(version): productUomId,
       'picking_id': pickingId,
       'location_id': locationId,
       'location_dest_id': locationDestId,

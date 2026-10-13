@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 
 import '../../core/company/session/company_session_manager.dart';
+import '../../core/security/self_signed.dart';
 import '../../shared/utils/odoo_version.dart';
 
 /// Service that handles all Odoo RPC calls specific to the dashboard/profile/settings flow.
@@ -23,7 +24,7 @@ class OdooDashboardService {
   final OdooSession session;
 
   OdooDashboardService(this.url, this.session) {
-    client = OdooClient(url, sessionId: session);
+    client = OdooClient(url, sessionId: session, httpClient: ioClient);
   }
 
   /// Checks if the device actually has internet access.

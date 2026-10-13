@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../LoginPage/models/session_model.dart';
 import '../../../LoginPage/services/network_service.dart';
+import '../../../LoginPage/services/odoo_database_discovery.dart';
 import 'credentials_screen.dart';
 
 /// Screen used to collect server URL and database details before authentication.
@@ -236,6 +237,27 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
   /// Falls back to manual database input if auto detection fails.
   ///
   /// Displays user-friendly error messages on failure.
+  /// Resolves the database of a server that will not list its databases.
+  Future<bool> _resolveDefaultDatabase(String baseUrl, String protocol) async {
+    try {
+      final defaultDb = await OdooDatabaseDiscovery.getDefaultDatabase(
+        baseUrl,
+      ).timeout(const Duration(seconds: 20));
+      if (defaultDb == null || defaultDb.isEmpty || !mounted) return false;
+      setState(() {
+        _workingProtocol = protocol;
+        _databases = [defaultDb];
+        _selectedDatabase = defaultDb;
+        _showManualDbInput = false;
+        _errorMessage = null;
+        showError = false;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _fetchDatabaseList(String url) async {
     try {
       if (!mounted) return;
@@ -264,17 +286,14 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
 
       for (String protocol in protocolsToTry) {
         try {
-          final dbList = await Future.any([
-            _networkService.fetchDatabaseList('$protocol$host'),
-            Future.delayed(
-              const Duration(seconds: 15),
-            ).then((_) => throw TimeoutException('Request timed out')),
-          ]);
+          final listing = await _networkService.fetchDatabaseList(
+            '$protocol$host',
+          );
 
-          if (dbList.isNotEmpty) {
+          if (listing.databases.isNotEmpty) {
             if (mounted) {
               setState(() {
-                final uniqueDbList = dbList.toSet().toList();
+                final uniqueDbList = listing.databases.toSet().toList();
                 uniqueDbList.sort(
                   (a, b) => a.toString().compareTo(b.toString()),
                 );
@@ -288,41 +307,42 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
             }
             success = true;
             break;
-          } else {
-            if (mounted) {
-              setState(() {
-                _workingProtocol = protocol;
-                _databases = [];
-                _showManualDbInput = true;
-                _errorMessage = null;
-              });
-            }
+          }
+
+          success = await _resolveDefaultDatabase('$protocol$host', protocol);
+          if (success) break;
+
+          // Typing the name is offered only here: Odoo answered and declined
+          // to list, and discovery found nothing either, so this is the one
+          // remaining way in. Every other failure keeps it hidden, because
+          // nothing has confirmed the address is an Odoo server at all.
+          if (listing.listingDisabled && mounted) {
+            setState(() {
+              _workingProtocol = protocol;
+              _databases = [];
+              _selectedDatabase = null;
+              _showManualDbInput = true;
+              _errorMessage = null;
+              showError = false;
+            });
             success = true;
             break;
           }
+
+          lastError = Exception('No databases found on this server.');
+        } on NotAnOdooServerException catch (error) {
+          lastError = error.reason;
         } catch (error) {
-          if (error.toString().contains('Odoo Server returned an error') ||
-              (error is Map && error.containsKey('data'))) {
-            if (mounted) {
-              setState(() {
-                _workingProtocol = protocol;
-                _databases = [];
-                _showManualDbInput = true;
-                _errorMessage = null;
-              });
-            }
-            success = true;
-            break;
-          }
           lastError = error;
         }
       }
+
       if (!success && mounted) {
         setState(() {
           _databases = [];
           _selectedDatabase = null;
           showError = true;
-          _showManualDbInput = true;
+          _showManualDbInput = false;
           _errorMessage = _formatLoginError(lastError);
           _workingProtocol = null;
         });
@@ -334,7 +354,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
           _errorMessage = _formatLoginError(e);
           _databases = [];
           _selectedDatabase = null;
-          _showManualDbInput = true;
+          _showManualDbInput = false;
         });
       }
     } finally {
@@ -371,6 +391,17 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
     } else if (errorStr.contains('database') &&
         errorStr.contains('not found')) {
       return 'Selected database is not available. Please choose a different database.';
+    } else if (errorStr.contains('failed host lookup') ||
+        errorStr.contains('nodename nor servname') ||
+        errorStr.contains('no address associated')) {
+      // Checked before the generic socket branch below. A DNS failure is a
+      // SocketException, so it matched "socket" first and told the user to
+      // check an internet connection that was working perfectly well — the
+      // address is simply wrong.
+      return 'Server not found. Please check the server address for typos.';
+    } else if (errorStr.contains('connection refused')) {
+      return 'Server is not responding. Please verify the server address and '
+          'port, and that Odoo is running.';
     } else if (errorStr.contains('network') || errorStr.contains('socket')) {
       return 'Network connection failed. Please check your internet connection.';
     } else if (errorStr.contains('timeout')) {
@@ -381,8 +412,6 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
       return 'Server error occurred. Please try again later or contact your administrator.';
     } else if (errorStr.contains('ssl') || errorStr.contains('certificate')) {
       return 'SSL connection failed. Try using HTTP instead of HTTPS.';
-    } else if (errorStr.contains('connection refused')) {
-      return 'Server is not responding. Please verify the server URL and try again.';
     } else if (errorStr.contains('connection terminated during handshake')) {
       return 'Secure connection failed. The server may not support HTTPS or has an invalid SSL certificate. Try switching to HTTP or contact your administrator.';
     } else {
@@ -552,8 +581,13 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                           _DatabaseDropdown(
                             databases: _databases,
                             selectedDatabase: _selectedDatabase,
-                            onDatabaseChanged: (db) =>
-                                setState(() => _selectedDatabase = db),
+                            onDatabaseChanged: (db) => setState(() {
+                              _selectedDatabase = db;
+                              // The message belongs to the database that
+                              // produced it, so choosing another clears it.
+                              _errorMessage = null;
+                              showError = false;
+                            }),
                           ),
                         if (showError) ...[
                           if (_errorMessage != null)
@@ -610,7 +644,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                                     }
                                   }
 
-                                  Navigator.push(
+                                  Navigator.push<String>(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => SwitchCredentialsScreen(
@@ -623,7 +657,17 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
                                         session: widget.session,
                                       ),
                                     ),
-                                  );
+                                  ).then((returnedError) {
+                                    if (!mounted ||
+                                        returnedError == null ||
+                                        returnedError.isEmpty) {
+                                      return;
+                                    }
+                                    setState(() {
+                                      _errorMessage = returnedError;
+                                      showError = true;
+                                    });
+                                  });
                                 },
                         ),
                       ],
@@ -644,6 +688,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
   Widget _buildManualDbInput() {
     return TextFormField(
       controller: _manualDbController,
+      cursorColor: Colors.black,
       validator: (value) {
         if (value == null || value.trim().isEmpty)
           return 'Database name is required';
@@ -752,6 +797,7 @@ class _UrlInputField extends StatelessWidget {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
+          cursorColor: Colors.black,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Server address is required';

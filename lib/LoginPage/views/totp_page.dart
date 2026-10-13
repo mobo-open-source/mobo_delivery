@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/company/session/company_session_manager.dart';
+import '../../core/session/database_expiry.dart';
 import '../../shared/utils/globals.dart';
 import '../../shared/widgets/buttons/mobo_button.dart';
 import '../widgets/login_button.dart';
@@ -225,7 +226,9 @@ class _TotpPageState extends State<TotpPage> {
                 onReceivedError: (controller, request, error) async {
                   if (!mounted || _verifying) return;
 
-                  if (await _retryWithOtherSchemeIfPossible(error.description)) {
+                  if (await _retryWithOtherSchemeIfPossible(
+                    error.description,
+                  )) {
                     return;
                   }
 
@@ -296,7 +299,7 @@ class _TotpPageState extends State<TotpPage> {
                       alignment: Alignment.center,
                       child: Icon(
                         HugeIcons.strokeRoundedArrowLeft01,
-                        color: _loading ? Colors.white54 : Colors.white,
+                        color: Colors.white,
                         size: 24,
                       ),
                     ),
@@ -666,13 +669,22 @@ class _TotpPageState extends State<TotpPage> {
       }
 
       sessionId = sessionCookie.value;
-      final success = await CompanySessionManager.loginAndSaveSession(
-        serverUrl: _activeServerUrl,
-        database: widget.database,
-        userLogin: widget.username.trim(),
-        password: widget.password.trim(),
-        session_Id: sessionId,
-      ).timeout(const Duration(seconds: 20));
+      final bool success;
+      try {
+        success = await CompanySessionManager.loginAndSaveSession(
+          serverUrl: _activeServerUrl,
+          database: widget.database,
+          userLogin: widget.username.trim(),
+          password: widget.password.trim(),
+          session_Id: sessionId,
+        ).timeout(const Duration(seconds: 20));
+      } on DatabaseExpiredException {
+        // The code was right; the database behind it is out of subscription.
+        setState(() {
+          _error = DatabaseExpiredException.message;
+        });
+        return false;
+      }
 
       if (!success) {
         setState(() {

@@ -795,6 +795,12 @@ class _ConfigurationState extends State<Configuration> {
     /// established for this account (still valid on the server) needs no
     /// password and cannot trigger that challenge — matching how switching
     /// accounts already behaves on Odoo's own web client.
+    /// Why the resume attempt failed, kept so it can be reported if the
+    /// password fallback then fails too. Discarding it meant the user was
+    /// shown only the second failure's message — and when that one was
+    /// generic, nothing at all was left to diagnose from.
+    String? resumeFailure;
+
     Future<bool> tryResumeSavedSession() async {
       final savedSessionId = (user['sessionId'] as String? ?? '').trim();
       if (savedSessionId.isEmpty) return false;
@@ -806,7 +812,11 @@ class _ConfigurationState extends State<Configuration> {
           password: storedPassword,
           session_Id: savedSessionId,
         ).timeout(const Duration(seconds: 20));
-      } catch (_) {
+      } on TimeoutException {
+        resumeFailure = 'saved session took too long to confirm';
+        return false;
+      } catch (e) {
+        resumeFailure = _rawReason(e);
         return false;
       }
     }
@@ -855,10 +865,13 @@ class _ConfigurationState extends State<Configuration> {
 
     if (!reauthOk) {
       await _rollbackSwitch(prevSession, prevUrl, prevDatabase);
-      await abort(
-        reauthReason ??
-            'Could not sign in to $displayName. Account was not switched.',
-      );
+      var message =
+          reauthReason ??
+          'Could not sign in to $displayName. Account was not switched.';
+      if (resumeFailure != null && !message.contains(resumeFailure!)) {
+        message = '$message (saved session: $resumeFailure)';
+      }
+      await abort(message);
       return;
     }
 
@@ -951,6 +964,20 @@ class _ConfigurationState extends State<Configuration> {
     if (raw.contains('certificate') || raw.contains('ssl')) {
       return 'SSL/certificate problem reaching the server.';
     }
-    return 'unexpected error. Please try again.';
+    // Anything unrecognised still carries the server's own words. Replacing
+    // it with "unexpected error" told the user nothing and left no trace of
+    // what actually went wrong.
+    return _rawReason(e);
+  }
+
+  /// Condenses an exception into one short line safe to show in a snackbar.
+  String _rawReason(Object e) {
+    var text = e.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+    for (final prefix in const ['Exception: ', 'OdooException: ']) {
+      if (text.startsWith(prefix)) text = text.substring(prefix.length);
+    }
+    if (text.isEmpty) return 'unexpected error. Please try again.';
+    if (text.length > 160) text = '${text.substring(0, 157)}...';
+    return text;
   }
 }

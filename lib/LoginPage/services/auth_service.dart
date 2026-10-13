@@ -318,7 +318,7 @@ class AuthService {
     sessionId,
   }) async {
     try {
-      final client = OdooClient(url);
+      final client = OdooClient(url, httpClient: ioClient);
       final session;
       int userId = 0;
 
@@ -328,8 +328,19 @@ class AuthService {
       if (sessionId != null) {
         final sessionInfo = await getSessionInfo(url, sessionId);
 
+        final mismatch = resumedSessionMismatch(
+          sessionInfo: sessionInfo,
+          expectedDatabase: database,
+          expectedLogin: username,
+        );
+        if (mismatch != null) throw Exception(mismatch);
+
         final int userId = sessionInfo['uid'];
-        final String serverVersion = sessionInfo['server_version'];
+        // Tolerated rather than cast: a session payload without it would
+        // otherwise fail the resume with a bare type error that says nothing
+        // about what went wrong.
+        final String serverVersion = (sessionInfo['server_version'] ?? '')
+            .toString();
         final int majorVersion = parseMajorVersion(serverVersion);
 
         final companyData = await _fetchUserCompanies(url, sessionId, userId);
@@ -467,4 +478,42 @@ class AuthService {
       rethrow;
     }
   }
+}
+
+/// Describes why a resumed session does not belong to the account being
+/// signed in, or `null` when it is a legitimate match.
+///
+/// A saved session id is only a *candidate* — the server decides whose it
+/// actually is. Without this check a stale id is accepted for whatever
+/// session it still maps to, and the caller then stores it alongside the
+/// database and login it *asked* for. That mismatched pair looks like a
+/// successful sign-in — the greeting even shows the right name — while every
+/// subsequent RPC is rejected, which is far harder to diagnose than a failed
+/// login would have been. Rejecting the resume is always safe: the caller
+/// falls back to ordinary password authentication.
+///
+/// Fields absent from the payload are not treated as mismatches, so an older
+/// or trimmed `session_info` never blocks a resume that would have worked.
+String? resumedSessionMismatch({
+  required Map<String, dynamic> sessionInfo,
+  required String expectedDatabase,
+  required String expectedLogin,
+}) {
+  final sessionDb = (sessionInfo['db'] ?? '').toString().trim();
+  if (sessionDb.isNotEmpty &&
+      expectedDatabase.trim().isNotEmpty &&
+      sessionDb != expectedDatabase.trim()) {
+    return 'Saved session belongs to database "$sessionDb", '
+        'not "${expectedDatabase.trim()}".';
+  }
+
+  final sessionLogin = (sessionInfo['username'] ?? '').toString().trim();
+  if (sessionLogin.isNotEmpty &&
+      expectedLogin.trim().isNotEmpty &&
+      sessionLogin.toLowerCase() != expectedLogin.trim().toLowerCase()) {
+    return 'Saved session belongs to user "$sessionLogin", '
+        'not "${expectedLogin.trim()}".';
+  }
+
+  return null;
 }

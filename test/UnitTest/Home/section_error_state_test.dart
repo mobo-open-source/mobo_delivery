@@ -3,20 +3,33 @@ import 'package:odoo_delivery_app/NavBars/Home/widgets/section_error_state.dart'
 
 void main() {
   group('homeSectionNeedsReLogin', () {
-    test('offers re-login when a section fails while online', () {
-      expect(
-        homeSectionNeedsReLogin(
-          online: true,
-          error: 'OdooException: {message: Odoo Server Error}',
-        ),
-        isTrue,
-      );
+    test('offers re-login only for an expired session', () {
       expect(
         homeSectionNeedsReLogin(
           online: true,
           error: 'Your session has expired. Please sign in again.',
         ),
         isTrue,
+      );
+    });
+
+    test('an ordinary server error does not offer re-login', () {
+      // Signing out is drastic advice, and wrong here: a timeout or a
+      // transient server fault usually clears on the next refresh, while
+      // logging out discards anything queued offline.
+      expect(
+        homeSectionNeedsReLogin(
+          online: true,
+          error: 'OdooException: {message: Odoo Server Error}',
+        ),
+        isFalse,
+      );
+      expect(
+        homeSectionNeedsReLogin(
+          online: true,
+          error: 'TimeoutException after 0:00:60.000000',
+        ),
+        isFalse,
       );
     });
 

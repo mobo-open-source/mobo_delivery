@@ -29,6 +29,10 @@ class ConnectivityService {
 
   bool _monitoring = false;
 
+  /// Probed only when no Odoo server is configured yet, or when the
+  /// configured one does not resolve.
+  static const String _fallbackProbeHost = 'example.com';
+
   Stream<bool> get onInternetChanged => _internetController.stream;
 
   Stream<bool> get onServerChanged => _serverController.stream;
@@ -119,14 +123,52 @@ class ConnectivityService {
   }
 
   /// Verifies real internet access using DNS lookup.
-  Future<bool> hasInternetAccess({String host = 'example.com'}) async {
+  ///
+  /// Prefers the configured Odoo host over the generic fallback. Probing only
+  /// a third-party host reported the device as offline whenever that host was
+  /// blocked or slow — common on corporate and campus networks, and on
+  /// emulators with a cold DNS resolver — even though the user's own server
+  /// resolved perfectly. That false "offline" then cascaded: [_probeServer]
+  /// short-circuits on it, so the app announced "Server unreachable. Showing
+  /// cached data." about a server that was up the whole time.
+  ///
+  /// The generic host is still tried as a fallback, so a genuinely down Odoo
+  /// server is not mistaken for a dead connection — that case is reported by
+  /// [ensureServerReachable] instead, which says something accurate about it.
+  Future<bool> hasInternetAccess({String? host}) async {
+    final candidates = <String>[];
+    if (host != null && host.isNotEmpty) {
+      candidates.add(host);
+    } else {
+      final serverHost = _serverHost();
+      if (serverHost != null) candidates.add(serverHost);
+      candidates.add(_fallbackProbeHost);
+    }
+
+    for (final candidate in candidates) {
+      try {
+        final result = await _lookupWithRetry(candidate);
+        if (result.isNotEmpty && result.first.rawAddress.isNotEmpty) {
+          return true;
+        }
+      } on SocketException {
+        continue;
+      } on TimeoutException {
+        continue;
+      }
+    }
+    return false;
+  }
+
+  /// Host of the server currently configured, if any.
+  String? _serverHost() {
+    final url = _currentServerUrl;
+    if (url == null || url.isEmpty) return null;
     try {
-      final result = await _lookupWithRetry(host);
-      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
-    } on SocketException {
-      return false;
-    } on TimeoutException {
-      return false;
+      final host = Uri.parse(url).host;
+      return host.isEmpty ? null : host;
+    } on FormatException {
+      return null;
     }
   }
 

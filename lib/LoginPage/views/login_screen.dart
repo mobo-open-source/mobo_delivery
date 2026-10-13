@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +7,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/login_button.dart';
 import '../services/network_service.dart';
+import '../services/odoo_database_discovery.dart';
 
 import 'credential_page.dart';
 
@@ -138,9 +138,35 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Tries detected protocol first, then falls back to the opposite (http ↔ https).
   /// On success: populates database list or enables manual input.
   /// On failure: shows friendly error message.
+  /// Resolves the database of a server that will not list its databases.
+  ///
+  /// Mirrors mobo_sales: when `/web/database/list` is disabled or empty, the
+  /// database is discovered from the server itself. Offering a free-text box
+  /// instead accepted any value and only failed later at sign-in, which is
+  /// what sent testers back to the login page with no explanation.
+  Future<bool> _resolveDefaultDatabase(String baseUrl, String protocol) async {
+    try {
+      final defaultDb = await OdooDatabaseDiscovery.getDefaultDatabase(
+        baseUrl,
+      ).timeout(const Duration(seconds: 20));
+      if (defaultDb == null || defaultDb.isEmpty) return false;
+      if (!mounted) return false;
+      setState(() {
+        _workingProtocol = protocol;
+        _databases = [defaultDb];
+        _selectedDatabase = defaultDb;
+        _showManualDbInput = false;
+        _errorMessage = null;
+        showError = false;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _fetchDatabaseList() async {
     try {
-      log("_fetchDatabaseList");
       setState(() {
         _isLoading = true;
         _databases.clear();
@@ -166,28 +192,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
       for (String protocol in protocolsToTry) {
         try {
-          log("protocol : $protocol");
-          final dbList = await widget.networkService.fetchDatabaseList(
+          final listing = await widget.networkService.fetchDatabaseList(
             '$protocol$host',
           );
 
-          log("dbList  : $dbList");
-          if (dbList.isNotEmpty) {
+          if (listing.databases.isNotEmpty) {
             setState(() {
-              _databases = dbList;
+              _databases = listing.databases;
               _workingProtocol = protocol;
               _errorMessage = null;
               showError = false;
-              if (dbList.length == 1) {
-                _selectedDatabase = dbList.first;
+              if (listing.databases.length == 1) {
+                _selectedDatabase = listing.databases.first;
               }
             });
             success = true;
             break;
-          } else {
+          }
+
+          // Odoo answered but will not list. Discover the database from the
+          // server itself first; only if that also comes up empty is typing
+          // it the single remaining way in.
+          success = await _resolveDefaultDatabase('$protocol$host', protocol);
+          if (success) break;
+
+          if (listing.listingDisabled) {
             setState(() {
               _workingProtocol = protocol;
               _databases = [];
+              _selectedDatabase = null;
               _showManualDbInput = true;
               _errorMessage = null;
               showError = false;
@@ -195,17 +228,13 @@ class _LoginScreenState extends State<LoginScreen> {
             success = true;
             break;
           }
+
+          lastError = Exception('No databases found on this server.');
+        } on NotAnOdooServerException catch (error) {
+          // Never offer manual entry here: nothing confirmed this address is
+          // an Odoo server, so it is far more likely to be a typo.
+          lastError = error.reason;
         } catch (error) {
-          if (error is Map && error.containsKey('data')) {
-            setState(() {
-              _workingProtocol = protocol;
-              _databases = [];
-              _showManualDbInput = true;
-              _errorMessage = null;
-            });
-            success = true;
-            break;
-          }
           lastError = error;
         }
       }
@@ -253,6 +282,17 @@ class _LoginScreenState extends State<LoginScreen> {
     } else if (errorStr.contains('database') &&
         errorStr.contains('not found')) {
       return 'Selected database is not available. Please choose a different database.';
+    } else if (errorStr.contains('failed host lookup') ||
+        errorStr.contains('nodename nor servname') ||
+        errorStr.contains('no address associated')) {
+      // Checked before the generic socket branch below. A DNS failure is a
+      // SocketException, so it matched "socket" first and told the user to
+      // check an internet connection that was working perfectly well — the
+      // address is simply wrong.
+      return 'Server not found. Please check the server address for typos.';
+    } else if (errorStr.contains('connection refused')) {
+      return 'Server is not responding. Please verify the server address and '
+          'port, and that Odoo is running.';
     } else if (errorStr.contains('network') || errorStr.contains('socket')) {
       return 'Network connection failed. Please check your internet connection.';
     } else if (errorStr.contains('timeout')) {
@@ -263,8 +303,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return 'Server error occurred. Please try again later or contact your administrator.';
     } else if (errorStr.contains('ssl') || errorStr.contains('certificate')) {
       return 'SSL connection failed. Try using HTTP instead of HTTPS.';
-    } else if (errorStr.contains('connection refused')) {
-      return 'Server is not responding. Please verify the server URL and try again.';
     } else if (errorStr.contains('connection terminated during handshake')) {
       return 'Secure connection failed. The server may not support HTTPS or has an invalid SSL certificate. Try switching to HTTP or contact your administrator.';
     } else {
@@ -387,6 +425,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   if (!_showManualDbInput &&
                                       _databases.isNotEmpty)
                                     _buildDropdown(),
+                                  // Only while the error is on screen. Tied
+                                  // to the database field instead, it padded
+                                  // the normal layout too, pushing the button
+                                  // down when there was nothing to separate.
+                                  if (showError && _errorMessage != null)
+                                    const SizedBox(height: 16),
                                   _LoginErrorDisplay(
                                     error: showError ? _errorMessage : null,
                                   ),
@@ -443,7 +487,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                                     finalDb = entry['db'] ?? "";
                                                   }
                                                 }
-                                                Navigator.push(
+                                                // Awaited for a result: the
+                                                // credentials page sends the
+                                                // expiry message back here so
+                                                // it lands beside the database
+                                                // that caused it, where the
+                                                // user can pick another.
+                                                Navigator.push<String>(
                                                   context,
                                                   PageRouteBuilder(
                                                     pageBuilder:
@@ -479,7 +529,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                                           );
                                                         },
                                                   ),
-                                                );
+                                                ).then((returnedError) {
+                                                  if (!mounted ||
+                                                      returnedError == null ||
+                                                      returnedError.isEmpty) {
+                                                    return;
+                                                  }
+                                                  setState(() {
+                                                    _errorMessage =
+                                                        returnedError;
+                                                    showError = true;
+                                                  });
+                                                });
                                               }
                                             }
                                           },
@@ -505,6 +566,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildManualDbInput() {
     return TextFormField(
       controller: _manualDbController,
+      cursorColor: Colors.black,
+      onChanged: (_) {
+        // Same reason as the dropdown: the message was about the previous
+        // database, so editing the name clears it.
+        if (!showError && _errorMessage == null) return;
+        setState(() {
+          _errorMessage = null;
+          showError = false;
+        });
+      },
       validator: (value) {
         if (value == null || value.trim().isEmpty)
           return 'Database name is required';
@@ -614,6 +685,7 @@ class _LoginScreenState extends State<LoginScreen> {
           (context, fieldController, focusNode, onFieldSubmitted) {
             return TextFormField(
               controller: fieldController,
+              cursorColor: Colors.black,
               focusNode: focusNode,
               obscureText: obscure,
               validator: (value) {
@@ -882,7 +954,14 @@ class _LoginScreenState extends State<LoginScreen> {
             )
             .toList(),
         onChanged: (value) {
-          setState(() => _selectedDatabase = value);
+          setState(() {
+            _selectedDatabase = value;
+            // The message belongs to the database that produced it, so
+            // choosing a different one clears it rather than leaving the
+            // previous database's complaint over the new selection.
+            _errorMessage = null;
+            showError = false;
+          });
         },
         onMenuStateChange: (isOpen) {},
         validator: (value) {

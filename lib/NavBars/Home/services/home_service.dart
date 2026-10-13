@@ -1,12 +1,18 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/company/session/company_session_manager.dart';
+import '../../../shared/utils/odoo_version.dart';
 import '../models/home_attention_row.dart';
 
 /// Read-only Odoo queries powering the Home screen.
 ///
 /// Two RPCs per load:
 ///   1. `read_group` on `stock.picking` grouped by `state` — one round-trip
-///      yielding all four tile counts. The Late count is a separate
-///      `search_count` since "late" is a derived predicate, not a state.
+///      yielding the Ready and Waiting counts, in whichever dialect the
+///      server speaks (Odoo 20 changed both its parameters and its return
+///      type), falling back to one `search_count` per state. The Late count
+///      is a separate `search_count` since "late" is a derived predicate,
+///      not a state.
 ///   2. `search_read` for the top 5 attention rows (late first, scheduled
 ///      ascending) — display fields only.
 ///
@@ -27,34 +33,11 @@ class HomeService {
   /// - `late`      → not-done/cancel AND overdue by deadline or scheduled
   /// - `doneToday` → `state = 'done' AND date_done within today (UTC)`
   Future<HomeCounts> fetchCounts() async {
-    final grouped = await CompanySessionManager.callKwWithCompany({
-      'model': 'stock.picking',
-      'method': 'read_group',
-      'args': [
-        _outgoingDomain,
-        ['state'],
-        ['state'],
-      ],
-      'kwargs': {},
-    });
-
-    int ready = 0, waiting = 0, doneToday = 0;
-    if (grouped is List) {
-      for (final row in grouped) {
-        if (row is! Map) continue;
-        final state = row['state']?.toString();
-        final count = (row['state_count'] as num?)?.toInt() ?? 0;
-        switch (state) {
-          case 'assigned':
-            ready += count;
-            break;
-          case 'waiting':
-          case 'confirmed':
-            waiting += count;
-            break;
-        }
-      }
-    }
+    int doneToday = 0;
+    final byState = await _countsByState();
+    final ready = byState['assigned'] ?? 0;
+    final waiting =
+        (byState['waiting'] ?? 0) + (byState['confirmed'] ?? 0);
 
     final now = DateTime.now().toUtc();
     final nowTs = _odooTs(now);
@@ -103,6 +86,107 @@ class HomeService {
       late: late,
       doneToday: doneToday,
     );
+  }
+
+
+  /// Picking counts per state for the Home tiles.
+  ///
+  /// One `read_group` round-trip, in whichever dialect this server speaks,
+  /// falling back to one `search_count` per state if anything about the
+  /// answer is not what was expected.
+  ///
+  /// The fallback is not belt-and-braces here, it is load-bearing. Odoo 20
+  /// kept the name `read_group` for a method with different parameters and a
+  /// different return type, so the pre-20 call does not fail against it —
+  /// it binds the wrong arguments and returns rows the old parser reads as
+  /// zero. Silently empty tiles are worse than a slower screen, so anything
+  /// unrecognised is counted the long way instead of trusted.
+  Future<Map<String, int>> _countsByState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final major = prefs.getInt('version') ?? 0;
+      final counts = odooReadGroupReturnsTuples(major)
+          ? await _countsByStateTuples()
+          : await _countsByStateDicts();
+      if (counts != null) return counts;
+    } catch (_) {
+      // Fall through to the per-state counts below.
+    }
+    return _countsByStateIndividually();
+  }
+
+  /// Odoo 20+: `read_group(domain, groupby, aggregates)` returning a list of
+  /// `(group_value, aggregate_value)` tuples — here `('assigned', 12)`.
+  /// Returns null if the shape is not that, so the caller can fall back.
+  Future<Map<String, int>?> _countsByStateTuples() async {
+    final grouped = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'read_group',
+      'args': [
+        _outgoingDomain,
+        ['state'],
+        ['__count'],
+      ],
+      'kwargs': {},
+    });
+    if (grouped is! List) return null;
+    final counts = <String, int>{};
+    for (final row in grouped) {
+      if (row is! List || row.length < 2) return null;
+      final state = row[0];
+      final count = row[1];
+      if (state is! String || count is! num) return null;
+      counts[state] = count.toInt();
+    }
+    return counts;
+  }
+
+  /// Odoo 19 and earlier: `read_group(domain, fields, groupby)` returning a
+  /// list of dicts carrying `state` and the `state_count` aggregate.
+  /// Returns null if the shape is not that, so the caller can fall back.
+  Future<Map<String, int>?> _countsByStateDicts() async {
+    final grouped = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'read_group',
+      'args': [
+        _outgoingDomain,
+        ['state'],
+        ['state'],
+      ],
+      'kwargs': {},
+    });
+    if (grouped is! List) return null;
+    final counts = <String, int>{};
+    for (final row in grouped) {
+      if (row is! Map) return null;
+      final state = row['state'];
+      final count = row['state_count'];
+      if (state is! String || count is! num) return null;
+      counts[state] = count.toInt();
+    }
+    return counts;
+  }
+
+  /// Counts each state with its own `search_count`. Slower, but the call has
+  /// been stable across every Odoo release the app supports.
+  Future<Map<String, int>> _countsByStateIndividually() async {
+    const states = ['assigned', 'waiting', 'confirmed'];
+    final counts = <String, int>{};
+    for (final state in states) {
+      final raw = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking',
+        'method': 'search_count',
+        'args': [
+          [
+            ..._outgoingDomain,
+            ['state', '=', state],
+          ],
+        ],
+        'kwargs': {},
+      });
+      counts[state] = raw is num ? raw.toInt() : 0;
+    }
+    return counts;
   }
 
   /// Top attention rows, sorted late-first then by earliest deadline, then

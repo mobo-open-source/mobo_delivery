@@ -17,6 +17,12 @@ class OperationTypeModel extends Equatable {
   final int? companyId;
   final String? companyName;
 
+  /// The operation type's Shipping Policy. A picking computes its own
+  /// `move_type` from this (`_compute_move_type`), so the create form follows
+  /// it instead of assuming 'direct'. Null when the record came from the
+  /// offline cache, which does not carry it.
+  final String? moveType;
+
   const OperationTypeModel({
     required this.id,
     required this.name,
@@ -24,6 +30,7 @@ class OperationTypeModel extends Equatable {
     this.defaultLocationDestId,
     this.companyId,
     this.companyName,
+    this.moveType,
   });
 
   /// Creates an `OperationTypeModel` instance from Odoo RPC response data.
@@ -76,6 +83,11 @@ class OperationTypeModel extends Equatable {
               json['company_id'].isNotEmpty)
           ? json['company_id'][1]
           : null,
+      moveType:
+          json['move_type'] is String &&
+              (json['move_type'] as String).isNotEmpty
+          ? json['move_type'] as String
+          : null,
     );
   }
 
@@ -90,5 +102,6 @@ class OperationTypeModel extends Equatable {
     defaultLocationDestId,
     companyId,
     companyName,
+    moveType,
   ];
 }

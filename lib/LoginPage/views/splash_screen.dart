@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../Rating/review_service.dart';
 import '../../Update/update_available_page.dart';
 import '../../Update/version_check_service.dart';
+import '../../core/session/database_expiry.dart';
 import '../controllers/auth_controller.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -64,6 +65,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
     await _maybeShowUpdatePage();
     if (!mounted) return;
+
+    // Checked before the stored session is honoured, so a database whose
+    // subscription lapsed while the app was closed cannot carry the user
+    // straight back in.
+    final expired = await DatabaseExpiry.enforceOnStoredSession(force: true);
+    if (expired || !mounted) return;
 
     final authModel = await _authController.checkLoginStatus();
     await _authController.handleAuthentication(context, authModel);

@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
 import '../../Dashboard/services/storage_service.dart';
 import '../../core/company/session/company_session_manager.dart';
+import '../../core/session/database_expiry.dart';
 import '../../shared/utils/globals.dart';
 import '../../shared/widgets/snackbar.dart';
 import '../widgets/login_button.dart';
@@ -544,6 +545,11 @@ class _CredentialsPageState extends State<CredentialsPage> {
             ),
           ),
         );
+      } else if (e is DatabaseExpiredException) {
+        // Returned to the database screen rather than shown here: the only
+        // useful next step is choosing a different database, and that choice
+        // lives on the previous screen.
+        Navigator.of(context).pop(DatabaseExpiredException.message);
       } else {
         setState(() => _errorMessage = _formatLoginError(e));
       }
@@ -573,6 +579,17 @@ class _CredentialsPageState extends State<CredentialsPage> {
     } else if (errorStr.contains('database') &&
         errorStr.contains('not found')) {
       return 'Selected database is not available. Please choose a different database.';
+    } else if (errorStr.contains('failed host lookup') ||
+        errorStr.contains('nodename nor servname') ||
+        errorStr.contains('no address associated')) {
+      // Checked before the generic socket branch below. A DNS failure is a
+      // SocketException, so it matched "socket" first and told the user to
+      // check an internet connection that was working perfectly well — the
+      // address is simply wrong.
+      return 'Server not found. Please check the server address for typos.';
+    } else if (errorStr.contains('connection refused')) {
+      return 'Server is not responding. Please verify the server address and '
+          'port, and that Odoo is running.';
     } else if (errorStr.contains('network') || errorStr.contains('socket')) {
       return 'Network connection failed. Please check your internet connection.';
     } else if (errorStr.contains('timeout')) {
@@ -583,8 +600,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
       return 'Server error occurred. Please try again later or contact your administrator.';
     } else if (errorStr.contains('ssl') || errorStr.contains('certificate')) {
       return 'SSL connection failed. Try using HTTP instead of HTTPS.';
-    } else if (errorStr.contains('connection refused')) {
-      return 'Server is not responding. Please verify the server URL and try again.';
     } else if (errorStr.contains('null')) {
       return '';
     } else {
@@ -616,31 +631,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
                         ? Colors.black.withOpacity(1)
                         : Colors.white.withOpacity(1),
                     BlendMode.dstATop,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _isLoading ? null : () => Navigator.of(context).pop(),
-                  borderRadius: BorderRadius.circular(32),
-                  child: Container(
-                    height: 64,
-                    width: 64,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      HugeIcons.strokeRoundedArrowLeft01,
-                      color: _isLoading ? Colors.white54 : Colors.white,
-                      size: 24,
-                    ),
                   ),
                 ),
               ),
@@ -852,6 +842,38 @@ class _CredentialsPageState extends State<CredentialsPage> {
               );
             },
           ),
+
+          // Last in the Stack so it paints above the scroll view.
+          // Sitting before it, the back button was covered by the
+          // SingleChildScrollView, which swallowed every tap — visible,
+          // but impossible to press.
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  // Always enabled, matching mobo_sales. Gating it on the
+                  // loading flag left the user with no way back whenever a
+                  // request was slow or stuck, which read as a dead button.
+                  onTap: () => Navigator.of(context).pop(),
+                  borderRadius: BorderRadius.circular(32),
+                  child: Container(
+                    height: 64,
+                    width: 64,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      HugeIcons.strokeRoundedArrowLeft01,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -872,6 +894,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
     return AutofillGroup(
       child: TextFormField(
         controller: controller,
+        cursorColor: Colors.black,
         focusNode: focusNode,
         textInputAction: textInputAction,
         obscureText: isPasswordField ? !_isPasswordVisible : obscure,

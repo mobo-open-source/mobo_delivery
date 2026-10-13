@@ -87,11 +87,12 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
     _fetchMoveItems();
   }
 
-  /// Fetches the returnable moves for the picking via Odoo's
-  /// `stock.return.picking` wizard. The wizard's compute pre-fills each
-  /// line's `quantity` with the correct returnable amount — accounting
-  /// for previously-returned units — so the qty fields match what Odoo's
-  /// web UI shows.
+  /// Fetches the returnable moves for the picking. Each line's `quantity`
+  /// arrives pre-filled with the correct returnable amount — accounting for
+  /// previously-returned units — so the qty fields match what Odoo's web UI
+  /// shows. Up to Odoo 19 that figure comes from the `stock.return.picking`
+  /// wizard's own compute; on Odoo 20, which has no such wizard, the service
+  /// derives it the same way Odoo does.
   Future<void> _fetchMoveItems() async {
     try {
       await widget.odooService.initializeClient();
@@ -377,9 +378,10 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
   /// Builds the wizard line payload from the user-entered quantities.
   /// Each line is the Odoo One2many `(0, 0, values)` create command.
   ///
-  /// Source data now comes from `stock.return.picking.line` records (via
-  /// `fetchReturnableMoves`), so `move_id` arrives as a Many2one tuple
-  /// `[id, name]` — unwrap to the bare int.
+  /// Source data comes from `fetchReturnableMoves`, where `move_id` arrives
+  /// as a Many2one tuple `[id, name]` from the `stock.return.picking.line`
+  /// records used up to Odoo 19, and as a bare int from the moves read
+  /// directly on Odoo 20 — unwrap either to the bare int.
   List<List<Object>> _buildReturnLines() {
     return moveItems
         .where((item) {

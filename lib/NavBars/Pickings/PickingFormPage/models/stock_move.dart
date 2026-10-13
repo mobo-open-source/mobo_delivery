@@ -76,8 +76,12 @@ class StockMove {
       productUomQty:
           (json['product_uom_qty'] is num ? json['product_uom_qty'] : 0)
               .toDouble(),
+      // `product_uom` up to Odoo 19, `uom_id` from 20; `product_uom_id` is
+      // this model's own cached key, kept so Hive rows written by an older
+      // build still parse.
       productUomId:
           extractUomId(json['product_uom']) ??
+          extractUomId(json['uom_id']) ??
           extractUomId(json['product_uom_id']),
       quantity:
           (json['quantity'] is num

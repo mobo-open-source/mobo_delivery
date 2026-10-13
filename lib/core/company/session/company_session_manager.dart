@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../LoginPage/models/session_model.dart';
 import '../../../LoginPage/services/auth_service.dart';
 import '../../../LoginPage/services/storage_service.dart';
+import '../../security/self_signed.dart';
+import '../../session/database_expiry.dart';
 import '../../security/secure_storage_service.dart';
 import '../services/connectivity_service.dart';
 import '../../../shared/utils/server_url_utils.dart';
@@ -236,9 +238,10 @@ class CompanySessionManager {
       allowedCompanies: [],
     );
 
-    /// Reset old client before creating new one.
-    _client?.close();
-    _client = OdooClient(url, sessionId: odooSession);
+    /// Reset old client before creating new one. Dropped, not closed: the
+    /// transport behind every OdooClient is the shared `ioClient`, so closing
+    /// one would break every other caller.
+    _client = OdooClient(url, sessionId: odooSession, httpClient: ioClient);
 
     /// Cache session locally.
     _cachedSession = SessionModel(
@@ -280,6 +283,15 @@ class CompanySessionManager {
     );
 
     if (sessionModel == null) return false;
+
+    // Checked before anything is persisted, so an expired database never
+    // reaches a stored session the rest of the app would trust.
+    if (await DatabaseExpiry.isExpired(
+      serverUrl: normalizedUrl,
+      sessionId: sessionModel.sessionId,
+    )) {
+      throw const DatabaseExpiredException();
+    }
 
     /// Persist password securely for auto-refresh
     await SecureStorageService().savePassword(
@@ -327,10 +339,11 @@ class CompanySessionManager {
       companyId: prefs.getInt('companyId') ?? 1,
       allowedCompanies: allowedCompanies,
     );
-    _client?.close();
+    // Dropped, not closed: the transport behind every OdooClient is the
+    // shared `ioClient`, so closing one would break every other caller.
     _client = null;
 
-    _client = OdooClient(normalizedUrl, sessionId: session);
+    _client = OdooClient(normalizedUrl, sessionId: session, httpClient: ioClient);
     _cachedSession = sessionModel;
     _lastAuthTime = DateTime.now();
 
@@ -343,7 +356,8 @@ class CompanySessionManager {
   /// Clears cached session and client instance.
   static Future<void> clearSessionCache() async {
     _cachedSession = null;
-    _client?.close();
+    // Dropped, not closed: the transport behind every OdooClient is the
+    // shared `ioClient`, so closing one would break every other caller.
     _client = null;
     _lastAuthTime = null;
     _refreshFuture = null;
@@ -410,7 +424,7 @@ class CompanySessionManager {
         allowedCompanies: allowedCompanies,
       );
 
-      final OdooClient client = OdooClient(url, sessionId: odooSession);
+      final OdooClient client = OdooClient(url, sessionId: odooSession, httpClient: ioClient);
       await StorageService().saveSession(updatedSession);
 
       _client = client;
@@ -707,11 +721,12 @@ class CompanySessionManager {
       allowedCompanies: [],
     );
 
-    _client?.close();
+    // Dropped, not closed: the transport behind every OdooClient is the
+    // shared `ioClient`, so closing one would break every other caller.
     _client = null;
 
     try {
-      _client = OdooClient(url, sessionId: odooSession);
+      _client = OdooClient(url, sessionId: odooSession, httpClient: ioClient);
 
       _cachedSession = SessionModel(
         sessionId: cleanSessionId,
@@ -786,7 +801,7 @@ class CompanySessionManager {
       allowedCompanies: allowedCompanies,
     );
 
-    final client = OdooClient(url, sessionId: odooSession);
+    final client = OdooClient(url, sessionId: odooSession, httpClient: ioClient);
 
     _client = client;
     _lastAuthTime = DateTime.now();

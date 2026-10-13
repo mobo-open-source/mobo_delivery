@@ -144,7 +144,14 @@ String homeSectionErrorMessage({
 /// online. It is withheld when the device is offline, where the answer really
 /// is to wait for a connection, and signing out would only destroy the cached
 /// data being relied on in the meantime.
+/// Whether this failure is one only signing in again can clear.
+///
+/// Restricted to an actual session failure. Treating every online error as
+/// one put a "Log out" button in front of the user for an ordinary timeout or
+/// a slow server — alarming, and the wrong advice, since the next refresh
+/// would usually have succeeded.
 bool homeSectionNeedsReLogin({required bool online, required String? error}) {
   if (!online) return false;
-  return error != null && error.isNotEmpty;
+  if (error == null || error.isEmpty) return false;
+  return OdooErrorClassifier.isSessionExpired(error);
 }

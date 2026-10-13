@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../NavBars/Pickings/PickingListPage/models/picking_model.dart';
 import '../core/company/session/company_session_manager.dart';
+import '../shared/utils/odoo_version.dart';
 
 /// Service that syncs stock picking list data from Odoo to local Hive storage
 /// for offline access in the picking list screen.
@@ -144,7 +145,7 @@ class pickingListToOffline {
             'id',
             'product_id',
             'product_uom_qty',
-            'product_uom',
+            stockMoveUomField(version),
             'picking_id',
             'state',
           ],

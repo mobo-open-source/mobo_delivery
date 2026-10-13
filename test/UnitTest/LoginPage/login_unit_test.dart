@@ -142,7 +142,8 @@ void main() {
             'https://demo.odoo.com',
           );
 
-          expect(result, equals(['test_db']));
+          expect(result.databases, equals(['test_db']));
+          expect(result.listingDisabled, isFalse);
         },
         createHttpClient: (_) {
           return MockHttpClient(
@@ -158,7 +159,7 @@ void main() {
     });
 
     /// EMPTY DB LIST
-    test('returns empty list when result is empty', () async {
+    test('an empty result is Odoo answering, not a bad address', () async {
       await HttpOverrides.runZoned(
         () async {
           final service = NetworkService();
@@ -167,7 +168,8 @@ void main() {
             'https://demo.odoo.com',
           );
 
-          expect(result, isEmpty);
+          expect(result.databases, isEmpty);
+          expect(result.listingDisabled, isFalse);
         },
         createHttpClient: (_) {
           return MockHttpClient(
@@ -178,36 +180,44 @@ void main() {
       );
     });
 
-    /// NEGATIVE CASE - SERVER ERROR RESPONSE
-    test('returns empty list when server returns error response', () async {
-      await HttpOverrides.runZoned(
-        () async {
-          final service = NetworkService();
+    /// A JSON-RPC error is Odoo declining to list, which is the one case
+    /// where asking the user to type a database name is reasonable.
+    test(
+      'a JSON-RPC error marks listing as disabled, not a bad address',
+      () async {
+        await HttpOverrides.runZoned(
+          () async {
+            final service = NetworkService();
 
-          final result = await service.fetchDatabaseList(
-            'https://demo.odoo.com',
-          );
+            final result = await service.fetchDatabaseList(
+              'https://demo.odoo.com',
+            );
 
-          expect(result, isEmpty);
-        },
-        createHttpClient: (_) {
-          return MockHttpClient(
-            statusCode: 500,
-            responseBody: {"error": "Internal Server Error"},
-          );
-        },
-      );
-    });
+            expect(result.databases, isEmpty);
+            expect(result.listingDisabled, isTrue);
+          },
+          createHttpClient: (_) {
+            return MockHttpClient(
+              statusCode: 500,
+              responseBody: {"error": "Internal Server Error"},
+            );
+          },
+        );
+      },
+    );
 
     /// NEGATIVE CASE - INVALID URL
-    test('throws exception for invalid URL', () async {
-      final service = NetworkService();
+    test(
+      'an unusable address is not mistaken for a server that declines',
+      () async {
+        final service = NetworkService();
 
-      expect(
-        () => service.fetchDatabaseList('%%%invalid-url%%%'),
-        throwsException,
-      );
-    });
+        await expectLater(
+          () => service.fetchDatabaseList('%%%invalid-url%%%'),
+          throwsA(isA<NotAnOdooServerException>()),
+        );
+      },
+    );
 
     /// NEGATIVE CASE - MALFORMED JSON
     test('throws exception when response is not valid JSON', () async {
@@ -215,9 +225,10 @@ void main() {
         () async {
           final service = NetworkService();
 
-          expect(
+          // HTML is not JSON-RPC, so nothing confirms this is Odoo.
+          await expectLater(
             () => service.fetchDatabaseList('http://fake-server'),
-            throwsException,
+            throwsA(isA<NotAnOdooServerException>()),
           );
         },
         createHttpClient: (_) {
@@ -235,9 +246,9 @@ void main() {
         () async {
           final service = NetworkService();
 
-          expect(
+          await expectLater(
             () => service.fetchDatabaseList('http://fake-server'),
-            throwsException,
+            throwsA(isA<NotAnOdooServerException>()),
           );
         },
         createHttpClient: (_) {

@@ -250,9 +250,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: _isLoading
-                        ? null
-                        : () => Navigator.of(context).pop(),
+                    onTap: () => Navigator.of(context).pop(),
                     borderRadius: BorderRadius.circular(32),
                     child: Container(
                       height: 64,
@@ -260,7 +258,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
                       alignment: Alignment.center,
                       child: Icon(
                         HugeIcons.strokeRoundedArrowLeft01,
-                        color: _isLoading ? Colors.white54 : Colors.white,
+                        color: Colors.white,
                         size: 24,
                       ),
                     ),

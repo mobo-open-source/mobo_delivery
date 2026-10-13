@@ -25,6 +25,7 @@ import '../widgets/additional_info.dart';
 import '../widgets/info_row.dart';
 import '../widgets/notes_tab.dart';
 import '../widgets/product_table.dart';
+import '../../../../shared/services/odoo_defaults_service.dart';
 
 /// Full-screen form page for creating a new stock picking (transfer, receipt, delivery, etc.).
 ///
@@ -72,6 +73,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
   String _selectedShippingPolicy = 'direct';
   int? _selectedPartnerId;
   int? _selectedUserId;
+  String? _signedInUserName;
   int? _selectedOperationTypeId;
   int? defaultLocationSrcId;
   int? defaultLocationDestId;
@@ -88,15 +90,34 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
   bool _isSubmitting = false;
 
   /// Whether the operator has changed any field from its initial state.
+  ///
+  /// Compared against the prefilled state rather than against empty. Once the
+  /// form opens with Odoo's defaults already in it, "Responsible is set" and
+  /// "a scheduled date is present" are the starting position, not edits —
+  /// testing them for emptiness would ask the operator to discard changes
+  /// they never made.
   bool get _hasUnsavedChanges =>
       _selectedPartnerId != null ||
       _selectedOperationTypeId != null ||
-      _selectedUserId != null ||
-      _selectedShippingPolicy != 'direct' ||
-      scheduledDateController.text.trim().isNotEmpty ||
+      _selectedUserId != _initialUserId ||
+      _selectedShippingPolicy != _initialShippingPolicy ||
+      scheduledDateController.text.trim() != _initialScheduledDate ||
       sourceDocController.text.trim().isNotEmpty ||
       _noteController.text.trim().isNotEmpty ||
       moveProducts.isNotEmpty;
+
+  /// The prefilled state, recorded as the defaults land so edits can be told
+  /// apart from them.
+  int? _initialUserId;
+  String _initialShippingPolicy = 'direct';
+  String _initialScheduledDate = '';
+
+  /// Records the current values of the prefilled fields as the baseline.
+  void _markDefaultsAsBaseline() {
+    _initialUserId = _selectedUserId;
+    _initialShippingPolicy = _selectedShippingPolicy;
+    _initialScheduledDate = scheduledDateController.text.trim();
+  }
 
   @override
   void initState() {
@@ -146,6 +167,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
       final prefs = initResults[1] as SharedPreferences;
 
       userId = prefs.getInt('userId') ?? 0;
+      _signedInUserName = prefs.getString('userName');
       if (isOnline) {
         final results = await Future.wait([
           odooService.loadProducts().catchError((e) {
@@ -178,6 +200,10 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
           if (freshUsers.isNotEmpty) users = freshUsers;
           if (freshOpTypes.isNotEmpty) operationTypes = freshOpTypes;
         });
+
+        await _applyServerDefaults();
+      } else {
+        _applyOfflineDefaults();
       }
 
       if (mounted && partnerList.isEmpty && operationTypes.isEmpty) {
@@ -206,6 +232,78 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
       }
     }
   }
+
+  /// Prefills the form with what Odoo's own picking form would show.
+  ///
+  /// Only fields the operator has not already touched are filled, so a value
+  /// typed while this was in flight is never overwritten.
+  Future<void> _applyServerDefaults() async {
+    final raw = await OdooDefaultsService.instance.defaultsFor(
+      'stock.picking',
+      const ['user_id', 'scheduled_date', 'move_type'],
+    );
+    if (raw == null) {
+      // The server could not be asked. Fill in locally rather than leave the
+      // operator a blank required field.
+      _applyOfflineDefaults();
+      return;
+    }
+    final defaults = parsePickingCreateDefaults(raw);
+
+    if (!mounted) return;
+    setState(() {
+      final userId = defaults.responsibleUserId;
+      if (_selectedUserId == null && userId != null) {
+        _selectedUserId = userId;
+        _selectedUserName = _userNameFor(userId);
+      }
+      if (scheduledDateController.text.trim().isEmpty &&
+          defaults.scheduledDateUtc != null) {
+        scheduledDateController.text = _formatScheduled(
+          defaults.scheduledDateUtc!.toLocal(),
+        );
+      }
+      final policy = defaults.shippingPolicy;
+      if (policy != null && policy.isNotEmpty) {
+        _selectedShippingPolicy = policy;
+      }
+      _markDefaultsAsBaseline();
+    });
+  }
+
+  /// The same defaults Odoo would apply, worked out on the device.
+  ///
+  /// The create form stays usable with no connection, and `default_get` needs
+  /// one. These mirror the server's own `default=` for the two fields that
+  /// have one, so an offline form opens filled in rather than blank. Anything
+  /// an administrator configured server-side cannot be known here, which is
+  /// why this is the fallback and not the main path.
+  void _applyOfflineDefaults() {
+    if (!mounted) return;
+    setState(() {
+      final signedIn = userId;
+      if (_selectedUserId == null && signedIn != null && signedIn != 0) {
+        _selectedUserId = signedIn;
+        _selectedUserName = _userNameFor(signedIn);
+      }
+      if (scheduledDateController.text.trim().isEmpty) {
+        scheduledDateController.text = _formatScheduled(DateTime.now());
+      }
+      _markDefaultsAsBaseline();
+    });
+  }
+
+  /// Display name for [id] from the loaded list, falling back to the signed-in
+  /// user's own name so a preselected Responsible is never shown nameless.
+  String? _userNameFor(int id) {
+    for (final user in users) {
+      if (user.id == id) return user.name;
+    }
+    return _signedInUserName;
+  }
+
+  String _formatScheduled(DateTime value) =>
+      DateFormat('dd-MM-yyyy HH:mm:ss').format(value);
 
   Future<void> _loadOfflineData() async {
     try {
@@ -800,6 +898,16 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                                           value?.defaultLocationSrcId;
                                       defaultLocationDestId =
                                           value?.defaultLocationDestId;
+                                      // Odoo computes a picking's Shipping
+                                      // Policy from its operation type, so
+                                      // follow it here. Null means the type
+                                      // came from the offline cache, which
+                                      // does not carry it — leave the current
+                                      // choice alone rather than guess.
+                                      final policy = value?.moveType;
+                                      if (policy != null && policy.isNotEmpty) {
+                                        _selectedShippingPolicy = policy;
+                                      }
                                       _errorMessage = '';
                                     });
                                   },

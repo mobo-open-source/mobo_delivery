@@ -6,6 +6,7 @@ import '../NavBars/Pickings/PickingFormPage/models/move_line.dart';
 import '../NavBars/Pickings/PickingFormPage/models/return_picking.dart';
 import '../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../core/company/session/company_session_manager.dart';
+import '../shared/utils/odoo_version.dart';
 
 /// Service that syncs essential picking-related data from Odoo to local Hive storage
 /// so the picking form can work offline (or with very poor connectivity).
@@ -165,6 +166,8 @@ class PickingFormToOffline {
   }
 
   Future<void> loadProductMoves() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uomField = stockMoveUomField(prefs.getInt('version') ?? 0);
     try {
       final prefs = await SharedPreferences.getInstance();
       userId = prefs.getInt('userId') ?? 0;
@@ -178,7 +181,7 @@ class PickingFormToOffline {
             'id',
             'product_id',
             'product_uom_qty',
-            'product_uom',
+            uomField,
             'picking_id',
             'state',
           ],

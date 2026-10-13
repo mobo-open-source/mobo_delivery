@@ -2,6 +2,8 @@ import 'package:odoo_rpc/odoo_rpc.dart';
 
 import '../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../core/company/session/company_session_manager.dart';
+import '../shared/utils/odoo_version.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service that syncs "done" stock pickings (returns & completed transfers)
 /// and related stock moves from Odoo to local Hive storage for offline use.
@@ -72,6 +74,8 @@ class ReturnToOffline {
   /// if the database is large. Consider adding domain filters (e.g. recent dates,
   /// specific picking types, or linked to done pickings only).
   Future<void> loadMove() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uomField = stockMoveUomField(prefs.getInt('version') ?? 0);
     try {
       final moveData = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.move',
@@ -82,7 +86,7 @@ class ReturnToOffline {
             'id',
             'product_id',
             'product_uom_qty',
-            'product_uom',
+            uomField,
             'picking_id',
             'state',
           ],

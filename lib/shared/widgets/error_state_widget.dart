@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/company/services/connectivity_service.dart';
 import '../utils/globals.dart';
+import '../utils/odoo_error_classifier.dart';
 
 /// Defines the type of error, used to pick the fallback icon if the Lottie
 /// asset fails to load.
@@ -179,45 +180,63 @@ class _ErrorStateWidgetState extends State<ErrorStateWidget> {
     );
   }
 
+  /// Maps a raw exception to the title and message shown on this screen.
+  ///
+  /// Delegates to [OdooErrorClassifier] so every screen in the app agrees on
+  /// what "unreachable" means. This used to keep its own marker list, which
+  /// had drifted into reporting a reachable server as an unreachable one:
+  ///
+  /// * `Odoo Server Error` was treated as a transport failure. Odoo returns
+  ///   that phrase for *every* server-side Python exception — access rights,
+  ///   validation, a missing field — so an ordinary application error told
+  ///   the user to go and check their network.
+  /// * `TimeoutException` was treated the same way, when a slow query on a
+  ///   healthy server is a different problem with a different answer.
+  /// * A null or empty error defaulted to "Can't Reach Server", asserting a
+  ///   network fault on no evidence whatsoever.
   Map<String, String> _errorInfo(String? error) {
-    const serverUnreachable = {
-      'title': 'Can\'t Reach Server',
-      'message':
-          'Unable to connect to your Odoo server. Please check your network '
-          'connection and try again.',
-    };
-
-    if (error == null || error.isEmpty) return serverUnreachable;
+    if (error == null || error.trim().isEmpty) {
+      return {
+        'title': 'Something Went Wrong',
+        'message': 'We couldn\'t load this page. Please try again.',
+      };
+    }
 
     final errorLower = error.toLowerCase();
 
-    if (errorLower.contains('session expired') ||
-        errorLower.contains('access denied') ||
-        errorLower.contains('odoo session expired')) {
+    if (OdooErrorClassifier.isSessionExpired(error)) {
       return {
         'title': 'Session Expired',
         'message': 'Your session has expired. Please log in again to continue.',
       };
     }
 
-    if (errorLower.contains('socketexception') ||
-        errorLower.contains('no route to host') ||
-        errorLower.contains('failed host lookup') ||
-        errorLower.contains('connection refused') ||
-        errorLower.contains('network is unreachable') ||
-        errorLower.contains('clientexception') ||
-        errorLower.contains('timeoutexception') ||
-        errorLower.contains('odoo server error')) {
-      return serverUnreachable;
+    if (OdooErrorClassifier.isServerUnreachable(error)) {
+      return {
+        'title': 'Can\'t Reach Server',
+        'message':
+            'Unable to connect to your Odoo server. Please check your network '
+            'connection and try again.',
+      };
+    }
+
+    if (errorLower.contains('timeoutexception') ||
+        errorLower.contains('504 gateway timeout')) {
+      return {
+        'title': 'Server Took Too Long',
+        'message':
+            'The server is reachable but did not respond in time. It may be '
+            'busy — please try again.',
+      };
     }
 
     if (errorLower.contains('formatexception') ||
-        errorLower.contains('html') ||
         errorLower.contains('unexpected character')) {
       return {
-        'title': 'Server Error',
+        'title': 'Unexpected Response',
         'message':
-            'The server returned an unexpected response. Please try again later.',
+            'The server returned a response the app could not read. Please '
+            'try again later.',
       };
     }
 
@@ -240,10 +259,17 @@ class _ErrorStateWidgetState extends State<ErrorStateWidget> {
             'The server is temporarily unavailable. Please try again later.',
       };
     }
-    if (errorLower.contains('504 gateway timeout')) {
+
+    // Anything else is an application-level failure the server reported. Say
+    // so plainly rather than blaming the connection; the raw text stays
+    // available behind "Show details".
+    if (errorLower.contains('odoo server error') ||
+        errorLower.contains('odooexception')) {
       return {
-        'title': 'Server Timeout (504)',
-        'message': 'The server took too long to respond. Please try again.',
+        'title': 'Request Failed',
+        'message':
+            'The server rejected this request. Please try again, or contact '
+            'your administrator if it keeps happening.',
       };
     }
 

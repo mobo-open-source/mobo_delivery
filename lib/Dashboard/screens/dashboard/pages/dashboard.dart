@@ -12,6 +12,7 @@ import '../../../../StoreToOffline/sync_center_page.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../../core/company/providers/company_provider.dart';
+import '../../../../core/session/database_expiry.dart';
 import '../../../../core/company/widgets/company_selector_widget.dart';
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/snackbar.dart';
@@ -47,10 +48,15 @@ class Dashboard extends StatefulWidget {
   State<Dashboard> createState() => _DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Re-checked here and on resume: a subscription can lapse while the app
+    // is open or backgrounded, and the stored session would otherwise keep
+    // working until the next cold start.
+    DatabaseExpiry.enforceOnStoredSession();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
@@ -75,6 +81,19 @@ class _DashboardState extends State<Dashboard> {
         );
       }
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      DatabaseExpiry.enforceOnStoredSession();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   /// Checks if a given byte array contains SVG content.

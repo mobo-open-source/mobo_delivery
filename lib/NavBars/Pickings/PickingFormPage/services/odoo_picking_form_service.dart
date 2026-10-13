@@ -9,6 +9,7 @@ import '../models/partner.dart';
 import '../models/user.dart';
 import '../models/stock_move.dart';
 import 'hive_service.dart';
+import '../../../../shared/utils/odoo_version.dart';
 
 /// Service responsible for all Odoo RPC interactions related to stock pickings,
 /// products, partners, users, and move lines in the picking form flow.
@@ -387,7 +388,8 @@ class OdooPickingFormService {
   /// Filters by `picking_id == pickingId` and caches results in Hive.
   ///
   /// Field notes:
-  ///   • `product_uom`  — Many2one UoM on stock.move (NOT product_uom_id)
+  ///   • the UoM Many2one on stock.move is `product_uom` up to Odoo 19 and
+  ///     `uom_id` from 20 — never `product_uom_id`, which is stock.move.line
   ///   • `quantity`     — done/reserved qty in Odoo 16+ (quantity_done was removed)
   ///   • `lot_id` and `quantity_product_uom` live on stock.move.line, not stock.move
   ///
@@ -395,6 +397,7 @@ class OdooPickingFormService {
   Future<List<StockMove>> loadProductMoves(int pickingId) async {
     final prefs = await SharedPreferences.getInstance();
     userId = prefs.getInt('userId') ?? 0;
+    final uomField = stockMoveUomField(prefs.getInt('version') ?? 0);
 
     try {
       final moveItems =
@@ -411,7 +414,7 @@ class OdooPickingFormService {
                     'id',
                     'product_id',
                     'product_uom_qty',
-                    'product_uom',
+                    uomField,
                     'quantity',
                     'picking_id',
                     'location_id',
@@ -709,7 +712,7 @@ class OdooPickingFormService {
       if (version < 19) 'name': productName,
       'product_id': productId,
       'product_uom_qty': quantity,
-      'product_uom': selectedPickingUom,
+      stockMoveUomField(version): selectedPickingUom,
       'picking_id': pickingId,
       'location_id': freshLocationId,
       'location_dest_id': freshLocationDestId,
