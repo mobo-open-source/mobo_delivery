@@ -101,8 +101,11 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
       setState(() {
         moveItems = items.map((item) {
           final qty = item['quantity'];
-          final hint = qty is num ? qty.toString() : (qty?.toString() ?? '0');
-          item['qtyHint'] = hint;
+          // Kept as a number so the quantity entered can be checked against
+          // it. Deliberately not written into the controller: Odoo starts
+          // these lines at zero on purpose, so the operator counts what came
+          // back instead of confirming a figure the app guessed.
+          item['returnable'] = qty is num ? qty.toDouble() : null;
           item['qtyController'] = TextEditingController();
           return item;
         }).toList();
@@ -190,7 +193,7 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                       final move = moveItems[index];
                       final controller =
                           move['qtyController'] as TextEditingController;
-                      final qtyHint = move['qtyHint'] as String? ?? '0';
+                      final returnable = move['returnable'] as double?;
                       final productName = move['product_id'] is List
                           ? (move['product_id'][1] ?? 'Unnamed')
                           : 'Unnamed';
@@ -205,10 +208,23 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
                               isDark,
                             ),
                             const SizedBox(height: 12),
+                            if (returnable != null) ...[
+                              Text(
+                                'Can return: ${_trimZeros(returnable)}'
+                                '${_uomName(move)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                            ],
                             MoboTextField(
                               controller: controller,
                               label: 'Qty',
-                              hintText: qtyHint,
+                              hintText: '0',
                               showShadow: false,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
@@ -408,6 +424,44 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
         .toList();
   }
 
+  /// The first line asking for more than is left, described for the user, or
+  /// null when every line is within its limit.
+  ///
+  /// Checked here rather than left to the server: Odoo does not always refuse
+  /// an over-return, and a return of five against three delivered is a stock
+  /// error nobody notices until the counts drift.
+  String? _firstOverReturn() {
+    for (final item in moveItems) {
+      final returnable = item['returnable'] as double?;
+      if (returnable == null) continue;
+      final controller = item['qtyController'] as TextEditingController?;
+      final entered = double.tryParse(controller?.text.trim() ?? '');
+      if (entered == null || entered <= 0) continue;
+      if (entered > returnable) {
+        final name = item['product_id'] is List
+            ? (item['product_id'][1] ?? 'this product')
+            : 'this product';
+        return 'Only ${_trimZeros(returnable)} of $name can be returned.';
+      }
+    }
+    return null;
+  }
+
+  /// Drops a trailing `.0` so a whole number reads as "3", not "3.0".
+  static String _trimZeros(double value) {
+    if (value == value.roundToDouble()) return value.toInt().toString();
+    return value.toString();
+  }
+
+  /// The unit name, as a trailing " Units", or empty when unknown.
+  static String _uomName(Map<String, dynamic> move) {
+    final uom = move['uom_id'];
+    if (uom is List && uom.length > 1 && uom[1] is String) {
+      return ' ${uom[1]}';
+    }
+    return '';
+  }
+
   /// Submits the return wizard. Navigates and shows success only on real
   /// success; errors are surfaced via snackbar.
   Future<void> _submitReturn() async {
@@ -419,6 +473,12 @@ class _PickingBottomSheetState extends State<PickingBottomSheet> {
         _inlineError =
             'Enter a quantity greater than 0 for at least one product.';
       });
+      return;
+    }
+
+    final tooMany = _firstOverReturn();
+    if (tooMany != null) {
+      setState(() => _inlineError = tooMany);
       return;
     }
 

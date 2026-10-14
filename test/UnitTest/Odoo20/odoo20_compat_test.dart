@@ -240,4 +240,105 @@ void main() {
       expect(firstOdooId(const []), isNull);
     });
   });
+
+  group('claimedByReturnMove', () {
+    test('a finished return counts what actually came back', () {
+      expect(
+        claimedByReturnMove({
+          'state': 'done',
+          'quantity': 2.0,
+          'product_uom_qty': 2.0,
+        }),
+        2.0,
+      );
+    });
+
+    test('a pending return counts its demand, not its reservation', () {
+      // Odoo's _create_return unreserves sibling returns, zeroing `quantity`.
+      // Counting that field alone let each new return erase the ones before
+      // it, so five delivered units could be returned over and over.
+      expect(
+        claimedByReturnMove({
+          'state': 'assigned',
+          'quantity': 0.0,
+          'product_uom_qty': 3.0,
+        }),
+        3.0,
+      );
+    });
+
+    test('a cancelled return counts for nothing', () {
+      expect(
+        claimedByReturnMove({
+          'state': 'cancel',
+          'quantity': 2.0,
+          'product_uom_qty': 2.0,
+        }),
+        0,
+      );
+    });
+
+    test('falls back to quantity when no demand is given', () {
+      expect(claimedByReturnMove({'state': 'assigned', 'quantity': 4.0}), 4.0);
+    });
+  });
+
+  group('returnable quantity survives Odoo unreserving earlier returns', () {
+    test('two pending returns both still count against the original', () {
+      final moves = [
+        {
+          'id': 10,
+          'product_id': [7, 'Desk'],
+          'quantity': 5.0,
+          'uom_id': [1, 'Units'],
+          'move_dest_ids': [91, 92],
+        },
+      ];
+      // Both returns were unreserved by Odoo, so their `quantity` is 0 — the
+      // exact state that previously made the remaining amount climb back up.
+      final lines = returnableLinesFromMoves(
+        moves: moves,
+        destinationMoves: [
+          {
+            'origin_returned_move_id': [10, 'orig'],
+            'quantity': 0.0,
+            'product_uom_qty': 2.0,
+            'state': 'assigned',
+          },
+          {
+            'origin_returned_move_id': [10, 'orig'],
+            'quantity': 0.0,
+            'product_uom_qty': 3.0,
+            'state': 'assigned',
+          },
+        ],
+        uomField: 'uom_id',
+      );
+      expect(lines, isEmpty, reason: '5 delivered, 2 + 3 already claimed');
+    });
+
+    test('a part-claimed line offers only what is left', () {
+      final lines = returnableLinesFromMoves(
+        moves: [
+          {
+            'id': 10,
+            'product_id': [7, 'Desk'],
+            'quantity': 5.0,
+            'uom_id': [1, 'Units'],
+            'move_dest_ids': [91],
+          },
+        ],
+        destinationMoves: [
+          {
+            'origin_returned_move_id': [10, 'orig'],
+            'quantity': 0.0,
+            'product_uom_qty': 2.0,
+            'state': 'assigned',
+          },
+        ],
+        uomField: 'uom_id',
+      );
+      expect(lines.single['quantity'], 3.0);
+    });
+  });
 }

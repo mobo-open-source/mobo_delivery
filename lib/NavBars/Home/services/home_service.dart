@@ -36,8 +36,7 @@ class HomeService {
     int doneToday = 0;
     final byState = await _countsByState();
     final ready = byState['assigned'] ?? 0;
-    final waiting =
-        (byState['waiting'] ?? 0) + (byState['confirmed'] ?? 0);
+    final waiting = (byState['waiting'] ?? 0) + (byState['confirmed'] ?? 0);
 
     final now = DateTime.now().toUtc();
     final nowTs = _odooTs(now);
@@ -88,19 +87,23 @@ class HomeService {
     );
   }
 
-
   /// Picking counts per state for the Home tiles.
   ///
   /// One `read_group` round-trip, in whichever dialect this server speaks,
   /// falling back to one `search_count` per state if anything about the
   /// answer is not what was expected.
   ///
-  /// The fallback is not belt-and-braces here, it is load-bearing. Odoo 20
-  /// kept the name `read_group` for a method with different parameters and a
-  /// different return type, so the pre-20 call does not fail against it —
-  /// it binds the wrong arguments and returns rows the old parser reads as
-  /// zero. Silently empty tiles are worse than a slower screen, so anything
-  /// unrecognised is counted the long way instead of trusted.
+  /// Odoo 20 kept the name `read_group` for a method with different
+  /// parameters and a different return type, so the two dialects are not
+  /// interchangeable. Verified against both servers: each raises on the
+  /// other's call — Odoo 19 answers `Invalid field '__count'`, Odoo 20
+  /// answers `Aggregate method is mandatory for 'state'`.
+  ///
+  /// Because those are raised rather than silently mis-answered, the version
+  /// only has to be right for the screen to stay fast. If it is wrong, or the
+  /// reply is a shape neither parser recognises, the counts are gathered one
+  /// state at a time instead, which is slower but cannot report a wrong
+  /// number.
   Future<Map<String, int>> _countsByState() async {
     try {
       final prefs = await SharedPreferences.getInstance();

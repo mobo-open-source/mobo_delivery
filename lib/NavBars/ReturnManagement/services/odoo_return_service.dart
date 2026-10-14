@@ -276,136 +276,16 @@ class OdooReturnManagementService {
   /// Returns line maps shaped as `{id, product_id, quantity, move_id, uom_id}`.
   /// Throws on failure.
   Future<List<Map<String, dynamic>>> fetchReturnableMoves(int pickingId) async {
-    if (!odooUsesReturnWizard(await _serverMajorVersion())) {
-      return _fetchReturnableMovesV20(pickingId);
-    }
-    try {
-      final createResult = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.return.picking',
-        'method': 'create',
-        'args': [
-          {'picking_id': pickingId},
-        ],
-        'kwargs': {
-          'context': {'active_id': pickingId, 'active_model': 'stock.picking'},
-        },
-      });
-
-      final int wizardId;
-      if (createResult is int) {
-        wizardId = createResult;
-      } else if (createResult is List && createResult.isNotEmpty) {
-        final first = createResult.first;
-        if (first is int) {
-          wizardId = first;
-        } else if (first is Map) {
-          wizardId = first['id'] as int;
-        } else {
-          throw Exception('Unexpected wizard id type: ${first.runtimeType}');
-        }
-      } else {
-        throw Exception('Failed to create return wizard.');
-      }
-
-      final wizardRows = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.return.picking',
-        'method': 'read',
-        'args': [
-          [wizardId],
-          ['product_return_moves'],
-        ],
-        'kwargs': {},
-      });
-
-      if (wizardRows is! List || wizardRows.isEmpty) return [];
-      final firstRow = wizardRows.first;
-      if (firstRow is! Map) return [];
-      final lineIds =
-          (firstRow as Map<String, dynamic>)['product_return_moves'] as List? ??
-          const [];
-      if (lineIds.isEmpty) return [];
-
-      final lines = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.return.picking.line',
-        'method': 'read',
-        'args': [
-          List<int>.from(lineIds),
-          ['id', 'product_id', 'quantity', 'move_id', 'uom_id'],
-        ],
-        'kwargs': {},
-      });
-
-      final result = List<Map<String, dynamic>>.from(lines ?? const []);
-
-      final productIds = <int>{
-        for (final line in result)
-          if (line['product_id'] is List &&
-              (line['product_id'] as List).isNotEmpty)
-            (line['product_id'] as List).first as int,
-      }.toList();
-
-      if (productIds.isNotEmpty) {
-        try {
-          final products = await CompanySessionManager.callKwWithCompany({
-            'model': 'product.product',
-            'method': 'read',
-            'args': [
-              productIds,
-              ['id', 'image_128'],
-            ],
-            'kwargs': {},
-          });
-          final imageById = <int, String>{};
-          for (final p in (products as List? ?? const [])) {
-            final map = p as Map<String, dynamic>;
-            final img = map['image_128'];
-            if (img is String && img.isNotEmpty) {
-              imageById[map['id'] as int] = img;
-            }
-          }
-          for (final line in result) {
-            if (line['product_id'] is List &&
-                (line['product_id'] as List).isNotEmpty) {
-              final pid = (line['product_id'] as List).first as int;
-              if (imageById.containsKey(pid)) {
-                line['image'] = imageById[pid];
-              }
-            }
-          }
-        } catch (_) {}
-      }
-
-      return result;
-    } catch (e) {
-      throw Exception('Failed to fetch returnable moves: $e');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> fetchMoveItems(int pickingId) async {
-    try {
-      final moveData = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.move',
-        'method': 'search_read',
-        'args': [
-          [
-            ['picking_id', '=', pickingId],
-          ],
-        ],
-        'kwargs': {
-          'fields': [
-            'id',
-            'product_id',
-            'product_uom_qty',
-            stockMoveUomField(await _serverMajorVersion()),
-            'picking_id',
-            'state',
-          ],
-        },
-      });
-      return List<Map<String, dynamic>>.from(moveData ?? []);
-    } catch (e) {
-      throw Exception('Failed to fetch move items: $e');
-    }
+    // Computed from the moves on every version, not read from the wizard.
+    //
+    // Odoo's wizard deliberately starts each line at zero — the operator is
+    // meant to count what actually came back rather than accept a prefilled
+    // number — but it also never says how much *may* be returned, so nothing
+    // stopped someone entering five against a line with three left. Odoo's
+    // own web wizard shows that limit in a "Move Quantity" column beside the
+    // field; this is the equivalent, and it keeps the figure identical
+    // whether the server still has the wizard or not.
+    return _returnableMovesFromMoves(pickingId);
   }
 
   /// Creates a new return picking via Odoo's `stock.return.picking`
@@ -490,8 +370,7 @@ class OdooReturnManagementService {
     return null;
   }
 
-  /// Returnable quantities for Odoo 20, which has no `stock.return.picking`
-  /// wizard to compute them.
+  /// How much of each line may still be returned, on any Odoo version.
   ///
   /// Mirrors what `stock.picking.action_return_all()` does on the server
   /// (`addons/stock/models/stock_picking.py`): a line's returnable quantity
@@ -500,15 +379,19 @@ class OdooReturnManagementService {
   /// moves and keeping those whose `origin_returned_move_id` points back at
   /// it.
   ///
-  /// Deliberately read-only. The wizard path creates a transient record to
-  /// get these numbers, which is free because it is transient; the Odoo 20
-  /// equivalent would be creating a real draft picking, and doing that merely
-  /// to populate a sheet the user may well cancel would leave stray returns
-  /// behind.
+  /// Read-only, and required to stay that way. Odoo 20 has no transient
+  /// wizard to ask, and its replacement creates a *real* draft picking —
+  /// doing that merely to populate a sheet the user may well cancel would
+  /// leave stray returns behind.
   ///
-  /// Returns the same line shape the wizard path produces, so the sheet above
-  /// is unchanged: `{id, product_id, quantity, move_id, uom_id}`.
-  Future<List<Map<String, dynamic>>> _fetchReturnableMovesV20(
+  /// Lines with nothing left are omitted, so a fully returned picking opens
+  /// the sheet on its "No returnable items" state instead of offering a line
+  /// that cannot be acted on.
+  ///
+  /// Shape: `{id, product_id, quantity, move_id, uom_id}`, where `quantity`
+  /// is the remaining amount — shown to the operator as a limit, never
+  /// prefilled into the field.
+  Future<List<Map<String, dynamic>>> _returnableMovesFromMoves(
     int pickingId,
   ) async {
     final uomField = stockMoveUomField(await _serverMajorVersion());
@@ -519,7 +402,12 @@ class OdooReturnManagementService {
       'args': [
         [
           ['picking_id', '=', pickingId],
-          ['state', '!=', 'cancel'],
+          // Done moves only, which is Odoo's own rule — its wizard refuses
+          // outright with "You may only return Done pickings". Without this
+          // the sheet would offer to return goods that have not been
+          // delivered yet, since the Return action is reachable from a
+          // picking that is merely Ready.
+          ['state', '=', 'done'],
         ],
       ],
       'kwargs': {
@@ -544,7 +432,7 @@ class OdooReturnManagementService {
         'method': 'read',
         'args': [
           destIds,
-          ['origin_returned_move_id', 'quantity'],
+          ['origin_returned_move_id', 'quantity', 'product_uom_qty', 'state'],
         ],
         'kwargs': {},
       });
@@ -658,9 +546,7 @@ class OdooReturnManagementService {
       });
     } catch (_) {}
   }
-
 }
-
 
 /// Returnable quantity per line, given a picking's moves and everything those
 /// moves feed into.
@@ -681,8 +567,9 @@ List<Map<String, dynamic>> returnableLinesFromMoves({
   for (final dest in destinationMoves) {
     final origin = firstOdooId(dest['origin_returned_move_id']);
     if (origin == null) continue;
-    final qty = (dest['quantity'] as num?)?.toDouble() ?? 0;
-    returnedByOrigin[origin] = (returnedByOrigin[origin] ?? 0) + qty;
+    final claimed = claimedByReturnMove(dest);
+    if (claimed <= 0) continue;
+    returnedByOrigin[origin] = (returnedByOrigin[origin] ?? 0) + claimed;
   }
 
   final lines = <Map<String, dynamic>>[];
@@ -734,4 +621,25 @@ int? firstOdooId(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return null;
+}
+
+/// How much of the original line a return move accounts for.
+///
+/// A finished return is measured by what actually came back (`quantity`); one
+/// still in progress by what it is committed to bring back
+/// (`product_uom_qty`), and a cancelled one by nothing.
+///
+/// Reading `quantity` for a pending return is the trap. Odoo's
+/// `_create_return` unreserves every sibling return that is not yet done, so
+/// creating a second return silently resets the first one's `quantity` to
+/// zero. Counting that field alone made each new return erase the ones before
+/// it, so the amount still returnable climbed back up and a delivery of five
+/// could be returned several times over.
+double claimedByReturnMove(Map<dynamic, dynamic> move) {
+  final state = move['state']?.toString();
+  if (state == 'cancel') return 0;
+  if (state == 'done') return (move['quantity'] as num?)?.toDouble() ?? 0;
+  final demand = (move['product_uom_qty'] as num?)?.toDouble();
+  if (demand != null && demand > 0) return demand;
+  return (move['quantity'] as num?)?.toDouble() ?? 0;
 }

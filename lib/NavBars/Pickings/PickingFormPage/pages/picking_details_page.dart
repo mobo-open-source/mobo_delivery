@@ -1313,7 +1313,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 const SizedBox(height: 4),
                 _buildReturnKv(
                   'Scheduled:',
-                  cleanOdooValue(data['scheduled_date']),
+                  formatDateTimeForDisplay(
+                    cleanOdooValue(data['scheduled_date']),
+                  ),
                   isDark,
                 ),
               ],
@@ -2796,7 +2798,13 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      pickings[0].scheduledDate!,
+                                      // The raw Odoo value is UTC. Printed
+                                      // unformatted it read hours apart from
+                                      // the Scheduled Date field just below
+                                      // it on this same screen.
+                                      formatDateTimeForDisplay(
+                                        pickings[0].scheduledDate,
+                                      ),
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: isDark
