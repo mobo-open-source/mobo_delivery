@@ -568,7 +568,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   Color getScheduledDateColor(String dateString) {
     try {
       final now = DateTime.now();
-      final scheduled = DateTime.parse(dateString);
+      // The raw Odoo value is naive UTC, so it needs converting before the
+      // day comparison below — otherwise the overdue colour can be a day out.
+      final scheduled = OdooDateTimeFormat.parseToLocal(dateString);
+      if (scheduled == null) return Colors.grey;
       final today = DateTime(now.year, now.month, now.day);
       final scheduledDay = DateTime(
         scheduled.year,

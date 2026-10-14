@@ -121,6 +121,44 @@ class OdooDateTimeFormat {
     return DateFormat(dateTimePattern).format(parsed.toLocal());
   }
 
+  /// [input] as a local [DateTime], or null when it cannot be read.
+  ///
+  /// Odoo sends datetimes as naive UTC ("2026-10-14 09:30:00"). Handing that
+  /// straight to `DateTime.parse` yields a *local* DateTime, so a following
+  /// `.toLocal()` does nothing and the instant is silently shifted by the
+  /// device's offset — enough to put a "Today" label, an overdue colour or a
+  /// day count on the wrong side of midnight.
+  static DateTime? parseToLocal(String? input) {
+    if (input == null) return null;
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return null;
+    return _parseSmart(trimmed)?.toLocal();
+  }
+
+  /// A local [DateTime] rendered in the same pattern the rest of the app
+  /// shows dates in, so one screen's field does not read differently from
+  /// another's.
+  static String formatLocalForDisplay(DateTime value) =>
+      DateFormat(dateTimePattern).format(value.toLocal());
+
+  /// Right now, in the naive-UTC form Odoo stores datetimes as.
+  static String nowForStorage() =>
+      DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now().toUtc());
+
+  /// [input] converted to Odoo storage, or null when it cannot be read.
+  ///
+  /// [toOdooStorage] hands back whatever it was given when parsing fails,
+  /// which is right for a field being saved as-is but hides the failure from
+  /// a caller that needs to substitute its own value.
+  static String? tryToOdooStorage(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return null;
+    final parsed = _parseSmart(trimmed);
+    if (parsed == null) return null;
+    final utc = parsed.isUtc ? parsed : parsed.toUtc();
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(utc);
+  }
+
   static String toOdooStorage(String input) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return trimmed;

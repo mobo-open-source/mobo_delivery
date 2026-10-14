@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/utils/odoo_datetime_format.dart';
 
 /// Collection of reusable utility functions for formatting and data transformation.
 ///
@@ -22,7 +23,10 @@ class Utils {
   /// single coloured value when urgent.
   static Map<String, dynamic> getFormattedDateInfo(String dateStr) {
     try {
-      final scheduled = DateTime.parse(dateStr).toLocal();
+      // Odoo sends naive UTC; DateTime.parse would read it as local time
+      // and shift the day, so the shared parser does the conversion.
+      final scheduled = OdooDateTimeFormat.parseToLocal(dateStr);
+      if (scheduled == null) return {'label': '', 'color': null};
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final scheduledDay = DateTime(

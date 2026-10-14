@@ -4,7 +4,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 import '../../../../Rating/review_service.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/utils/date_picker_utils.dart';
@@ -26,6 +25,7 @@ import '../widgets/info_row.dart';
 import '../widgets/notes_tab.dart';
 import '../widgets/product_table.dart';
 import '../../../../shared/services/odoo_defaults_service.dart';
+import '../../../../shared/utils/odoo_datetime_format.dart';
 
 /// Full-screen form page for creating a new stock picking (transfer, receipt, delivery, etc.).
 ///
@@ -303,7 +303,7 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
   }
 
   String _formatScheduled(DateTime value) =>
-      DateFormat('dd-MM-yyyy HH:mm:ss').format(value);
+      OdooDateTimeFormat.formatLocalForDisplay(value);
 
   Future<void> _loadOfflineData() async {
     try {
@@ -410,25 +410,17 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
     final isOnline = await pickingService.checkNetworkConnectivity();
 
     try {
-      String? formattedScheduledDate;
+      // Odoo stores datetimes in UTC. This used to format the operator's
+      // local wall-clock time and send it unconverted, so a delivery
+      // scheduled for 3pm in IST was stored as 3pm UTC — 5.5 hours late, on
+      // every picking the app created. The shared formatter does the
+      // conversion the picking detail screen has always used.
       final rawText = scheduledDateController.text.trim();
-      if (rawText.isNotEmpty && rawText.toLowerCase() != 'none') {
-        DateTime date;
-        try {
-          date = DateFormat('dd-MM-yyyy HH:mm:ss').parse(rawText);
-        } catch (_) {
-          try {
-            date = DateFormat('dd-MM-yyyy').parse(rawText);
-          } catch (_) {
-            date = DateTime.now();
-          }
-        }
-        formattedScheduledDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
-      } else {
-        formattedScheduledDate = DateFormat(
-          'yyyy-MM-dd HH:mm:ss',
-        ).format(DateTime.now());
-      }
+      final String formattedScheduledDate =
+          (rawText.isEmpty || rawText.toLowerCase() == 'none'
+              ? null
+              : OdooDateTimeFormat.tryToOdooStorage(rawText)) ??
+          OdooDateTimeFormat.nowForStorage();
 
       if (isOnline) {
         final pickingId = await odooService.createPicking(
@@ -956,9 +948,9 @@ class _CreatePickingPageState extends State<CreatePickingPage> {
                                         );
                                         setState(() {
                                           scheduledDateController.text =
-                                              DateFormat(
-                                                'dd-MM-yyyy HH:mm:ss',
-                                              ).format(combined);
+                                              OdooDateTimeFormat.formatLocalForDisplay(
+                                                combined,
+                                              );
                                         });
                                       }
                                     }
