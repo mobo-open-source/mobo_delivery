@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../shared/utils/odoo_version.dart';
 
 /// Minimal representation of an Odoo product (from `product.product` model).
 ///
@@ -22,6 +23,10 @@ class ProductModel extends Equatable {
   });
 
   /// Returns the product name with any leading [SKU] reference stripped.
+  ///
+  /// Not for pickers: two products can share a name, and the SKU is the only
+  /// thing telling them apart, so anything a user chooses from shows [name].
+  /// This is for the move description written back to Odoo.
   String get cleanName => name.replaceAll(RegExp(r'^\[.*?\]\s*'), '');
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -29,7 +34,7 @@ class ProductModel extends Equatable {
         (v is String && v.isNotEmpty && v.toLowerCase() != 'false') ? v : '';
     final displayName = pickName(json['display_name']);
     final rawName = pickName(json['name']);
-    final image = json['image_128'];
+    final image = odooBinaryContent(json['image_128']);
     return ProductModel(
       id: json['id'] as int,
       name: displayName.isNotEmpty ? displayName : rawName,

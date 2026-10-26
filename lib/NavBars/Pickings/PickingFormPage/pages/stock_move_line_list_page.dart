@@ -3,6 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../../../shared/utils/globals.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../services/odoo_picking_form_service.dart';
 
 /// Displays the detailed list of stock move lines (individual product movements)
 /// for a given stock picking / transfer.
@@ -18,16 +19,38 @@ import '../../../../shared/widgets/empty_state.dart';
 /// • Data is passed pre-loaded from `PickingDetailsPage` (online or Hive cache)
 ///
 /// Data format: List of raw maps from Odoo's `stock.move.line` model
-class StockMoveLineListPage extends StatelessWidget {
-  /// List of stock move line data maps
-  /// Expected keys (typical Odoo fields):
-  ///   - 'product_id'     → [id, name]
-  ///   - 'location_id'    → [id, name] (source location)
-  ///   - 'lot_id'         → [id, name] or false
-  ///   - 'quantity_product_uom' → double (done quantity in product's UoM)
-  final List<Map<String, dynamic>> pickingStockLine;
+///   - 'product_id'     → [id, name]
+///   - 'location_id'    → [id, name] (source location)
+///   - 'lot_id'         → [id, name] or false
+///   - 'quantity_product_uom' → double (done quantity in product's UoM)
+class StockMoveLineListPage extends StatefulWidget {
+  /// The picking whose move lines are shown.
+  final int pickingId;
 
-  const StockMoveLineListPage({super.key, required this.pickingStockLine});
+  const StockMoveLineListPage({super.key, required this.pickingId});
+
+  @override
+  State<StockMoveLineListPage> createState() => _StockMoveLineListPageState();
+}
+
+class _StockMoveLineListPageState extends State<StockMoveLineListPage> {
+  final _service = OdooPickingFormService();
+  late Future<List<Map<String, dynamic>>?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _service.loadStockMoveLines(widget.pickingId);
+  }
+
+  /// Re-reads from the server. Opening this screen is how the user checks what
+  /// actually happened to the stock, so it reads live every time rather than
+  /// from a cache that can disagree with Odoo.
+  void _reload() {
+    setState(() {
+      _future = _service.loadStockMoveLines(widget.pickingId);
+    });
+  }
 
   /// Extracts display name from Odoo many2one field format [id, name].
   ///
@@ -65,16 +88,87 @@ class StockMoveLineListPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: pickingStockLine.isEmpty
-          ? const EmptyState(
+      body: FutureBuilder<List<Map<String, dynamic>>?>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final lines = snapshot.data;
+
+          /// null means the read failed. Showing the empty state here would
+          /// tell the user this picking has no move lines, which is a
+          /// different and misleading claim.
+          if (lines == null) {
+            return _errorState(isDark);
+          }
+          if (lines.isEmpty) {
+            return const EmptyState(
               title: 'No Stock Move Lines Found',
               subtitle: 'There are no stock move lines available.',
-            )
-          : _buildTable(context, isDark),
+            );
+          }
+          return _buildTable(context, isDark, lines);
+        },
+      ),
     );
   }
 
-  Widget _buildTable(BuildContext context, bool isDark) {
+  Widget _errorState(bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded,
+                size: 56, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Could not load move lines',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check your connection and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton(
+                onPressed: _reload,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppStyle.primaryColor,
+                  side: const BorderSide(
+                      color: AppStyle.primaryColor, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                ),
+                child: const Text('Retry',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTable(
+      BuildContext context, bool isDark, List<Map<String, dynamic>> lines) {
     final verticalController = ScrollController();
     final horizontalController = ScrollController();
     final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
@@ -121,7 +215,7 @@ class StockMoveLineListPage extends StatelessWidget {
                       _headerCell('Quantity', isDark),
                     ],
                   ),
-                  ...pickingStockLine.asMap().entries.map((entry) {
+                  ...lines.asMap().entries.map((entry) {
                     final index = entry.key;
                     final item = entry.value;
                     final lot = getName(item['lot_id']);

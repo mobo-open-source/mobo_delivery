@@ -4,6 +4,7 @@ import '../../LoginPage/services/auth_service.dart';
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../company/session/company_session_manager.dart';
 import '../navigation/global_keys.dart';
+import '../../shared/utils/odoo_version.dart';
 import '../../shared/widgets/snackbar.dart';
 
 /// Raised when the Odoo database behind a session has passed its expiry date.
@@ -116,7 +117,9 @@ class DatabaseExpiry {
           'method': 'call',
           'params': {
             'model': 'ir.config_parameter',
-            'method': 'get_param',
+            'method': configParamGetMethod(
+              (await SharedPreferences.getInstance()).getInt('version') ?? 0,
+            ),
             'args': ['database.expiration_date'],
             'kwargs': {},
           },

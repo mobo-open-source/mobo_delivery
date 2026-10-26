@@ -21,6 +21,7 @@ import '../../../core/company/session/company_session_manager.dart';
 import '../../../core/security/secure_storage_service.dart';
 import '../../../shared/utils/globals.dart';
 import '../../services/storage_service.dart';
+import '../../../shared/utils/odoo_version.dart';
 
 /// Screen used to add or switch user credentials for a specific server.
 ///
@@ -238,7 +239,7 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
             'kwargs': {},
           });
           if (res is List && res.isNotEmpty) {
-            final raw = (res.first as Map)['image_1920'];
+            final raw = odooBinaryContent((res.first as Map)['image_1920']);
             if (raw is String && raw.isNotEmpty && raw != 'false') {
               profileImage = raw;
             }
@@ -634,127 +635,128 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
                   ),
                 ),
               ),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    Stack(
-                      children: [
-                        SafeArea(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 40),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.asset(
-                                  'assets/icons/delivery-icon.png',
-                                  fit: BoxFit.fitWidth,
-                                  height: 30,
-                                  width: 30,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      HugeIcons.strokeRoundedShippingTruck02,
-                                      color: Color(0xFFC03355),
-                                      size: 20,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 10),
-                                const Text(
-                                  'mobo delivery',
-                                  style: TextStyle(
-                                    fontFamily: 'Yaro',
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 40, bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 20),
-                      const SizedBox(height: 45),
-                      Align(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Add Account",
-                          style: GoogleFonts.manrope(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            fontSize: 25,
-                          ),
-                        ),
+                      Image.asset(
+                        'assets/icons/delivery-icon.png',
+                        fit: BoxFit.fitWidth,
+                        height: 30,
+                        width: 30,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            HugeIcons.strokeRoundedShippingTruck02,
+                            color: Color(0xFFC03355),
+                            size: 20,
+                          );
+                        },
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Enter your credentials to continue',
-                        style: GoogleFonts.manrope(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildInputField(
-                              controller: _usernameController,
-                              label: "Username",
-                              icon: HugeIcons.strokeRoundedUser03,
-                            ),
-                            const SizedBox(height: 20),
-                            _buildInputField(
-                              controller: _passwordController,
-                              label: "Password",
-                              obscure: true,
-                              isPasswordField: true,
-                              icon: HugeIcons.strokeRoundedSquareLockPassword,
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      const SizedBox(height: 30),
-                      LoginButton(
-                        text: 'Add Account',
-                        isLoading: _isLoading,
-                        loadingWidget: const LoadingWidget(
+                      const SizedBox(width: 10),
+                      const Text(
+                        'mobo delivery',
+                        style: TextStyle(
+                          fontFamily: 'Yaro',
+                          fontWeight: FontWeight.w400,
                           color: Colors.white,
-                          size: 26,
-                          variant: LoadingVariant.staggeredDots,
+                          fontSize: 24,
                         ),
-                        onPressed: _isLoading ? null : _addAccount,
                       ),
-                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
-              ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 48.0,
+                        vertical: 24.0,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight - 48,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: Text(
+                                  "Add Account",
+                                  style: GoogleFonts.manrope(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    fontSize: 25,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Enter your credentials to continue',
+                                style: GoogleFonts.manrope(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 30),
+                              Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildInputField(
+                                      controller: _usernameController,
+                                      label: "Username",
+                                      icon: HugeIcons.strokeRoundedUser03,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildInputField(
+                                      controller: _passwordController,
+                                      label: "Password",
+                                      obscure: true,
+                                      isPasswordField: true,
+                                      icon: HugeIcons
+                                          .strokeRoundedSquareLockPassword,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_errorMessage != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              const SizedBox(height: 30),
+                              LoginButton(
+                                text: 'Add Account',
+                                isLoading: _isLoading,
+                                loadingWidget: const LoadingWidget(
+                                  color: Colors.white,
+                                  size: 26,
+                                  variant: LoadingVariant.staggeredDots,
+                                ),
+                                onPressed: _isLoading ? null : _addAccount,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 

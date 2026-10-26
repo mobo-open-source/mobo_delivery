@@ -17,6 +17,7 @@ import '../../shared/widgets/buttons/mobo_button.dart';
 import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
 import '../services/common_storage_service.dart';
+import '../../shared/utils/odoo_version.dart';
 
 /// A screen that handles Two-Factor Authentication (TOTP) for Odoo login.
 ///
@@ -714,7 +715,7 @@ class _TotpPageState extends State<TotpPage> {
             'kwargs': {},
           });
           if (res is List && res.isNotEmpty) {
-            final raw = (res.first as Map)['image_1920'];
+            final raw = odooBinaryContent((res.first as Map)['image_1920']);
             if (raw is String && raw.isNotEmpty && raw != 'false') {
               profileImage = raw;
             }

@@ -176,10 +176,14 @@ class _DocumentPreviewPageState extends State<DocumentPreviewPage> {
     return InteractiveViewer(
       minScale: 0.5,
       maxScale: 5,
-      child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Image.memory(
           _bytes!,
+          width: double.infinity,
+          height: double.infinity,
           fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
           errorBuilder: (context, error, stack) => Icon(
             HugeIcons.strokeRoundedImageNotFound01,
             size: 64,

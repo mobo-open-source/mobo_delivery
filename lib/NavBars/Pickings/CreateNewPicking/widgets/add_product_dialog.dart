@@ -148,6 +148,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   ),
                   showSearchBox: true,
                   searchFieldProps: TextFieldProps(
+                    autofocus: true,
                     decoration: InputDecoration(
                       hintText: 'Search products...',
                       hintStyle: GoogleFonts.manrope(
@@ -198,7 +199,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              product.cleanName,
+                              product.name,
                               style: GoogleFonts.manrope(
                                 fontSize: 14,
                                 fontWeight: isSelected
@@ -225,7 +226,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 ),
                 items: widget.products,
                 selectedItem: selectedProduct,
-                itemAsString: (item) => item.cleanName,
+                itemAsString: (item) => item.name,
                 onChanged: (value) {
                   setState(() {
                     selectedProduct = value;
@@ -250,7 +251,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          item.cleanName,
+                          item.name,
                           style: GoogleFonts.manrope(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,

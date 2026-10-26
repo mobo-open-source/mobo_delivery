@@ -38,13 +38,15 @@ class PickingFormAdapter extends TypeAdapter<PickingForm> {
       pickingTypeCode: fields[18] as String?,
       locationIdInt: (fields[19] as num?)?.toInt(),
       locationDestIdInt: (fields[20] as num?)?.toInt(),
+      isLocked: fields[21] == null ? true : fields[21] as bool,
+      backorderId: (fields[22] as List?)?.cast<dynamic>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, PickingForm obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +88,11 @@ class PickingFormAdapter extends TypeAdapter<PickingForm> {
       ..writeByte(19)
       ..write(obj.locationIdInt)
       ..writeByte(20)
-      ..write(obj.locationDestIdInt);
+      ..write(obj.locationDestIdInt)
+      ..writeByte(21)
+      ..write(obj.isLocked)
+      ..writeByte(22)
+      ..write(obj.backorderId);
   }
 
   @override

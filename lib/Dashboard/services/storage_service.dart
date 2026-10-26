@@ -172,6 +172,48 @@ class DashboardStorageService {
     await prefs.setString(_accountsKey, jsonEncode(accounts));
   }
 
+  /// Updates the cached avatar of one stored account, leaving the rest of the
+  /// entry alone. Returns whether a matching account was found.
+  ///
+  /// The account switcher paints each row from this cached `image`, so a
+  /// picture changed on the server is not visible there until it is written
+  /// here. Writing it at the moment the picture is saved — rather than
+  /// waiting for the dashboard's next profile refresh — is what makes the
+  /// new avatar show on the account the user just left.
+  ///
+  /// Both URLs are normalised before comparing. `saveAccount` normalises the
+  /// URL it stores while the session keeps whatever the user typed, so
+  /// comparing them raw misses the account on any server entered without a
+  /// scheme or with a trailing slash.
+  Future<bool> updateAccountImage({
+    required dynamic userId,
+    required String? url,
+    required String? database,
+    required String? image,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final accounts = await getAccounts();
+    final target = normalizeServerUrl(url);
+
+    var updated = false;
+    for (final account in accounts) {
+      final sameUser =
+          account['userId']?.toString() == userId?.toString();
+      final sameServer =
+          normalizeServerUrl(account['url']?.toString()) == target;
+      final sameDb = account['database'] == database;
+      if (sameUser && sameServer && sameDb) {
+        account['image'] = image ?? '';
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      await prefs.setString(_accountsKey, jsonEncode(accounts));
+    }
+    return updated;
+  }
+
   /// Retrieves list of saved accounts for quick switching.
   Future<List<Map<String, dynamic>>> getAccounts() async {
     final prefs = await SharedPreferences.getInstance();

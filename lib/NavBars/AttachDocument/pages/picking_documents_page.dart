@@ -13,7 +13,6 @@ import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
 import '../models/pending_attachment.dart';
-import '../screens/signature_screen.dart';
 import '../services/odoo_attach_service.dart';
 import '../utils/utils.dart';
 import 'document_preview_page.dart';
@@ -131,6 +130,37 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
     }
   }
 
+  /// Builds a short, predictable attachment name from the picked file.
+  ///
+  /// Gallery and camera picks arrive with device-generated names — long
+  /// digit strings or UUIDs that say nothing about the record. Naming them
+  /// after the transfer and the moment they were added keeps the list
+  /// readable, sorts chronologically, and cannot collide.
+  ///
+  /// A name the user clearly chose is kept, since it carries more meaning
+  /// than anything generated: the rule only replaces names that are long or
+  /// mostly digits.
+  String _attachmentName(String original) {
+    final dot = original.lastIndexOf('.');
+    final ext = dot > 0 ? original.substring(dot + 1).toLowerCase() : '';
+    final stem = dot > 0 ? original.substring(0, dot) : original;
+
+    final digits = stem.replaceAll(RegExp(r'[^0-9]'), '').length;
+    final meaningful = stem.length <= 24 && digits <= stem.length / 2;
+    if (meaningful) return original;
+
+    final ref = (widget.picking['name'] ?? 'Transfer').toString().replaceAll(
+      RegExp(r'[^A-Za-z0-9]+'),
+      '-',
+    );
+    final t = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+    final stamp =
+        '${t.year}${two(t.month)}${two(t.day)}_'
+        '${two(t.hour)}${two(t.minute)}${two(t.second)}';
+    return ext.isEmpty ? '${ref}_$stamp' : '${ref}_$stamp.$ext';
+  }
+
   Future<void> _pickFile(List<String> allowedExtensions) async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -140,24 +170,17 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
       );
       if (result != null && result.files.single.bytes != null) {
         final fileBytes = result.files.single.bytes!;
-        final fileName = result.files.single.name;
+        final picked = result.files.single.name;
         _stageDocument(
-          Utils.getMimeType(fileName),
+          Utils.getMimeType(picked),
           base64Encode(fileBytes),
-          fileName,
+          _attachmentName(picked),
         );
       }
     } catch (_) {
       if (mounted) {
         CustomSnackbar.showError(context, 'Something went wrong. Try again.');
       }
-    }
-  }
-
-  Future<void> _addSignature() async {
-    final result = await SignatureDialog.show(context);
-    if (result != null) {
-      _stageDocument(result['mimeType'], result['base64'], result['fileName']);
     }
   }
 
@@ -351,11 +374,6 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                tile(
-                  HugeIcons.strokeRoundedSignature,
-                  'Signature',
-                  _addSignature,
-                ),
                 tile(
                   HugeIcons.strokeRoundedUploadSquare02,
                   'Upload Image or PDF',
@@ -941,7 +959,7 @@ class _PickingDocumentsPageState extends State<PickingDocumentsPage> {
         bytes = base64Decode(clean);
       } catch (_) {}
     }
-    if (mounted) setState(() => _thumbnailCache[id] = bytes);
+    if (bytes != null && mounted) setState(() => _thumbnailCache[id] = bytes);
     return bytes;
   }
 

@@ -18,6 +18,7 @@ import '../../../services/odoo_dashboard_service.dart';
 import '../../../services/storage_service.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
+import '../../../../shared/utils/odoo_version.dart';
 
 /// Central business logic for the main dashboard screen.
 ///
@@ -212,7 +213,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
 
     if (userDetails != null) {
-      final imageBase64 = userDetails['image_1920']?.toString();
+      final imageBase64 = odooBinaryContent(userDetails['image_1920']);
       final profilePicBytes =
           (imageBase64 != null &&
               imageBase64.isNotEmpty &&
@@ -229,22 +230,19 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       );
     }
 
-    final base64Image = userDetails?['image_1920'];
+    final base64Image = odooBinaryContent(userDetails?['image_1920']);
 
-    final currentAccounts = await storageService.getAccounts();
-
-    final existing = currentAccounts.firstWhere(
-      (a) =>
-          a['userId'] == userDetails?['id'] &&
-          a['url'] == sessionData['url'] &&
-          a['database'] == sessionData['db'],
-      orElse: () => {},
+    /// Keep the switcher's cached avatar in step with the server. The match
+    /// lives in the storage service so the profile screen can do the same
+    /// thing the moment a picture is saved, instead of relying on this
+    /// refresh — which only runs on returning to Home, and so never fires
+    /// when the user changes their picture and switches account immediately.
+    await storageService.updateAccountImage(
+      userId: userDetails?['id'],
+      url: sessionData['url'],
+      database: sessionData['db'],
+      image: base64Image,
     );
-
-    if (existing.isNotEmpty) {
-      final accountWithImage = {...existing, 'image': base64Image};
-      await storageService.saveAccount(accountWithImage);
-    }
 
     if (isOnline && !liveFetchSucceeded && !_didProfileAutoRetry) {
       final stillEmpty =

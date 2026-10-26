@@ -312,6 +312,14 @@ class OdooCreatePickingService {
     return null;
   }
 
+  /// Confirms a freshly created picking.
+  ///
+  /// `skip_zero_demand_check` because Odoo 20's action_confirm returns a
+  /// warning wizard rather than confirming when a move has zero demand
+  /// (stock/models/stock_picking.py). This caller cannot present a wizard —
+  /// it also runs from the offline sync queue — so without the flag the
+  /// picking silently stays in draft while the app reports success. The flag
+  /// matches the wizard's own "Keep lines" outcome.
   Future<void> confirmPicking(int pickingId, {int? companyId}) async {
     await CompanySessionManager.callKwWithCompany({
       'model': 'stock.picking',
@@ -319,7 +327,9 @@ class OdooCreatePickingService {
       'args': [
         [pickingId],
       ],
-      'kwargs': {},
+      'kwargs': {
+        'context': {'skip_zero_demand_check': true},
+      },
     }, companyId: companyId);
   }
 

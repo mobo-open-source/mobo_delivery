@@ -11,7 +11,6 @@ import 'Dashboard/services/settings_storage_service.dart';
 import 'Dashboard/services/storage_service.dart';
 import 'LoginPage/views/login_screen.dart';
 import 'LoginPage/views/splash_screen.dart';
-import 'NavBars/Pickings/PickingFormPage/models/move_line.dart';
 import 'NavBars/Pickings/PickingFormPage/models/return_picking.dart';
 import 'NavBars/Pickings/PickingListPage/models/picking_model.dart';
 import 'core/company/providers/company_provider.dart';
@@ -37,27 +36,19 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   GoogleFonts.config.allowRuntimeFetching = false;
-
   await dotenv.load(fileName: ".env");
-
   await Hive.initFlutter();
-
   Hive.registerAdapter(PickingAdapter());
-  Hive.registerAdapter(MoveLineAdapter());
   Hive.registerAdapter(ReturnPickingAdapter());
-
   await Hive.openBox<Picking>('pickings');
-
   final settingsStorageService = SettingsStorageService();
   await settingsStorageService.initialize();
-
   final VideoPlayerController videoController = VideoPlayerController.asset(
     'assets/videos/Delivery.mp4',
   );
   await videoController.initialize();
   videoController.setLooping(false);
   videoController.play();
-
   runApp(
     MultiProvider(
       providers: [
@@ -65,9 +56,7 @@ void main() async {
           create: (_) => DashboardStorageService(),
         ),
         Provider<SettingsStorageService>.value(value: settingsStorageService),
-
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-
         ChangeNotifierProvider(
           create: (_) {
             final p = CompanyProvider();
@@ -75,9 +64,7 @@ void main() async {
             return p;
           },
         ),
-
         ListenableProvider<VideoPlayerController>.value(value: videoController),
-
         Provider<MemoryPageManager>.value(value: memoryManager),
       ],
       child: LoginApp(),

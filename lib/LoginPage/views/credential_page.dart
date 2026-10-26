@@ -21,6 +21,7 @@ import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../../shared/utils/odoo_version.dart';
 
 /// Login screen where users enter username + password after selecting server/database.
 ///
@@ -472,7 +473,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
               'kwargs': {},
             });
             if (res is List && res.isNotEmpty) {
-              final raw = (res.first as Map)['image_1920'];
+              final raw = odooBinaryContent((res.first as Map)['image_1920']);
               if (raw is String && raw.isNotEmpty && raw != 'false') {
                 profileImage = raw;
               }

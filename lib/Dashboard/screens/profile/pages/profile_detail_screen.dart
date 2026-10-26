@@ -118,7 +118,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   }
 
   String? get _userAvatarBase64 {
-    final v = _userData?['image_1920'];
+    final v = odooBinaryContent(_userData?['image_1920']);
     if (v is String && v.isNotEmpty && v != 'false') return v;
     return null;
   }
@@ -526,6 +526,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         });
       }
 
+      if (userUpdates.containsKey('image_1920')) {
+        await _syncAccountAvatar(session.userId, _pickedImageBase64);
+      }
+
       isSuccess = true;
       _saveSuccess = true;
       _pickedImageBase64 = null;
@@ -573,24 +577,53 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
+  /// Writes the new avatar into this account's entry in the switcher list.
+  ///
+  /// The switcher paints each row from that cached copy, so without this the
+  /// account the user just changed still shows its old picture. The dashboard
+  /// does refresh the cache, but only when the user returns to Home — and
+  /// switching account happens from the Configuration screen, before that
+  /// ever runs.
+  ///
+  /// Best-effort: the picture is already saved on the server by this point,
+  /// so a failure here must not turn a successful save into an error.
+  Future<void> _syncAccountAvatar(int? userId, String? imageBase64) async {
+    if (userId == null) return;
+    try {
+      final storage = DashboardStorageService();
+      final sessionData = await storage.getSessionData();
+      await storage.updateAccountImage(
+        userId: userId,
+        url: sessionData['url'] as String?,
+        database: sessionData['db'] as String?,
+        image: imageBase64,
+      );
+    } catch (_) {
+      /// Cached avatar stays stale until the next dashboard refresh.
+    }
+  }
+
   Future<void> _saveImage() async {
     if (_pickedImageBase64 == null || !mounted) return;
     final navigator = Navigator.of(context);
     _showLoadingDialog(context, 'Saving Image');
     try {
       final session = await CompanySessionManager.getCurrentSession();
+      final savedImage = _pickedImageBase64;
       if (session != null) {
         await CompanySessionManager.callKwWithCompany({
           'model': 'res.users',
           'method': 'write',
           'args': [
             [session.userId],
-            {'image_1920': _pickedImageBase64},
+            {'image_1920': savedImage},
           ],
           'kwargs': {},
         });
+        await _syncAccountAvatar(session.userId, savedImage);
       }
       await _fetchUserProfile(forceRefresh: true);
+      ProfileRefreshBus.notifyProfileRefresh();
       if (mounted)
         CustomSnackbar.show(
           context: context,
@@ -1653,9 +1686,16 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   String? Function(String?)? _getValidatorForField(String labelText) {
     switch (labelText.toLowerCase()) {
+      case 'full name':
+      case 'name':
+        return (value) {
+          if (value == null || value.trim().isEmpty)
+            return 'Full name is required';
+          return null;
+        };
       case 'email':
         return (value) {
-          if (value == null || value.trim().isEmpty) return null;
+          if (value == null || value.trim().isEmpty) return 'Email is required';
           final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
           if (!emailRegex.hasMatch(value.trim()))
             return 'Please enter a valid email address';

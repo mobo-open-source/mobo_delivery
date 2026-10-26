@@ -1,4 +1,5 @@
 import 'package:hive_ce/hive.dart';
+import '../../../../shared/utils/odoo_version.dart';
 
 part 'product.g.dart';
 
@@ -39,7 +40,11 @@ class Product {
   });
 
   /// Product name with the leading `[SKU]` prefix stripped, e.g.
-  /// `[CONS_89957] Bolt` → `Bolt`. Used for display in dropdowns.
+  /// `[CONS_89957] Bolt` → `Bolt`.
+  ///
+  /// Not for pickers: two products can share a name, and the SKU is the only
+  /// thing telling them apart, so anything a user chooses from shows [name].
+  /// This is for the move description written back to Odoo.
   String get cleanName => name.replaceAll(RegExp(r'^\[.*?\]\s*'), '');
 
   /// Creates a `Product` instance from Odoo JSON. Prefers `display_name`
@@ -49,7 +54,7 @@ class Product {
         (v is String && v.isNotEmpty && v.toLowerCase() != 'false') ? v : '';
     final displayName = pickName(json['display_name']);
     final rawName = pickName(json['name']);
-    final image = json['image_1920'];
+    final image = odooBinaryContent(json['image_1920']);
     return Product(
       id: json['id'] ?? 0,
       name: displayName.isNotEmpty ? displayName : rawName,

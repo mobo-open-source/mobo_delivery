@@ -35,57 +35,76 @@ class EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: padding,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Lottie.asset(
-              lottieAsset ?? ghostAsset,
-              width: 220,
-              height: 220,
-              repeat: true,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stack) => Icon(
-                HugeIcons.strokeRoundedArchive03,
-                size: 80,
-                color: isDark ? Colors.grey[700] : Colors.grey[400],
+    /// The illustration is the only fixed-height part, so it is what makes
+    /// this overflow when a keyboard halves the viewport — searching a list
+    /// that returns nothing is exactly that case. It shrinks to fit the space
+    /// actually available, and the scroll view below is the backstop for the
+    /// extremes (very small screens, large text scale).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxHeight;
+        final artSize = available.isFinite
+            ? (available * 0.4).clamp(96.0, 220.0)
+            : 220.0;
+
+        return SingleChildScrollView(
+          padding: padding,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: available.isFinite ? available - padding.vertical : 0,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Lottie.asset(
+                    lottieAsset ?? ghostAsset,
+                    width: artSize,
+                    height: artSize,
+                    repeat: true,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stack) => Icon(
+                      HugeIcons.strokeRoundedArchive03,
+                      size: 80,
+                      color: isDark ? Colors.grey[700] : Colors.grey[400],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                  if (actionLabel != null && onAction != null) ...[
+                    const SizedBox(height: 24),
+                    MoboButton.secondary(
+                      label: actionLabel!,
+                      fullWidth: false,
+                      borderRadius: 8,
+                      onPressed: onAction,
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                subtitle!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
-            ],
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
-              MoboButton.secondary(
-                label: actionLabel!,
-                fullWidth: false,
-                borderRadius: 8,
-                onPressed: onAction,
-              ),
-            ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

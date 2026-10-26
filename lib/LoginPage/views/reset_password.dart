@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../widgets/login_button.dart';
-import 'package:odoo_delivery_app/LoginPage/views/webview_screen.dart';
 
 import '../services/reset_password_service.dart';
 
@@ -14,7 +13,7 @@ import '../services/reset_password_service.dart';
 ///
 /// This widget displays a form where users can enter their email address.
 /// It communicates with an Odoo server (using provided URL and database)
-/// to send a password reset email or redirect to a web-based reset flow when needed.
+/// to send a password reset email, reporting the outcome in place.
 ///
 /// Supports light/dark theme, animations for success state, haptic feedback,
 /// loading indicators, and proper input validation.
@@ -35,8 +34,7 @@ class ResetPasswordScreen extends StatefulWidget {
 /// State manager for the [ResetPasswordScreen].
 ///
 /// Handles form validation, email sending logic, loading states,
-/// success/error messaging, animations, and navigation to webview
-/// when the server requires browser-based password reset.
+/// success/error messaging and animations.
 class _ResetPasswordScreenState extends State<ResetPasswordScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
@@ -88,8 +86,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
   /// Validates the form → shows loading state → calls the service
   /// → handles three possible outcomes:
   ///   1. Success → shows animated success message
-  ///   2. Requires webview → navigates to WebViewScreen
-  ///   3. Error → displays error message with haptic feedback
+  ///   2. Error → displays error message with haptic feedback
+
   ///
   /// Prevents action during loading and properly cleans up
   /// when widget is unmounted.
@@ -134,19 +132,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
         });
         _successAnimationController.forward();
         await HapticFeedback.selectionClick();
-      } else if (result['requiresWebView'] == true) {
-        await HapticFeedback.lightImpact();
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WebViewScreen(
-                url: result['webViewUrl'],
-                title: 'Reset Password',
-              ),
-            ),
-          );
-        }
       } else {
         setState(() {
           _errorMessage = result['message'];
@@ -491,6 +476,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>
             style: GoogleFonts.manrope(
               fontSize: 14,
               color: Colors.white70,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "Didn't get it? Check your spam folder, or contact your "
+            "administrator.",
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              color: Colors.white60,
               height: 1.4,
             ),
             textAlign: TextAlign.center,

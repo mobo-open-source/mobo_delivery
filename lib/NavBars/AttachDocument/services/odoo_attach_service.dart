@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/company/session/company_session_manager.dart';
+import '../../../shared/utils/odoo_version.dart';
 
 /// Service layer responsible for all Odoo RPC interactions related to attaching documents
 /// to stock pickings (transfers, receipts, deliveries, etc.).
@@ -298,25 +299,26 @@ class OdooAttachService {
     }
   }
 
-  /// Downloads a single attachment's content as base64 (`datas`).
+  /// Downloads a single attachment's content as base64.
   ///
   /// Returns the base64 string, or null if unavailable / on failure. Callers
   /// decode it to bytes for in-app preview or save it to a temp file.
   Future<String?> downloadAttachmentBytes(int attachmentId) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final field = attachmentDataField(prefs.getInt('version') ?? 0);
       final result = await CompanySessionManager.callKwWithCompany({
         'model': 'ir.attachment',
         'method': 'read',
         'args': [
           [attachmentId],
-          ['datas'],
+          [field],
         ],
         'kwargs': {},
       });
       if (result is List && result.isNotEmpty) {
         final row = result.first as Map<String, dynamic>;
-        final datas = row['datas'];
-        if (datas is String && datas.isNotEmpty) return datas;
+        return odooBinaryContent(row[field]);
       }
       return null;
     } catch (e) {
@@ -337,6 +339,8 @@ class OdooAttachService {
     String fileName,
   ) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final field = attachmentDataField(prefs.getInt('version') ?? 0);
       final attachmentId = await CompanySessionManager.callKwWithCompany({
         'model': 'ir.attachment',
         'method': 'create',
@@ -345,7 +349,7 @@ class OdooAttachService {
             'name': fileName,
             'res_model': 'stock.picking',
             'res_id': pickingId,
-            'datas': base64Data,
+            field: base64Data,
             'type': 'binary',
             'mimetype': mimeType,
           },

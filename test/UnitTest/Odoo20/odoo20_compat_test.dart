@@ -20,6 +20,87 @@ void main() {
     });
   });
 
+  group('attachmentDataField', () {
+    test('is datas up to Odoo 19', () {
+      for (final major in [14, 15, 16, 17, 18, 19]) {
+        expect(attachmentDataField(major), 'datas', reason: 'v$major');
+      }
+    });
+
+    test('is raw from Odoo 20', () {
+      expect(attachmentDataField(20), 'raw');
+      expect(attachmentDataField(21), 'raw');
+    });
+
+    test('an unknown version keeps the long-standing name', () {
+      expect(attachmentDataField(0), 'datas');
+    });
+  });
+
+  group('configParamGetMethod', () {
+    test('is get_param up to Odoo 19', () {
+      for (final major in [14, 16, 17, 18, 19]) {
+        expect(configParamGetMethod(major), 'get_param', reason: 'v\$major');
+      }
+    });
+
+    test('is get_str from Odoo 20', () {
+      expect(configParamGetMethod(20), 'get_str');
+      expect(configParamGetMethod(21), 'get_str');
+    });
+
+    test('an unknown version keeps the long-standing name', () {
+      expect(configParamGetMethod(0), 'get_param');
+    });
+  });
+
+  group('odooBinaryContent', () {
+    test('Odoo 19 and earlier hand back a plain base64 string', () {
+      expect(odooBinaryContent('aGVsbG8='), 'aGVsbG8=');
+    });
+
+    test('Odoo 20 wraps it in a map', () {
+      expect(
+        odooBinaryContent({'content': 'aGVsbG8=', 'size': 5}),
+        'aGVsbG8=',
+      );
+      expect(
+        odooBinaryContent({
+          'filename': 'sig.png',
+          'content': 'aGVsbG8=',
+          'size': 5,
+        }),
+        'aGVsbG8=',
+      );
+    });
+
+    test('an empty binary is null in either shape', () {
+      expect(odooBinaryContent(false), isNull);
+      expect(odooBinaryContent('false'), isNull);
+      expect(odooBinaryContent(''), isNull);
+      expect(odooBinaryContent(null), isNull);
+      expect(odooBinaryContent({'size': 0}), isNull);
+      expect(odooBinaryContent({'content': ''}), isNull);
+    });
+  });
+
+  group('odooLockIsStateConditioned', () {
+    test('one unconditional toggle up to Odoo 19', () {
+      for (final major in [14, 16, 17, 18, 19]) {
+        expect(odooLockIsStateConditioned(major), isFalse, reason: 'v\$major');
+      }
+    });
+
+    test('two state-conditioned buttons from Odoo 20', () {
+      expect(odooLockIsStateConditioned(20), isTrue);
+      expect(odooLockIsStateConditioned(21), isTrue);
+    });
+
+    test('an unknown version keeps the long-standing behaviour', () {
+      expect(odooLockIsStateConditioned(0), isFalse);
+    });
+  });
+
   group('odooUsesReturnWizard', () {
     test('every version that ships the wizard uses it', () {
       for (final major in [14, 16, 17, 18, 19]) {

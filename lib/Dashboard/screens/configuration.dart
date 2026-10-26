@@ -25,6 +25,7 @@ import 'settings/pages/settings_page.dart';
 import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/security/secure_storage_service.dart';
 import '../../shared/widgets/loaders/loading_widget.dart';
+import '../../shared/utils/odoo_version.dart';
 
 /// Configuration screen — central hub for profile, settings, account switching, and logout.
 ///
@@ -136,7 +137,7 @@ class _ConfigurationState extends State<Configuration> {
   }
 
   String? get _userAvatarBase64 {
-    final val = profile?['image_1920'];
+    final val = odooBinaryContent(profile?['image_1920']);
     if (val is String && val.isNotEmpty && val != 'false') return val;
     return null;
   }

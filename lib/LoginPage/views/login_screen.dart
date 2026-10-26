@@ -781,6 +781,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 36,
                               width: 95,
                             ),
+                            dropdownStyleData: DropdownStyleData(
+                              maxHeight: 200,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              offset: const Offset(0, -3),
+                            ),
                             iconStyleData: const IconStyleData(
                               icon: Icon(
                                 HugeIcons.strokeRoundedArrowDown01,

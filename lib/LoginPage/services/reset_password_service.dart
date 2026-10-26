@@ -15,7 +15,8 @@ class ResetPasswordService {
   ///
   /// Returns:
   /// - success → If reset email sent
-  /// - requiresWebView → If manual verification required
+  /// The reset is completed in-app; a failure is reported as a message rather
+  /// than handed off to a browser.
   /// - message → Status message for UI
   static Future<Map<String, dynamic>> sendResetPasswordEmail({
     required String serverUrl,
@@ -36,8 +37,7 @@ class ResetPasswordService {
         database,
         login,
       );
-      if (webFlowResult['success'] == true ||
-          webFlowResult['requiresWebView'] == true) {
+      if (webFlowResult['success'] == true) {
         return webFlowResult;
       }
 
@@ -111,13 +111,10 @@ class ResetPasswordService {
       }
 
       if (requiresRecaptcha) {
-        final webViewUrl = '$cleanUrl$workingEndpoint?db=$database';
         return {
           'success': false,
-          'requiresWebView': true,
-          'webViewUrl': webViewUrl,
           'message':
-              'This server requires additional security verification. Please complete the reset in the secure browser.',
+              'This server requires additional security verification that the app cannot complete. Please contact your administrator.',
         };
       }
 
@@ -233,9 +230,9 @@ class ResetPasswordService {
         }
 
         return {
-          'success': true,
+          'success': false,
           'message':
-              'Password reset email sent successfully. Please check your email for reset instructions.',
+              'The server did not confirm a reset email was sent. Please contact your administrator.',
         };
       }
 
@@ -265,9 +262,9 @@ class ResetPasswordService {
           }
 
           return {
-            'success': true,
+            'success': false,
             'message':
-                'Password reset email sent successfully. Please check your email for reset instructions.',
+                'The server did not confirm a reset email was sent. Please contact your administrator.',
           };
         }
       } else if (response.statusCode == 400) {
@@ -324,6 +321,34 @@ class ResetPasswordService {
     }
   }
 
+  /// Reads Odoo's own alert banner out of a reset response.
+  ///
+  /// Odoo reports every outcome the same way — unknown login, a mail server
+  /// that will not send, success — as
+  /// `<p class="alert alert-danger">reason</p>` or its `alert-success` twin.
+  /// Keying on the class rather than on English phrases means an error nobody
+  /// anticipated (an SMTP failure, say) is still recognised as an error, on a
+  /// server in any language, and the server's own wording reaches the user.
+  ///
+  /// Returns `null` when the page carries no banner, which must not be read
+  /// as success.
+  static ({bool isError, String message})? _alertBanner(String html) {
+    final match = RegExp(
+      '<(?:p|div)[^>]*class=["\'][^"\']*alert-(danger|success)[^"\']*["\']'
+      '[^>]*>(.*?)</(?:p|div)>',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(html);
+    if (match == null) return null;
+
+    final text = match
+        .group(2)!
+        .replaceAll(RegExp('<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return (isError: match.group(1)!.toLowerCase() == 'danger', message: text);
+  }
+
   /// Checks if response contains success indicators.
   static bool _containsSuccessIndicators(String responseBody) {
     return responseBody.contains('password reset') ||
@@ -336,11 +361,11 @@ class ResetPasswordService {
 
   /// Checks if response contains error indicators.
   static bool _containsErrorIndicators(String responseBody) {
-    return responseBody.contains('user not found') ||
-        responseBody.contains('invalid email') ||
-        responseBody.contains('error') ||
-        responseBody.contains('not found') ||
-        responseBody.contains('invalid user');
+    final lower = responseBody.toLowerCase();
+    return lower.contains('user not found') ||
+        lower.contains('invalid email') ||
+        lower.contains('invalid user') ||
+        lower.contains('no account found');
   }
 
   /// Validates email format.
@@ -549,6 +574,33 @@ class ResetPasswordService {
       final loginUrl = '$cleanUrl/web/login';
       final resetUrl = '$cleanUrl/web/reset_password';
 
+      Map<String, String> cookies = {};
+
+      if (database.trim().isNotEmpty) {
+        try {
+          final selectRequest =
+              http.Request(
+                  'GET',
+                  Uri.parse(
+                    '$cleanUrl/odoo?db=${Uri.encodeQueryComponent(database.trim())}',
+                  ),
+                )
+                ..followRedirects = false
+                ..headers['User-Agent'] =
+                    'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36';
+          final selectClient = http.Client();
+          try {
+            final streamed = await selectClient
+                .send(selectRequest)
+                .timeout(const Duration(seconds: 15));
+            final setCookie = streamed.headers['set-cookie'];
+            if (setCookie != null) cookies.addAll(_parseCookies(setCookie));
+          } finally {
+            selectClient.close();
+          }
+        } catch (_) {}
+      }
+
       final initialGet = await http
           .get(
             Uri.parse('$loginUrl?redirect=/web/login'),
@@ -557,13 +609,14 @@ class ResetPasswordService {
                   'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
               'Accept':
                   'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              if (cookies.isNotEmpty)
+                'Cookie': cookies.entries
+                    .map((e) => '${e.key}=${e.value}')
+                    .join('; '),
             },
           )
           .timeout(const Duration(seconds: 15));
 
-      if (initialGet.statusCode != 200) {}
-
-      Map<String, String> cookies = {};
       final initialSetCookie = initialGet.headers['set-cookie'];
       if (initialSetCookie != null) {
         cookies.addAll(_parseCookies(initialSetCookie));
@@ -589,10 +642,8 @@ class ResetPasswordService {
       if (resetGet.statusCode != 200) {
         return {
           'success': false,
-          'requiresWebView': true,
-          'webViewUrl': '$cleanUrl/web/login?db=$database',
           'message':
-              'Unable to load reset form automatically. Please complete the reset in the secure browser.',
+              'Unable to load the reset form (status ${resetGet.statusCode}). Please contact your administrator.',
         };
       }
 
@@ -641,6 +692,24 @@ class ResetPasswordService {
       }
 
       if (postResponse.statusCode == 200) {
+        final banner = _alertBanner(postResponse.body);
+        if (banner != null) {
+          if (banner.isError) {
+            return {
+              'success': false,
+              'message': banner.message.isNotEmpty
+                  ? banner.message
+                  : 'The server rejected the password reset request.',
+            };
+          }
+          return {
+            'success': true,
+            'message': banner.message.isNotEmpty
+                ? banner.message
+                : 'Password reset email sent successfully. Please check your email for reset instructions.',
+          };
+        }
+
         final body = postResponse.body.toLowerCase();
         if (_containsSuccessIndicators(body)) {
           return {
@@ -655,27 +724,24 @@ class ResetPasswordService {
             'message': 'No user found with this email address.',
           };
         }
+
         return {
-          'success': true,
+          'success': false,
           'message':
-              'Password reset email sent successfully. Please check your email for reset instructions.',
+              'The server did not confirm a reset email was sent. Please contact your administrator.',
         };
       }
 
       return {
         'success': false,
-        'requiresWebView': true,
-        'webViewUrl': '$cleanUrl/web/login?db=$database',
         'message':
-            'Unable to reset password automatically. Please complete the reset in the secure browser.',
+            'Unable to reset the password. Please try again later or contact your administrator.',
       };
     } catch (e) {
       return {
         'success': false,
-        'requiresWebView': true,
-        'webViewUrl': '$cleanUrl/web/login?db=$database',
         'message':
-            'Unable to reset password automatically. Please complete the reset in the secure browser.',
+            'Unable to reset the password. Please try again later or contact your administrator.',
       };
     }
   }

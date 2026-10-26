@@ -722,7 +722,10 @@ class _ReturnManagementPageState extends State<ReturnManagementPage> {
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, _) => PickingDetailsPage(
-              picking: {...picking, 'item': picking['name'] ?? 'Return Picking'},
+              picking: {
+                ...picking,
+                'item': picking['name'] ?? 'Return Picking',
+              },
               odooService: OdooPickingFormService(),
               isPickingForm: false,
               isReturnCreate: false,

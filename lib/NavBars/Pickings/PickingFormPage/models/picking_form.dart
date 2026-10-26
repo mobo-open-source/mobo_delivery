@@ -77,6 +77,21 @@ class PickingForm {
   @HiveField(20)
   final int? locationDestIdInt;
 
+  /// Odoo's `is_locked`. Defaults to true, matching the field's own default,
+  /// so a cached row written before this field existed does not read as
+  /// unlocked and offer a Lock action that Odoo would not.
+  @HiveField(21)
+  final bool isLocked;
+
+  /// Odoo's `backorder_id` — "Back Order of". Set when this picking is the
+  /// remainder of a shipment that was partially processed, pointing at the
+  /// picking that carries the already-processed part. Stored in Odoo's
+  /// `[id, display_name]` form so the reference can be shown without a
+  /// second read. Null on a picking that is not a backorder, which is the
+  /// normal case.
+  @HiveField(22)
+  final List<dynamic>? backorderId;
+
   PickingForm({
     required this.id,
     required this.name,
@@ -99,6 +114,8 @@ class PickingForm {
     this.pickingTypeCode,
     this.locationIdInt,
     this.locationDestIdInt,
+    this.isLocked = true,
+    this.backorderId,
   });
 
   /// Creates a `PickingForm` from Odoo JSON response (search_read result)
@@ -133,6 +150,7 @@ class PickingForm {
           : null,
       origin: json['origin'] is String ? json['origin'] : null,
       state: json['state'] is String ? json['state'] : 'draft',
+      isLocked: json['is_locked'] is bool ? json['is_locked'] : true,
       note: json['note'] is String
           ? json['note']
           : (json['note'] == false ? null : json['note']?.toString()),
@@ -160,6 +178,7 @@ class PickingForm {
           (json['location_dest_id_int'] is int
               ? json['location_dest_id_int'] as int
               : null),
+      backorderId: json['backorder_id'] is List ? json['backorder_id'] : null,
     );
   }
 
@@ -181,6 +200,7 @@ class PickingForm {
       'products_availability': productsAvailability,
       'origin': origin,
       'state': state,
+      'is_locked': isLocked,
       'note': note,
       'move_type': moveType,
       'user_id': userId,
@@ -192,6 +212,7 @@ class PickingForm {
       'picking_type_code': pickingTypeCode,
       'location_id_int': locationIdInt,
       'location_dest_id_int': locationDestIdInt,
+      'backorder_id': backorderId,
     };
   }
 }

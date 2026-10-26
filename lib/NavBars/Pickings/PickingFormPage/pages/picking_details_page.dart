@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -7,6 +8,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -15,18 +19,21 @@ import '../../../../Rating/review_service.dart';
 import '../../../../core/company/session/company_session_manager.dart';
 import '../../../../core/navigation/data_loss_warning_dialog.dart';
 import '../../../../shared/utils/date_picker_utils.dart';
+import '../../../AttachDocument/screens/signature_screen.dart';
 import '../../../../shared/utils/globals.dart';
+import '../../../../shared/utils/odoo_version.dart';
+import '../../../../shared/widgets/dialogs/loading_dialog.dart';
 import '../../../../shared/widgets/buttons/mobo_button.dart';
 import '../../../../shared/widgets/dialogs/common_dialog.dart';
 import '../../../../shared/utils/odoo_datetime_format.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import 'stock_move_line_list_page.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/snackbar.dart';
 
-import '../models/move_line.dart';
 import '../models/partner_details.dart';
 import '../models/return_picking.dart';
 import '../services/hive_service.dart';
@@ -37,7 +44,6 @@ import '../models/user.dart';
 import '../models/stock_move.dart';
 import '../services/odoo_picking_form_service.dart';
 import '../widgets/info_row.dart';
-import 'stock_move_line_list_page.dart';
 import '../../../ReturnManagement/services/odoo_return_service.dart';
 import '../../../ReturnManagement/widgets/picking_bottom_sheet.dart';
 
@@ -83,7 +89,30 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   final ScrollController _tabHeaderScrollController = ScrollController();
   final List<GlobalKey> _tabItemKeys = List.generate(3, (_) => GlobalKey());
 
-  List<Map<String, dynamic>> pickingStockLine = [];
+  /// Base64 PNG of the delivery signature held on the picking.
+  ///
+  /// Read separately from the picking so a server without the field cannot
+  /// fail the whole load.
+  String? _signatureImage;
+
+  /// Whether Inventory's "Signature" setting is on for this user. Odoo hides
+  /// its Sign widget entirely without it, so the section does too.
+  bool _canSignDeliveries = false;
+
+  /// Whether this user is in `stock.group_stock_manager`, which is what Odoo
+  /// puts its Lock / Unlock buttons behind.
+  bool _isStockManager = false;
+
+  /// Whether this server gates Lock/Unlock by state (Odoo 20) or offers one
+  /// unconditional toggle (17–19).
+  bool _lockIsStateConditioned = false;
+
+  /// Lot/serial numbers per `stock.move` id, for the Operations table.
+  ///
+  /// Empty means the picking tracks no lots; `null` means the lookup failed or
+  /// has not run, and the Lot/Serial column stays hidden rather than showing
+  /// blanks against products that may well be tracked.
+  Map<int, List<String>>? _moveLots;
   List<Map<String, dynamic>> returnDataList = [];
 
   String _errorMessage = '';
@@ -177,7 +206,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   final TextEditingController scheduledDateController = TextEditingController();
   final TextEditingController deadlineController = TextEditingController();
   final TextEditingController dateDoneController = TextEditingController();
-  final TextEditingController availabilityController = TextEditingController();
   final TextEditingController sourceDocController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
 
@@ -217,7 +245,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     scheduledDateController.dispose();
     deadlineController.dispose();
     dateDoneController.dispose();
-    availabilityController.dispose();
     sourceDocController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -352,10 +379,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       odooPickingFormService.loadProductMoves(pickingId).catchError((e, st) {
         return moveProducts;
       }),
+      odooPickingFormService.loadMoveLineLots(pickingId),
     ]);
 
     final freshPickings = results[0] as List<PickingForm>;
     final freshMoves = results[1] as List<StockMove>;
+    final freshLots = results[2] as Map<int, List<String>>?;
 
     if (freshPickings.isEmpty) {
       if (mounted) setState(() {});
@@ -370,7 +399,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         partnerDetails = await odooPickingFormService.loadPartnerDetails(
           partnerId,
         );
-        final imageString = partnerDetails?['image_1920'];
+        final imageString = odooBinaryContent(partnerDetails?['image_1920']);
         if (imageString != null && imageString.isNotEmpty && mounted) {
           setState(() => _cachedImage = base64Decode(imageString));
         }
@@ -381,6 +410,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       setState(() {
         pickings = freshPickings;
         moveProducts = freshMoves;
+        if (freshLots != null) _moveLots = freshLots;
       });
       if (!_isEditing) _syncControllersFromPicking();
     }
@@ -428,12 +458,32 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       partnerIdForDetails != null
           ? odooPickingFormService.loadPartnerDetails(partnerIdForDetails)
           : Future<dynamic>.value(null),
+      odooPickingFormService.loadMoveLineLots(pickingId),
+      odooPickingFormService.canSignDeliveries(),
+      odooPickingFormService.isStockManager(),
+      SharedPreferences.getInstance(),
     ]);
 
     moveProducts = results[0] as List<StockMove>;
     partnerDetails = results[1] as Map<String, dynamic>?;
+    _moveLots = results[2] as Map<int, List<String>>?;
+    _canSignDeliveries = results[3] == true;
+    _isStockManager = results[4] == true;
+    _lockIsStateConditioned = odooLockIsStateConditioned(
+      (results[5] as SharedPreferences).getInt('version') ?? 0,
+    );
 
-    final imageString = partnerDetails?['image_1920'];
+    if (_canSignDeliveries) {
+      unawaited(
+        odooPickingFormService.loadSignature(pickingId).then((value) {
+          if (mounted && value != null) {
+            setState(() => _signatureImage = value);
+          }
+        }),
+      );
+    }
+
+    final imageString = odooBinaryContent(partnerDetails?['image_1920']);
     if (imageString != null && imageString.isNotEmpty) {
       _cachedImage = base64Decode(imageString);
     }
@@ -442,7 +492,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       final partnerDetailModel = PartnerDetails(
         id: partnerIdForDetails as int,
         address: partnerDetails?['address'],
-        imageBase64: partnerDetails?['image_1920'],
+        imageBase64: odooBinaryContent(partnerDetails?['image_1920']),
       );
       await _hiveService.savePartnerDetails(partnerDetailModel);
     }
@@ -707,6 +757,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
 
         if (success == true) {
           try {
+            await Future.delayed(const Duration(seconds: 2));
             await _loadSavingData().timeout(const Duration(seconds: 15));
           } catch (_) {}
           ReviewService().trackSignificantEvent();
@@ -842,123 +893,6 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     }
   }
 
-  /// Loads & navigates to detailed move lines (uses Hive cache when offline)
-  Future<void> _stockMoveLine() async {
-    setState(() {
-      isSaving = true;
-    });
-    final odooPickingFormService = OdooPickingFormService();
-    await odooPickingFormService.initializeOdooClient();
-    final pickingId = int.parse(widget.picking['id'].toString());
-
-    final box = await Hive.openBox<MoveLine>('move_lines');
-
-    if (!isOnlineAvailability) {
-      final cachedLines = box.values
-          .where((line) => line.pickingId == pickingId)
-          .map((line) => line.toJson())
-          .toList();
-
-      if (cachedLines.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            pickingStockLine = cachedLines;
-            isSaving = false;
-          });
-        }
-      }
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              StockMoveLineListPage(pickingStockLine: pickingStockLine),
-          transitionDuration: const Duration(milliseconds: 300),
-          reverseTransitionDuration: const Duration(milliseconds: 300),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
-    } else {
-      final cachedLines = box.values
-          .where((line) => line.pickingId == pickingId)
-          .map((line) => line.toJson())
-          .toList();
-
-      if (cachedLines.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            pickingStockLine = cachedLines;
-            isSaving = false;
-          });
-        }
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                StockMoveLineListPage(pickingStockLine: pickingStockLine),
-            transitionDuration: const Duration(milliseconds: 300),
-            reverseTransitionDuration: const Duration(milliseconds: 300),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-          ),
-        );
-
-        final moveLines = await odooPickingFormService.loadStockMoveLines(
-          pickingId,
-        );
-        for (var line in moveLines) {
-          final moveLine = MoveLine(
-            id: line['id'] ?? 0,
-            pickingId: pickingId,
-            data: line,
-          );
-          await box.put('${pickingId}_${line['id'] ?? 0}', moveLine);
-        }
-
-        setState(() {
-          pickingStockLine = moveLines;
-          isSaving = false;
-        });
-      } else {
-        final moveLines = await odooPickingFormService.loadStockMoveLines(
-          pickingId,
-        );
-        for (var line in moveLines) {
-          final moveLine = MoveLine(
-            id: line['id'] ?? 0,
-            pickingId: pickingId,
-            data: line,
-          );
-          await box.put('${pickingId}_${line['id'] ?? 0}', moveLine);
-        }
-
-        setState(() {
-          pickingStockLine = moveLines;
-          isSaving = false;
-        });
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                StockMoveLineListPage(pickingStockLine: pickingStockLine),
-            transitionDuration: const Duration(milliseconds: 300),
-            reverseTransitionDuration: const Duration(milliseconds: 300),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-          ),
-        );
-      }
-    }
-    setState(() {
-      isSaving = false;
-    });
-  }
-
   /// Checks product availability for the current picking and refreshes data if successful.
   ///
   /// Calls Odoo's `stock.picking` → `action_assign()` equivalent (reserves stock).
@@ -1091,6 +1025,47 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   ///
   /// Caches use pickingId as key — overwrites previous returns for same picking.
   /// Shows loading overlay (`isSaving`) during fetch/navigation.
+  /// The reference of the picking this one is a backorder of, or null when
+  /// it is not a backorder.
+  ///
+  /// Odoo stores `backorder_id` as `[id, display_name]`, so the reference is
+  /// already in hand and needs no second read. `backorder_id` exists on
+  /// `stock.picking` in Odoo 17 through 20 with the same name and meaning,
+  /// so no version guard is needed.
+  String? get _backorderReference {
+    if (pickings.isEmpty) return null;
+    final raw = pickings[0].backorderId;
+    if (raw is! List || raw.length < 2) return null;
+    final name = raw[1]?.toString();
+    if (name == null || name.isEmpty || name.toLowerCase() == 'false') {
+      return null;
+    }
+    return name;
+  }
+
+  /// Opens Odoo's "Detailed Operations" for this picking — which bin each
+  /// product was picked from, its lot/serial and the quantity done.
+  ///
+  /// The page reads from the server itself, so there is nothing to load here
+  /// and no spinner to hold the user on this screen. The earlier version
+  /// pre-loaded the lines and fell back to a Hive `move_lines` box when
+  /// offline, which is what showed three lines for a picking that had one.
+  void _stockMoveLine() {
+    final pickingId = int.parse(widget.picking['id'].toString());
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            StockMoveLineListPage(pickingId: pickingId),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
   Future<void> _returnPicking() async {
     setState(() {
       isSaving = true;
@@ -1782,6 +1757,9 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       case 'stock.immediate.transfer':
         await _showImmediateTransferDialog(pickingId, action);
         return;
+      case 'stock.zero.demand.confirmation':
+        await _showZeroDemandDialog(pickingId, action, fallbackSuccessMessage);
+        return;
       case 'confirm.stock.sms':
       case 'stock.sms.confirmation':
         await _showSmsConfirmationDialog(
@@ -2033,6 +2011,274 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     return null;
   }
 
+  /// Closes a [LoadingDialog] exactly once.
+  ///
+  /// `LoadingDialog.hide` pops whatever is on top without checking that the
+  /// dialog is still there, so a success path that hides and then throws
+  /// would have the catch block pop the page out from under the user.
+  VoidCallback _oneShotLoadingCloser() {
+    var open = true;
+    return () {
+      if (!open || !mounted) return;
+      open = false;
+      LoadingDialog.hide(context);
+    };
+  }
+
+  /// Duplicates the transfer, as Odoo's Duplicate does.
+  ///
+  /// Odoo opens the copy straight away; this pops back to the list instead,
+  /// so the new draft is visible in context rather than leaving the user on a
+  /// detail screen for a record they have not seen yet.
+  Future<void> _duplicatePicking() async {
+    if (pickings.isEmpty) return;
+    final picking = pickings[0];
+
+    if (!isOnlineAvailability) {
+      CustomSnackbar.showWarning(
+        context,
+        'You need to be online to duplicate a transfer.',
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => CommonDialog(
+        title: 'Duplicate transfer',
+        message:
+            'Create a copy of ${picking.name}? The copy starts as a new '
+            'draft with the same products.',
+        primaryLabel: 'Duplicate',
+        secondaryLabel: 'Cancel',
+        onPrimary: () => Navigator.pop(ctx, true),
+        onSecondary: () => Navigator.pop(ctx, false),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final closeLoading = _oneShotLoadingCloser();
+    LoadingDialog.show(context, message: 'Duplicating');
+    try {
+      final service = OdooPickingFormService();
+      await service.initializeOdooClient();
+      final newId = await service.duplicatePicking(picking.id);
+      if (!mounted) return;
+      closeLoading();
+      if (newId == null) {
+        CustomSnackbar.showError(context, 'Could not duplicate this transfer.');
+        return;
+      }
+      CustomSnackbar.showSuccess(context, 'Copy created as a new draft.');
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, _) => PickingDetailsPage(
+            picking: {'id': newId},
+            odooService: service,
+            isPickingForm: true,
+            isReturnPicking: false,
+            isReturnCreate: false,
+          ),
+          transitionsBuilder: (context, animation, _, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      closeLoading();
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(e, 'Could not duplicate this transfer.'),
+      );
+    }
+  }
+
+  /// Flips Odoo's `is_locked` on the transfer.
+  Future<void> _toggleLock() async {
+    if (pickings.isEmpty) return;
+    final picking = pickings[0];
+    final locking = !picking.isLocked;
+
+    if (!isOnlineAvailability) {
+      CustomSnackbar.showWarning(
+        context,
+        'You need to be online to ${locking ? 'lock' : 'unlock'} a transfer.',
+      );
+      return;
+    }
+
+    setState(() => isSaving = true);
+    try {
+      final service = OdooPickingFormService();
+      await service.initializeOdooClient();
+      await service.toggleLock(picking.id);
+      await _loadSavingData().timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      setState(() => isSaving = false);
+      CustomSnackbar.showSuccess(
+        context,
+        locking ? 'Transfer locked.' : 'Transfer unlocked.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isSaving = false);
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(
+          e,
+          'Could not ${locking ? 'lock' : 'unlock'} this transfer.',
+        ),
+      );
+    }
+  }
+
+  /// Downloads a picking report as PDF and hands it to the OS viewer.
+  ///
+  /// Offers the same two reports as Odoo's Print submenu. Rendering happens
+  /// on the server, so this needs a connection — there is nothing to generate
+  /// offline.
+  Future<void> _printPicking() async {
+    if (pickings.isEmpty) return;
+    final picking = pickings[0];
+    final state = picking.state;
+
+    final report = state == 'done'
+        ? 'stock.report_deliveryslip'
+        : 'stock.report_picking';
+
+    if (!isOnlineAvailability) {
+      CustomSnackbar.showWarning(context, 'You need to be online to print.');
+      return;
+    }
+
+    final closeLoading = _oneShotLoadingCloser();
+    LoadingDialog.show(context, message: 'Preparing document');
+    try {
+      final service = OdooPickingFormService();
+      await service.initializeOdooClient();
+
+      if (state == 'assigned') {
+        await service.markPickingPrinted(picking.id);
+      }
+
+      final result = await service.downloadPickingReport(picking.id, report);
+      if (!mounted) return;
+      closeLoading();
+
+      final bytes = result.bytes;
+      if (bytes == null) {
+        CustomSnackbar.showError(
+          context,
+          result.error ?? 'Could not generate the document.',
+        );
+        return;
+      }
+
+      final safeName = picking.name.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$safeName.pdf');
+      await file.writeAsBytes(bytes);
+      final opened = await OpenFile.open(file.path);
+      if (!mounted) return;
+      if (opened.type != ResultType.done) {
+        CustomSnackbar.showError(
+          context,
+          'Saved the document but no app could open it.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      closeLoading();
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(e, 'Could not print this transfer.'),
+      );
+    }
+  }
+
+  /// Odoo 20's zero-demand warning.
+  ///
+  /// `action_confirm` and `button_validate` return this wizard when any move
+  /// has `product_uom_qty <= 0` (`stock/models/stock_picking.py`), where
+  /// Odoo 19 simply returned `True`. It arrives with no `res_id` — only
+  /// `default_picking_ids` in its context — so the record has to be created
+  /// before either button can be called.
+  ///
+  /// Offers the same two outcomes as Odoo's own form: drop the empty lines,
+  /// or keep them and carry on.
+  Future<void> _showZeroDemandDialog(
+    int pickingId,
+    Map action,
+    String successMessage,
+  ) async {
+    final wizardId = await _resolveWizardId(
+      'stock.zero.demand.confirmation',
+      pickingId,
+      action,
+    );
+    if (wizardId == null || !mounted) {
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Could not open the zero-demand confirmation.',
+        );
+      }
+      return;
+    }
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => CommonDialog(
+        title: 'Zero demand',
+        message:
+            'Some lines have no demand quantity. Remove those lines, or keep '
+            'them and continue?',
+        primaryLabel: 'Remove lines',
+        secondaryLabel: 'Keep lines',
+        onPrimary: () => Navigator.pop(ctx, 'process_without_zero_moves'),
+        onSecondary: () => Navigator.pop(ctx, 'process'),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    setState(() => isSaving = true);
+    try {
+      final next = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.zero.demand.confirmation',
+        'method': choice,
+        'args': [
+          [wizardId],
+        ],
+        'kwargs': {'context': _wizardContext(pickingId, action)},
+      });
+
+      if (next is Map &&
+          (next['type'] == 'ir.actions.act_window' ||
+              next['type'] == 'ir.actions.client')) {
+        if (!mounted) return;
+        setState(() => isSaving = false);
+        await _handlePickingWizard(
+          pickingId: pickingId,
+          action: next,
+          fallbackSuccessMessage: successMessage,
+        );
+        return;
+      }
+
+      await _loadSavingData().timeout(const Duration(seconds: 15));
+      if (!mounted) return;
+      setState(() => isSaving = false);
+      CustomSnackbar.showSuccess(context, successMessage);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isSaving = false);
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(e, 'Could not complete the transfer.'),
+      );
+    }
+  }
+
   Future<void> _showImmediateTransferDialog(int pickingId, success) async {
     int? wizardId;
     try {
@@ -2207,7 +2453,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       OdooDateTimeFormat.formatForDisplay(input);
 
   /// Builds a Mobo-style status badge matching the CRM design.
-  Widget _buildStatusIndicator(String status) {
+  Widget _buildStatusIndicator(String status, {bool? isLocked}) {
     const Color statusGreen = Color(0xFF00A63E);
     const Color statusBlue = Color(0xFF3B82F6);
     const Color statusOrange = Color(0xFFF97316);
@@ -2247,20 +2493,39 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         label = status;
     }
 
+    final showLock =
+        isLocked != null &&
+        const ['done', 'cancel'].contains(status.toLowerCase());
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-          letterSpacing: 0.1,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+              letterSpacing: 0.1,
+            ),
+          ),
+          if (showLock) ...[
+            const SizedBox(width: 4),
+            Icon(
+              isLocked!
+                  ? HugeIcons.strokeRoundedLocked
+                  : HugeIcons.strokeRoundedSquareUnlock02,
+              size: 12,
+              color: color,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -2517,113 +2782,255 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                           ),
                         ),
                       ),
-                    if ([
-                      'draft',
-                      'confirmed',
-                      'assigned',
-                    ].contains(pickings[0].state))
-                      if (!isOfflineValidate && !isOfflineCancel)
-                        PopupMenuButton<String>(
-                          icon: Icon(
-                            HugeIcons.strokeRoundedMoreVertical,
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                            size: 20,
-                          ),
-                          color: isDark ? Colors.grey[900] : Colors.white,
-                          elevation: 8,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          itemBuilder: (context) {
-                            List<PopupMenuEntry<String>> items = [];
+                    if (!isOfflineValidate && !isOfflineCancel)
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          HugeIcons.strokeRoundedMoreVertical,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          size: 20,
+                        ),
+                        color: isDark ? Colors.grey[900] : Colors.white,
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        itemBuilder: (context) {
+                          List<PopupMenuEntry<String>> items = [];
 
-                            if (pickings[0].state == 'draft' &&
-                                isOnlineAvailability) {
-                              items.add(
-                                PopupMenuItem(
-                                  value: 'mark_as_todo',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        HugeIcons.strokeRoundedTask01,
+                          if (pickings[0].state == 'draft' &&
+                              isOnlineAvailability) {
+                            items.add(
+                              PopupMenuItem(
+                                value: 'mark_as_todo',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedTask01,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Mark as Todo",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black54,
-                                        size: 20,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        "Mark as Todo",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            }
+                              ),
+                            );
+                          }
 
-                            if (pickings[0].showCheckAvailability &&
-                                isOnlineAvailability) {
-                              items.add(
-                                PopupMenuItem(
-                                  value: 'check_availability',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        HugeIcons.strokeRoundedSearch01,
+                          if (pickings[0].showCheckAvailability &&
+                              isOnlineAvailability) {
+                            items.add(
+                              PopupMenuItem(
+                                value: 'check_availability',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedSearch01,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Check Availability",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black54,
-                                        size: 20,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        "Check Availability",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            }
+                              ),
+                            );
+                          }
 
-                            items.addAll([
-                              if (!['draft'].contains(pickings[0].state))
-                                PopupMenuItem(
-                                  value: 'validate',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        HugeIcons
-                                            .strokeRoundedCheckmarkCircle02,
+                          items.addAll([
+                            if (!const [
+                              'draft',
+                              'done',
+                              'cancel',
+                            ].contains(pickings[0].state))
+                              PopupMenuItem(
+                                value: 'validate',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedCheckmarkCircle02,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Validate",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black54,
-                                        size: 20,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        "Validate",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                            if (const [
+                              'assigned',
+                              'done',
+                            ].contains(pickings[0].state))
+                              PopupMenuItem(
+                                value: 'print',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedPrinter,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Print",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            PopupMenuItem(
+                              value: 'duplicate',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    HugeIcons.strokeRoundedCopy01,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black54,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    "Duplicate",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_isStockManager &&
+                                !pickings[0].isLocked &&
+                                (!_lockIsStateConditioned ||
+                                    pickings[0].state != 'cancel'))
+                              PopupMenuItem(
+                                value: 'toggle_lock',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedLocked,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Lock",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_isStockManager &&
+                                pickings[0].isLocked &&
+                                (!_lockIsStateConditioned ||
+                                    const [
+                                      'done',
+                                      'cancel',
+                                    ].contains(pickings[0].state)))
+                              PopupMenuItem(
+                                value: 'toggle_lock',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedSquareUnlock02,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Unlock",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (_canSignDeliveries &&
+                                pickings[0].pickingTypeCode == 'outgoing' &&
+                                _signatureImage == null)
+                              PopupMenuItem(
+                                value: 'sign',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      HugeIcons.strokeRoundedSignature,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      "Sign",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if (const [
+                              'assigned',
+                              'confirmed',
+                              'draft',
+                              'waiting',
+                            ].contains(pickings[0].state))
                               PopupMenuItem(
                                 value: 'cancel',
                                 child: Row(
@@ -2644,27 +3051,39 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   ],
                                 ),
                               ),
-                            ]);
+                          ]);
 
-                            return items;
-                          },
-                          onSelected: (value) async {
-                            switch (value) {
-                              case 'mark_as_todo':
-                                _markAsTodoPicking();
-                                break;
-                              case 'check_availability':
-                                _showAvailability();
-                                break;
-                              case 'validate':
-                                _validatePicking();
-                                break;
-                              case 'cancel':
-                                _cancelPicking();
-                                break;
-                            }
-                          },
-                        ),
+                          return items;
+                        },
+                        onSelected: (value) async {
+                          switch (value) {
+                            case 'mark_as_todo':
+                              _markAsTodoPicking();
+                              break;
+                            case 'check_availability':
+                              _showAvailability();
+                              break;
+                            case 'duplicate':
+                              _duplicatePicking();
+                              break;
+                            case 'toggle_lock':
+                              _toggleLock();
+                              break;
+                            case 'print':
+                              _printPicking();
+                              break;
+                            case 'sign':
+                              _captureSignature();
+                              break;
+                            case 'validate':
+                              _validatePicking();
+                              break;
+                            case 'cancel':
+                              _cancelPicking();
+                              break;
+                          }
+                        },
+                      ),
                   ],
                 ],
               ),
@@ -2752,7 +3171,10 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  _buildStatusIndicator(pickings[0].state),
+                                  _buildStatusIndicator(
+                                    pickings[0].state,
+                                    isLocked: pickings[0].isLocked,
+                                  ),
                                 ],
                               ),
                               if (pickings[0].partnerId != null) ...[
@@ -3089,6 +3511,15 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                       prefixIcon: HugeIcons.strokeRoundedFile01,
                                       controller: sourceDocController,
                                     ),
+                                    if (_backorderReference != null)
+                                      InfoRow(
+                                        label: "Back Order of",
+                                        value: _backorderReference,
+                                        isEditing: false,
+                                        readOnly: true,
+                                        prefixIcon: HugeIcons
+                                            .strokeRoundedPackageProcess,
+                                      ),
                                   ],
                                 ),
                               ],
@@ -3474,6 +3905,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                           ),
                           showSearchBox: true,
                           searchFieldProps: TextFieldProps(
+                            autofocus: true,
                             decoration: InputDecoration(
                               hintText: 'Search products...',
                               hintStyle: GoogleFonts.manrope(
@@ -3527,7 +3959,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      p.cleanName,
+                                      p.name,
                                       style: GoogleFonts.manrope(
                                         fontSize: 14,
                                         fontWeight: isSelected
@@ -3555,7 +3987,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                           },
                         ),
                         items: products,
-                        itemAsString: (p) => p.cleanName,
+                        itemAsString: (p) => p.name,
                         compareFn: (a, b) => a.id == b.id,
                         selectedItem: products.firstWhere(
                           (p) => p.id == selectedPicking,
@@ -3593,7 +4025,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  item.cleanName,
+                                  item.name,
                                   style: GoogleFonts.manrope(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -3976,6 +4408,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         ),
                         showSearchBox: true,
                         searchFieldProps: TextFieldProps(
+                          autofocus: true,
                           decoration: InputDecoration(
                             hintText: 'Search products...',
                             hintStyle: GoogleFonts.manrope(
@@ -4025,7 +4458,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    product.cleanName,
+                                    product.name,
                                     style: GoogleFonts.manrope(
                                       fontSize: 14,
                                       fontWeight: isSelected
@@ -4053,7 +4486,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                         },
                       ),
                       items: products,
-                      itemAsString: (p) => p.cleanName,
+                      itemAsString: (p) => p.name,
                       compareFn: (a, b) => a.id == b.id,
                       selectedItem:
                           selectedPicking != null && selectedPicking != 0
@@ -4092,7 +4525,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                item.cleanName,
+                                item.name,
                                 style: GoogleFonts.manrope(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
@@ -4428,6 +4861,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         pickings[0].state != 'done' &&
         pickings[0].state != 'cancel';
 
+    final lots = _moveLots;
+    final bool showLots =
+        lots != null &&
+        moveProducts.any((m) => lots[m.id]?.isNotEmpty ?? false);
+
     if (moveProducts.isEmpty) {
       final bool showWarn =
           !_isEditing &&
@@ -4546,10 +4984,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 border: TableBorder(
                   horizontalInside: BorderSide(color: borderColor, width: 1),
                 ),
-                columnWidths: const {
-                  0: FixedColumnWidth(200),
-                  1: FixedColumnWidth(120),
-                  2: FixedColumnWidth(130),
+                columnWidths: {
+                  0: const FixedColumnWidth(200),
+                  1: const FixedColumnWidth(120),
+                  2: const FixedColumnWidth(130),
+                  if (showLots) 3: const FixedColumnWidth(160),
                 },
                 children: [
                   TableRow(
@@ -4562,6 +5001,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                       _moveHeaderCell('Product', isDark),
                       _moveHeaderCell('Demand', isDark),
                       _moveHeaderCell('Quantity', isDark),
+                      if (showLots) _moveHeaderCell('Lot/Serial', isDark),
                     ],
                   ),
                   ...moveProducts.asMap().entries.map((entry) {
@@ -4627,6 +5067,11 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                             ),
                           ),
                         ),
+                        if (showLots)
+                          _moveCell(
+                            onTap: tap,
+                            child: _lotCell(lots[product.id], isDark),
+                          ),
                       ],
                     );
                   }),
@@ -4803,6 +5248,32 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
     color: isDark ? Colors.grey[300] : Colors.grey[700],
   );
 
+  /// Lot/serial cell for one move.
+  ///
+  /// A move can draw from several lots, and a serial-tracked product yields one
+  /// line per unit, so every lot is listed rather than just the first.
+  Widget _lotCell(List<String>? lots, bool isDark) {
+    if (lots == null || lots.isEmpty) {
+      return Text('—', style: _moveRowStyle(isDark));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final lot in lots)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(
+              lot,
+              style: _moveRowStyle(isDark),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+    );
+  }
+
   String _fmtMoveQty(num value) =>
       value == value.truncate() ? value.toInt().toString() : '$value';
 
@@ -4814,138 +5285,140 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: () {},
-            child: _isEditing
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Shipping Policy",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: isDark
-                              ? Colors.white70
-                              : const Color(0xff7F7F7F),
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: isDark
-                              ? const Color(0xFF2A2A2A)
-                              : const Color(0xFFF2F4F6),
-                          border: Border.all(
-                            color: _isShippingPolicyOpen
-                                ? AppStyle.primaryColor
-                                : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: DropdownButton2<String>(
-                          isExpanded: true,
-                          value:
-                              _selectedShippingPolicy ??
-                              (pickings.isNotEmpty
-                                  ? pickings[0].moveType
-                                  : null) ??
-                              'direct',
-                          style: GoogleFonts.manrope(
+          if (picking.pickingTypeCode != 'incoming') ...[
+            GestureDetector(
+              onTap: () {},
+              child: _isEditing
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Shipping Policy",
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xff7F7F7F),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: isDark
+                                ? const Color(0xFF2A2A2A)
+                                : const Color(0xFFF2F4F6),
+                            border: Border.all(
+                              color: _isShippingPolicyOpen
+                                  ? AppStyle.primaryColor
+                                  : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: DropdownButton2<String>(
+                            isExpanded: true,
+                            value:
+                                _selectedShippingPolicy ??
+                                (pickings.isNotEmpty
+                                    ? pickings[0].moveType
+                                    : null) ??
+                                'direct',
+                            style: GoogleFonts.manrope(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            buttonStyleData: const ButtonStyleData(
+                              height: 44,
+                              padding: EdgeInsets.only(left: 12, right: 4),
+                            ),
+                            menuItemStyleData: const MenuItemStyleData(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            iconStyleData: IconStyleData(
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color: isDark ? Colors.white54 : Colors.grey[600],
+                              ),
+                              iconSize: 24,
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: 'direct',
+                                child: Text(
+                                  "As soon as possible",
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 'one',
+                                child: Text(
+                                  "When all products are ready",
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _selectedShippingPolicy = value;
+                                });
+                              }
+                            },
+                            onMenuStateChange: (isOpen) {
+                              setState(() => _isShippingPolicyOpen = isOpen);
+                            },
+                            dropdownStyleData: DropdownStyleData(
+                              maxHeight: 200,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: isDark
+                                    ? const Color(0xFF2C2C2C)
+                                    : Colors.white,
+                              ),
+                              offset: const Offset(0, -3),
+                            ),
+                            underline: const SizedBox(),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Shipping Policy",
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          picking.moveType == 'one'
+                              ? 'When all products are ready'
+                              : 'As soon as possible',
+                          style: TextStyle(
                             color: isDark ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.normal,
+                            fontSize: 14,
                           ),
-                          buttonStyleData: const ButtonStyleData(
-                            height: 44,
-                            padding: EdgeInsets.only(left: 12, right: 4),
-                          ),
-                          menuItemStyleData: const MenuItemStyleData(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                          ),
-                          iconStyleData: IconStyleData(
-                            icon: Icon(
-                              Icons.arrow_drop_down,
-                              color: isDark ? Colors.white54 : Colors.grey[600],
-                            ),
-                            iconSize: 24,
-                          ),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'direct',
-                              child: Text(
-                                "As soon as possible",
-                                style: GoogleFonts.manrope(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: 'one',
-                              child: Text(
-                                "When all products are ready",
-                                style: GoogleFonts.manrope(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedShippingPolicy = value;
-                              });
-                            }
-                          },
-                          onMenuStateChange: (isOpen) {
-                            setState(() => _isShippingPolicyOpen = isOpen);
-                          },
-                          dropdownStyleData: DropdownStyleData(
-                            maxHeight: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: isDark
-                                  ? const Color(0xFF2C2C2C)
-                                  : Colors.white,
-                            ),
-                            offset: const Offset(0, -3),
-                          ),
-                          underline: const SizedBox(),
+                          textAlign: TextAlign.end,
                         ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Shipping Policy",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        picking.moveType == 'one'
-                            ? 'When all products are ready'
-                            : 'As soon as possible',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black,
-                          fontWeight: FontWeight.normal,
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.end,
-                      ),
-                    ],
-                  ),
-          ),
-          const SizedBox(height: 12),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 12),
+          ],
           InfoRow(
             label: "Responsible",
             value: picking.userId,
@@ -5069,9 +5542,137 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
                 ),
               ],
             ),
+          const SizedBox(height: 20),
+          _signatureSection(isDark),
         ],
       ),
     );
+  }
+
+  /// Proof of delivery, stored on the picking itself.
+  ///
+  /// Read-only: capturing is an action on the record, so it lives in the
+  /// overflow menu beside Validate and Cancel, which is where Odoo keeps its
+  /// own Sign widget. This only shows what was captured.
+  ///
+  /// Hidden unless the `stock.group_stock_sign_delivery` group is granted and
+  /// the transfer is outgoing, matching
+  /// `stock/views/stock_picking_views.xml`.
+  Widget _signatureSection(bool isDark) {
+    final picking = pickings[0];
+    if (!_canSignDeliveries || picking.pickingTypeCode != 'outgoing') {
+      return const SizedBox.shrink();
+    }
+
+    final hasSignature = _signatureImage != null;
+    Uint8List? bytes;
+    if (hasSignature) {
+      try {
+        bytes = base64Decode(_signatureImage!);
+      } catch (_) {}
+    }
+
+    final signer = (picking.partnerId?.length ?? 0) > 1
+        ? picking.partnerId![1].toString()
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Signature',
+          style: TextStyle(
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (bytes != null)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                  ),
+                ),
+                child: Image.memory(bytes, height: 120, fit: BoxFit.contain),
+              ),
+              if (signer != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Signed by $signer',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+              ],
+            ],
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[850] : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+              ),
+            ),
+            child: Text(
+              'Not signed yet',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _captureSignature() async {
+    if (pickings.isEmpty) return;
+    final picking = pickings[0];
+
+    if (!isOnlineAvailability) {
+      CustomSnackbar.showWarning(
+        context,
+        'You need to be online to capture a signature.',
+      );
+      return;
+    }
+
+    final result = await SignatureDialog.show(context);
+    if (result == null || !mounted) return;
+    final drawn = result['base64'] as String;
+
+    final closeLoading = _oneShotLoadingCloser();
+    LoadingDialog.show(context, message: 'Saving signature');
+    final service = OdooPickingFormService();
+    try {
+      await service.initializeOdooClient();
+      await service.saveSignature(picking.id, drawn);
+      if (!mounted) return;
+      closeLoading();
+      setState(() => _signatureImage = drawn);
+      CustomSnackbar.showSuccess(context, 'Signature saved.');
+    } catch (e) {
+      if (!mounted) return;
+      closeLoading();
+      CustomSnackbar.showError(
+        context,
+        _extractOdooError(e, 'Could not save the signature.'),
+      );
+    }
   }
 
   Widget _notesTab() {

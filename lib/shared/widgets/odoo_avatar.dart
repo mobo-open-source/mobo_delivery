@@ -50,8 +50,9 @@ class OdooAvatar extends StatelessWidget {
         imageBase64!.isNotEmpty &&
         imageBase64 != 'false') {
       try {
-        final cleanedBase64 = imageBase64!.replaceAll(RegExp(r'\s+'), '');
-        final decodedBytes = const Base64Decoder().convert(cleanedBase64);
+        final raw = imageBase64!.replaceAll(RegExp(r'\s+'), '');
+        final cleanedBase64 = raw.contains(',') ? raw.split(',').last : raw;
+        final decodedBytes = base64Decode(cleanedBase64);
         content = _buildImageFromBytes(
           decodedBytes,
           effectivePlaceholderColor!,

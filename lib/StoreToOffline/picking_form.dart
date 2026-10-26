@@ -2,7 +2,6 @@ import 'package:hive_ce/hive.dart';
 import 'package:odoo_rpc/odoo_rpc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../NavBars/Pickings/PickingFormPage/models/move_line.dart';
 import '../NavBars/Pickings/PickingFormPage/models/return_picking.dart';
 import '../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../core/company/session/company_session_manager.dart';
@@ -41,7 +40,6 @@ class PickingFormToOffline {
     await loadUsers();
     await loadProductMoves();
     await loadOperationTypes();
-    await loadStockMoveLines();
     await loadAndCacheReturnPickings();
   }
 
@@ -212,50 +210,6 @@ class PickingFormToOffline {
         await _hiveService.savePickings(
           List<Map<String, dynamic>>.from(pickingItems),
         );
-      }
-    } catch (e) {}
-  }
-
-  Future<void> loadStockMoveLines() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      userId = prefs.getInt('userId') ?? 0;
-
-      final moveLines = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.move.line',
-        'method': 'search_read',
-        'args': [[]],
-        'kwargs': {
-          'fields': [
-            'picking_id',
-            'product_id',
-            'location_id',
-            'lot_id',
-            'quantity_product_uom',
-          ],
-        },
-      });
-
-      if (moveLines != null) {
-        final List<Map<String, dynamic>> moveLinesList =
-            List<Map<String, dynamic>>.from(moveLines);
-
-        final box = await Hive.openBox<MoveLine>('move_lines');
-
-        for (var line in moveLinesList) {
-          final pickingValue = line['picking_id'];
-          final pickingId = (pickingValue is List && pickingValue.isNotEmpty)
-              ? pickingValue[0]
-              : 0;
-
-          final moveLine = MoveLine(
-            id: line['id'] ?? 0,
-            pickingId: pickingId,
-            data: line,
-          );
-
-          await box.put('${pickingId}_${line['id'] ?? 0}', moveLine);
-        }
       }
     } catch (e) {}
   }

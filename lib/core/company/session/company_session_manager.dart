@@ -343,7 +343,11 @@ class CompanySessionManager {
     // shared `ioClient`, so closing one would break every other caller.
     _client = null;
 
-    _client = OdooClient(normalizedUrl, sessionId: session, httpClient: ioClient);
+    _client = OdooClient(
+      normalizedUrl,
+      sessionId: session,
+      httpClient: ioClient,
+    );
     _cachedSession = sessionModel;
     _lastAuthTime = DateTime.now();
 
@@ -424,7 +428,11 @@ class CompanySessionManager {
         allowedCompanies: allowedCompanies,
       );
 
-      final OdooClient client = OdooClient(url, sessionId: odooSession, httpClient: ioClient);
+      final OdooClient client = OdooClient(
+        url,
+        sessionId: odooSession,
+        httpClient: ioClient,
+      );
       await StorageService().saveSession(updatedSession);
 
       _client = client;
@@ -801,7 +809,11 @@ class CompanySessionManager {
       allowedCompanies: allowedCompanies,
     );
 
-    final client = OdooClient(url, sessionId: odooSession, httpClient: ioClient);
+    final client = OdooClient(
+      url,
+      sessionId: odooSession,
+      httpClient: ioClient,
+    );
 
     _client = client;
     _lastAuthTime = DateTime.now();

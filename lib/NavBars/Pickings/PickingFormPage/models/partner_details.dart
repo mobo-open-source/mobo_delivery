@@ -1,4 +1,5 @@
 import 'package:hive_ce/hive.dart';
+import '../../../../shared/utils/odoo_version.dart';
 
 part 'partner_details.g.dart';
 
@@ -36,7 +37,7 @@ class PartnerDetails extends HiveObject {
     return PartnerDetails(
       id: json['id'] ?? 0,
       address: json['address'],
-      imageBase64: json['image_1920'],
+      imageBase64: odooBinaryContent(json['image_1920']),
     );
   }
 

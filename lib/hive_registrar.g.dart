@@ -4,7 +4,6 @@
 
 import 'package:hive_ce/hive.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/CreateNewPicking/models/Hive/pending_creates.dart';
-import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/move_line.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/operation_type.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/partner.dart';
 import 'package:odoo_delivery_app/NavBars/Pickings/PickingFormPage/models/partner_details.dart';
@@ -20,7 +19,6 @@ import 'package:odoo_delivery_app/NavBars/Pickings/PickingListPage/models/pickin
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
-    registerAdapter(MoveLineAdapter());
     registerAdapter(OperationTypeAdapter());
     registerAdapter(PartnerAdapter());
     registerAdapter(PartnerDetailsAdapter());
@@ -39,7 +37,6 @@ extension HiveRegistrar on HiveInterface {
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
-    registerAdapter(MoveLineAdapter());
     registerAdapter(OperationTypeAdapter());
     registerAdapter(PartnerAdapter());
     registerAdapter(PartnerDetailsAdapter());

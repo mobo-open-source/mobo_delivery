@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+
+import '../../../../core/security/self_signed.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/company/session/company_session_manager.dart';
@@ -101,6 +106,7 @@ class OdooPickingFormService {
         'products_availability',
         'origin',
         'state',
+        'is_locked',
         'note',
         'move_type',
         'user_id',
@@ -111,6 +117,7 @@ class OdooPickingFormService {
         'picking_type_code',
         'location_id',
         'location_dest_id',
+        'backorder_id',
       ];
       if (version < 19) {
         pickingFields.addAll(['group_id']);
@@ -342,7 +349,7 @@ class OdooPickingFormService {
                 .toList();
 
         final address = addressParts.isNotEmpty ? addressParts.join(', ') : '';
-        final image = partner['image_1920'];
+        final image = odooBinaryContent(partner['image_1920']);
 
         return {'address': address, 'image_1920': image};
       }
@@ -435,13 +442,38 @@ class OdooPickingFormService {
     }
   }
 
-  /// Loads detailed move lines (`stock.move.line`) for a picking
+  /// Loads the lot/serial numbers recorded against each move of a picking.
   ///
-  /// Fetches product, source location, lot/serial, done quantity.
-  /// Used in detailed operations view.
+  /// Keyed by `stock.move` id, because one move can carry several move lines —
+  /// 40 units drawn from three lots, or one line per serial on a
+  /// serial-tracked product — so a move maps to a list of lots, never to one.
   ///
-  /// Returns raw list of maps or empty on error.
-  Future<List<Map<String, dynamic>>> loadStockMoveLines(int pickingId) async {
+  /// Only lines that carry a lot are requested, so an empty map is the honest
+  /// answer for a picking that tracks nothing. Returns `null` when the fetch
+  /// failed, which callers must treat as "unknown" rather than "no lots":
+  /// showing a blank lot against a tracked product is worse than showing none.
+  ///
+  /// Field notes: `move_id` and `lot_id` are the only fields read, and both
+  /// keep their names across every Odoo version the app supports. Odoo rejects
+  /// the whole call if any requested field is missing, so the narrow selection
+  /// is deliberate.
+  /// Reads the `stock.move.line` records of [pickingId] — Odoo's "Detailed
+  /// Operations": which bin each product was actually picked from, its
+  /// lot/serial, and the quantity done.
+  ///
+  /// Always fetched from the server, never from Hive. The earlier version of
+  /// this screen read a cached `move_lines` box, which is what showed three
+  /// lines for a picking that had one; a detail view the user opens to check
+  /// what really happened has to show what the server really holds.
+  ///
+  /// Returns null when the read fails, so the caller can tell "this picking
+  /// has no move lines" apart from "we could not reach the server" — the
+  /// previous version returned an empty list for both.
+  ///
+  /// Every field named here exists on `stock.move.line` in Odoo 17-20
+  /// (verified against each version's `addons/stock/models/stock_move_line.py`),
+  /// so no version guard is needed.
+  Future<List<Map<String, dynamic>>?> loadStockMoveLines(int pickingId) async {
     try {
       final moveLines = await CompanySessionManager.callKwWithCompany({
         'model': 'stock.move.line',
@@ -463,7 +495,39 @@ class OdooPickingFormService {
 
       return List<Map<String, dynamic>>.from(moveLines ?? []);
     } catch (e) {
-      return [];
+      return null;
+    }
+  }
+
+  Future<Map<int, List<String>>?> loadMoveLineLots(int pickingId) async {
+    try {
+      final moveLines = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.move.line',
+        'method': 'search_read',
+        'args': [
+          [
+            ['picking_id', '=', pickingId],
+            ['lot_id', '!=', false],
+          ],
+        ],
+        'kwargs': {
+          'fields': ['move_id', 'lot_id'],
+        },
+      });
+
+      final lots = <int, List<String>>{};
+      for (final line in List<Map<String, dynamic>>.from(moveLines ?? [])) {
+        final move = line['move_id'];
+        final lot = line['lot_id'];
+        if (move is! List || move.isEmpty || move.first is! int) continue;
+        if (lot is! List || lot.length < 2) continue;
+        lots
+            .putIfAbsent(move.first as int, () => <String>[])
+            .add(lot[1].toString());
+      }
+      return lots;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -753,7 +817,9 @@ class OdooPickingFormService {
           'args': [
             [pickingId],
           ],
-          'kwargs': {},
+          'kwargs': {
+            'context': {'skip_zero_demand_check': true},
+          },
         }, companyId: freshCompanyId);
       } catch (_) {
         rethrow;
@@ -811,9 +877,234 @@ class OdooPickingFormService {
         ],
         'kwargs': {},
       });
-      return response == true;
+      return response != null && response != false;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Duplicates a picking, returning the new record's id.
+  ///
+  /// Plain ORM `copy()`, as Odoo's own Duplicate does — `stock.picking` adds
+  /// no override. Fields marked `copy=False` (name, state, date_done,
+  /// signature, is_locked) are left behind, so the copy arrives as a fresh
+  /// draft with its own sequence number and the moves carried over.
+  Future<int?> duplicatePicking(int pickingId) async {
+    final created = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'copy',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    });
+    if (created is int) return created;
+    if (created is List && created.isNotEmpty && created.first is int) {
+      return created.first as int;
+    }
+    if (created is double) return created.toInt();
+    return null;
+  }
+
+  /// Flips `is_locked` on the picking, Odoo's Lock / Unlock button.
+  ///
+  /// The method toggles rather than taking a value
+  /// (`stock/models/stock_picking.py: action_toggle_is_locked`), so the
+  /// caller must know the current state before offering the action.
+  Future<void> toggleLock(int pickingId) async {
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'action_toggle_is_locked',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    });
+  }
+
+  /// Whether this user may lock or unlock transfers.
+  ///
+  /// Odoo puts both buttons behind `stock.group_stock_manager`, so a plain
+  /// stock user never sees them and the app must not offer them either.
+  /// Deliberately not cached: an administrator can grant or revoke the group
+  /// while the app is running, and a stale `false` silently hides the action
+  /// with no way for the user to tell why. One `has_group` call rides along
+  /// in the same parallel batch as the rest of the picking load.
+  Future<bool> isStockManager() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final major = prefs.getInt('version') ?? 0;
+      final uid = prefs.getInt('userId') ?? 0;
+      final result = await CompanySessionManager.callKwWithCompany({
+        'model': 'res.users',
+        'method': 'has_group',
+        'args': major >= 18
+            ? [uid, 'stock.group_stock_manager']
+            : ['stock.group_stock_manager'],
+        'kwargs': {},
+      });
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Odoo's `do_print_picking`: flags the transfer as printed.
+  ///
+  /// Called before fetching the Picking Operations report so the `printed`
+  /// flag matches what Odoo sets when its own Print button is used. The
+  /// action it returns is ignored — the PDF is fetched over HTTP instead.
+  Future<void> markPickingPrinted(int pickingId) async {
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'do_print_picking',
+      'args': [
+        [pickingId],
+      ],
+      'kwargs': {},
+    });
+  }
+
+  /// Downloads one of Odoo's picking reports as PDF bytes.
+  ///
+  /// [reportName] is the QWeb template Odoo registers on `ir.actions.report`:
+  /// `stock.report_deliveryslip` (Delivery Slip) or `stock.report_picking`
+  /// (Picking Operations) — the same two Odoo offers under its own Print
+  /// menu (`addons/stock/report/stock_report_views.xml`).
+  ///
+  /// Rendering happens server side through `/report/pdf/...`, which is a
+  /// plain authenticated GET rather than JSON-RPC, so it carries the session
+  /// cookie by hand and goes through the shared client that tolerates
+  /// self-signed certificates.
+  ///
+  /// Returns `null` when the session is missing or the server answers with
+  /// anything that is not a PDF — an expired session returns the login page
+  /// with a 200, so the magic bytes are checked rather than the status.
+  Future<({Uint8List? bytes, String? error})> downloadPickingReport(
+    int pickingId,
+    String reportName,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final baseUrl = (prefs.getString('url') ?? '').trim().replaceAll(
+        RegExp(r'/+$'),
+        '',
+      );
+      final sessionId = prefs.getString('sessionId') ?? '';
+      if (baseUrl.isEmpty || sessionId.isEmpty) {
+        return (bytes: null, error: 'Not signed in.');
+      }
+
+      final uri = Uri.parse('$baseUrl/report/pdf/$reportName/$pickingId');
+      final response = await ioClient
+          .get(uri, headers: {'Cookie': 'session_id=$sessionId'})
+          .timeout(const Duration(seconds: 60));
+
+      final bytes = response.bodyBytes;
+      final isPdf =
+          bytes.length > 4 &&
+          bytes[0] == 0x25 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x44 &&
+          bytes[3] == 0x46;
+      if (isPdf) return (bytes: bytes, error: null);
+
+      return (bytes: null, error: _describeReportFailure(response));
+    } catch (e) {
+      return (bytes: null, error: e.toString());
+    }
+  }
+
+  /// Pulls something readable out of a failed report response.
+  String _describeReportFailure(http.Response response) {
+    final body = response.body;
+    final match = RegExp(
+      r'<title>(.*?)</title>|"message"\s*:\s*"(.*?)"',
+      dotAll: true,
+    ).firstMatch(body);
+    final detail = (match?.group(1) ?? match?.group(2) ?? '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final head = 'Server returned ${response.statusCode}';
+    return detail.isEmpty ? head : '$head: $detail';
+  }
+
+  /// Whether this user may sign deliveries at all.
+  ///
+  /// Odoo puts its Sign widget behind `stock.group_stock_sign_delivery`,
+  /// which the "Signature" checkbox in Inventory settings implies. With that
+  /// setting off nobody sees the button in Odoo, so the app must not offer
+  /// one either.
+  ///
+  /// `has_group` takes the user id from Odoo 18 on, matching how the rest of
+  /// the app calls it.
+  ///
+  /// Not cached, for the same reason as [isStockManager]: ticking Inventory's
+  /// Signature setting takes effect immediately in Odoo, and a cached `false`
+  /// would keep the action hidden until the app process was killed.
+  Future<bool> canSignDeliveries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final major = prefs.getInt('version') ?? 0;
+      final uid = prefs.getInt('userId') ?? 0;
+      final result = await CompanySessionManager.callKwWithCompany({
+        'model': 'res.users',
+        'method': 'has_group',
+        'args': major >= 18
+            ? [uid, 'stock.group_stock_sign_delivery']
+            : ['stock.group_stock_sign_delivery'],
+        'kwargs': {},
+      });
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Stores the recipient's signature on the picking itself.
+  ///
+  /// `stock.picking.signature` is what Odoo prints on the delivery slip and
+  /// reports on; an attachment named `signature.png` is invisible to both.
+  /// Writing it also makes Odoo run its own signing flow — `write()` calls
+  /// `_attach_sign()`, which renders the signed delivery note and posts it to
+  /// the chatter (`stock/models/stock_picking.py`).
+  ///
+  /// There is no signer-name field to go with it: the picking records who
+  /// signed through `partner_id`, which is what Odoo's chatter message uses.
+  Future<void> saveSignature(int pickingId, String base64Png) async {
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'write',
+      'args': [
+        [pickingId],
+        {'signature': base64Png},
+      ],
+      'kwargs': {},
+    });
+  }
+
+  /// Reads back the stored signature as base64, or `null` when unsigned.
+  ///
+  /// Kept out of [loadPickings] deliberately, so a server that does not define
+  /// the field fails only this extra rather than the entire picking load.
+  Future<String?> loadSignature(int pickingId) async {
+    try {
+      final rows = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking',
+        'method': 'read',
+        'args': [
+          [pickingId],
+          ['signature'],
+        ],
+        'kwargs': {},
+      });
+      if (rows is! List || rows.isEmpty) return null;
+
+      return odooBinaryContent(
+        (rows.first as Map<String, dynamic>)['signature'],
+      );
+    } catch (_) {
+      return null;
     }
   }
 }
