@@ -191,24 +191,31 @@ class _TotpPageState extends State<TotpPage> {
                     '$_activeServerUrl/web/login?db=${widget.database}',
                   ),
                 ),
-                initialOptions: InAppWebViewGroupOptions(
-                  crossPlatform: InAppWebViewOptions(
-                    javaScriptEnabled: true,
-                    cacheEnabled: false,
-                    clearCache: true,
-                    userAgent:
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-                  ),
-                  android: AndroidInAppWebViewOptions(
-                    useHybridComposition: true,
-                    allowContentAccess: true,
-                    allowFileAccess: true,
-                    mixedContentMode:
-                        AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-                    forceDark: AndroidForceDark.FORCE_DARK_AUTO,
-                    disableDefaultErrorPage: true,
-                  ),
+                /// `initialSettings` rather than the pre-6.x
+                /// `initialOptions`/`InAppWebViewGroupOptions` pair, which is
+                /// deprecated in flutter_inappwebview 6 and split its values
+                /// across `crossPlatform` and a per-platform block. This
+                /// screen only ever filled in the Android block, so on iOS
+                /// the WebView ran without them — it never reached
+                /// `/web/login/totp`, the callback that clears `_loading`
+                /// never fired, and the form stayed dimmed behind its
+                /// `IgnorePointer` with no code enterable. mobo_sales drives
+                /// the same flow through `initialSettings` and does not have
+                /// the problem.
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  cacheEnabled: false,
+                  clearCache: true,
+                  userAgent:
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                  useHybridComposition: true,
+                  allowContentAccess: true,
+                  allowFileAccess: true,
+                  mixedContentMode:
+                      MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                  forceDark: ForceDark.AUTO,
+                  disableDefaultErrorPage: true,
                 ),
                 onWebViewCreated: (controller) {
                   _webController = controller;
