@@ -77,6 +77,35 @@ class _TotpPageState extends State<TotpPage> {
   /// of retrying forever.
   bool _schemeFallbackAttempted = false;
 
+  /// Safety net for the initial page load.
+  ///
+  /// Nothing on this screen clears [_loading] unless the webview reaches
+  /// `/web/login/totp` or reports an outright error. A server that simply
+  /// never finishes — a LAN instance the device cannot route to, or a login
+  /// page whose markup [_injectCredentials] does not recognise — therefore
+  /// leaves the overlay up for good, with the form dimmed and no way on.
+  /// mobo_billing carries the same timer for the same reason.
+  Timer? _loadTimeoutTimer;
+
+  /// Arms the load timeout, replacing any attempt already being timed.
+  void _startLoadTimeout() {
+    _loadTimeoutTimer?.cancel();
+    _loadTimeoutTimer = Timer(const Duration(seconds: 25), () {
+      if (!mounted || !_loading) return;
+      setState(() {
+        _loading = false;
+        _error =
+            'This is taking longer than expected. Please check your '
+            'connection and try again.';
+      });
+    });
+  }
+
+  void _cancelLoadTimeout() {
+    _loadTimeoutTimer?.cancel();
+    _loadTimeoutTimer = null;
+  }
+
   /// [widget.serverUrl] with a scheme, so it can always be parsed as a URI.
   ///
   /// A saved account's URL is not guaranteed to carry one — a caller that
@@ -95,6 +124,7 @@ class _TotpPageState extends State<TotpPage> {
   void initState() {
     super.initState();
     _activeServerUrl = _withDefaultScheme(widget.serverUrl);
+    _startLoadTimeout();
     _clearStaleCookies();
   }
 
@@ -142,6 +172,7 @@ class _TotpPageState extends State<TotpPage> {
     _schemeFallbackAttempted = true;
     _activeServerUrl = flipped;
     _credentialsInjected = false;
+    _startLoadTimeout();
 
     try {
       await _webController?.loadUrl(
@@ -198,8 +229,8 @@ class _TotpPageState extends State<TotpPage> {
                 /// screen only ever filled in the Android block, so on iOS
                 /// the WebView ran without them — it never reached
                 /// `/web/login/totp`, the callback that clears `_loading`
-                /// never fired, and the form stayed dimmed behind its
-                /// `IgnorePointer` with no code enterable. mobo_sales drives
+                /// never fired, and the form stayed dimmed behind the
+                /// loading overlay with no code enterable. mobo_sales drives
                 /// the same flow through `initialSettings` and does not have
                 /// the problem.
                 initialSettings: InAppWebViewSettings(
@@ -240,6 +271,7 @@ class _TotpPageState extends State<TotpPage> {
                     return;
                   }
 
+                  _cancelLoadTimeout();
                   final description = error.description;
                   setState(() {
                     _loading = false;
@@ -266,6 +298,7 @@ class _TotpPageState extends State<TotpPage> {
 
                   if (urlStr.contains('/web/login/totp') ||
                       urlStr.contains('totp_token')) {
+                    _cancelLoadTimeout();
                     if (mounted) {
                       setState(() {
                         _loading = false;
@@ -283,40 +316,13 @@ class _TotpPageState extends State<TotpPage> {
                           urlStr.contains('/website')) &&
                       !urlStr.contains('/login') &&
                       !urlStr.contains('/totp')) {
+                    _cancelLoadTimeout();
                     await _extractAndSaveSession();
                   }
                 },
               ),
             ),
           ),
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              bottom: false,
-              child: IgnorePointer(
-                ignoring: _loading,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => Navigator.of(context).pop(),
-                    borderRadius: BorderRadius.circular(32),
-                    child: Container(
-                      height: 64,
-                      width: 64,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        HugeIcons.strokeRoundedArrowLeft01,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -340,6 +346,33 @@ class _TotpPageState extends State<TotpPage> {
                 ),
               ),
             ),
+
+          // Last in the stack so it stays tappable over the loading overlay:
+          // a login page that never finishes loading must not trap the user.
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.of(context).pop(),
+                  borderRadius: BorderRadius.circular(32),
+                  child: Container(
+                    height: 64,
+                    width: 64,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      HugeIcons.strokeRoundedArrowLeft01,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1038,6 +1071,7 @@ class _TotpPageState extends State<TotpPage> {
 
   @override
   void dispose() {
+    _loadTimeoutTimer?.cancel();
     _webController?.dispose();
     _totpController.dispose();
     super.dispose();
