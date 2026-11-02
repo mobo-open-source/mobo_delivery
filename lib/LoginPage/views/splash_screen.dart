@@ -7,7 +7,6 @@ import '../../Update/update_available_page.dart';
 import '../../Update/version_check_service.dart';
 import '../../core/session/database_expiry.dart';
 import '../controllers/auth_controller.dart';
-import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
 /// The first screen shown when the app launches.
@@ -37,10 +36,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    _authController = AuthController(
-      authService: AuthService(),
-      storageService: StorageService(),
-    );
+    _authController = AuthController(storageService: StorageService());
 
     _startAuthCheck();
 

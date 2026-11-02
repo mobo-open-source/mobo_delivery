@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
-import '../../shared/widgets/snackbar.dart';
 import '../models/auth_model.dart';
-import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../views/app_lock_screen.dart';
 import '../views/get_started_screen.dart';
 import '../views/login_screen.dart';
 
@@ -19,14 +18,10 @@ import '../views/login_screen.dart';
 /// This class acts as a bridge between storage, auth services, and UI navigation
 /// and is typically used right after app launch (e.g. in splash screen or main).
 class AuthController {
-  final AuthService _authService;
   final StorageService _storageService;
 
-  AuthController({
-    required AuthService authService,
-    required StorageService storageService,
-  }) : _authService = authService,
-       _storageService = storageService;
+  AuthController({required StorageService storageService})
+    : _storageService = storageService;
 
   /// Checks whether the user is currently logged in and if biometric auth is enabled.
   ///
@@ -56,27 +51,33 @@ class AuthController {
   ) async {
     if (authModel.isLoggedIn) {
       if (authModel.useLocalAuth) {
-        final authResult = await _authService.authenticateWithBiometrics();
-        if (authResult == AuthenticationResult.success ||
-            authResult == AuthenticationResult.unavailable) {
-          await _navigateToDashboard(context);
-        } else {
-          if (context.mounted) {
-            CustomSnackbar.showError(
-              context,
-              authResult == AuthenticationResult.error
-                  ? 'Unexpected authentication error. Please sign in again.'
-                  : 'Authentication failed or was cancelled. Please sign in again.',
-            );
-          }
-          await _navigateToLogin(context);
-        }
+        await _navigateToAppLock(context);
       } else {
         await _navigateToDashboard(context);
       }
     } else {
       await _navigateToLogin(context);
     }
+  }
+
+  /// Shows the biometric lock over the stored session.
+  ///
+  /// The screen owns the retry: a failed prompt must not fall through to the
+  /// sign-in screen, because the session behind the lock is still valid.
+  Future<void> _navigateToAppLock(BuildContext context) async {
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => AppLockScreen(
+          onAuthenticationSuccess: () => _navigateToDashboard(context),
+        ),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   /// Navigates to the main Dashboard screen with a fade transition.
