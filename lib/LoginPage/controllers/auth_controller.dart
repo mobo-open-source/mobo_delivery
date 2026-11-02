@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../Dashboard/screens/dashboard/pages/dashboard.dart';
+import '../../core/company/session/company_session_manager.dart';
+import '../../shared/widgets/snackbar.dart';
 import '../models/auth_model.dart';
+import '../services/app_install_check.dart';
 import '../services/storage_service.dart';
 import '../views/app_lock_screen.dart';
 import '../views/get_started_screen.dart';
@@ -50,6 +53,25 @@ class AuthController {
     AuthModel authModel,
   ) async {
     if (authModel.isLoggedIn) {
+      // A saved session is not a licence to walk in: Inventory may have been
+      // uninstalled, or this account's access to it withdrawn, since the last
+      // sign-in. Only a definite "no" ends the session — an unreachable server
+      // says nothing and changes nothing.
+      final problem = await AppInstallCheck().storedSessionProblem();
+      if (problem != null) {
+        await CompanySessionManager.clearSessionData();
+        if (!context.mounted) return;
+        CustomSnackbar.showError(
+          context,
+          problem == AccessCheckStatus.noInventoryAccess
+              ? 'Your access to Inventory has been removed. Please sign in again.'
+              : 'The Inventory app is no longer installed on this database.',
+        );
+        await _navigateToLogin(context);
+        return;
+      }
+      if (!context.mounted) return;
+
       if (authModel.useLocalAuth) {
         await _navigateToAppLock(context);
       } else {

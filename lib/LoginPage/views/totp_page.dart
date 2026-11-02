@@ -9,7 +9,6 @@ import '../../../shared/widgets/loaders/loading_widget.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../NavBars/Pickings/PickingFormPage/services/hive_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../core/session/database_expiry.dart';
 import '../../shared/utils/globals.dart';
@@ -65,7 +64,6 @@ class _TotpPageState extends State<TotpPage> {
   bool _credentialsInjected = false;
   String? sessionId;
   final CommonStorageService _commonStorageService = CommonStorageService();
-  final HiveService _hiveService = HiveService();
 
   /// The scheme in use for this attempt, defaulting to `https`. Mutable
   /// because an account without an explicit scheme on record may need the
@@ -571,13 +569,7 @@ class _TotpPageState extends State<TotpPage> {
       if (mounted) {
         final currentSession = await CompanySessionManager.getCurrentSession();
         if (currentSession != null && currentSession.isPortal) {
-          final prefs = await SharedPreferences.getInstance();
-          List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];
-          bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
-          await prefs.clear();
-          await prefs.setStringList('urlHistory', urlHistory);
-          await prefs.setBool('hasSeenGetStarted', isGetStarted);
-          await _hiveService.clearAllData();
+          await CompanySessionManager.clearSessionData();
           Navigator.pushNamedAndRemoveUntil(
             context,
             '/login',
@@ -591,16 +583,7 @@ class _TotpPageState extends State<TotpPage> {
         final isInstalled = await checker.checkRequiredModules();
 
         if (!isInstalled) {
-          final prefs = await SharedPreferences.getInstance();
-          List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];
-          bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
-
-          await prefs.clear();
-
-          await prefs.setStringList('urlHistory', urlHistory);
-          await prefs.setBool('hasSeenGetStarted', isGetStarted);
-
-          await _hiveService.clearAllData();
+          await CompanySessionManager.clearSessionData();
 
           Navigator.pushNamedAndRemoveUntil(
             context,

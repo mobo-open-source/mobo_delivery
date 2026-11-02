@@ -445,6 +445,23 @@ class _CredentialsPageState extends State<CredentialsPage> {
           return;
         }
 
+        // Asked before anything is written: a rejected sign-in must not leave
+        // the session, the URL history or the saved password behind. The
+        // credentials this needs are already in preferences, put there by
+        // CompanySessionManager.loginAndSaveSession.
+        final access = await AppInstallCheck().evaluateAccess();
+        if (access != AccessCheckStatus.ok) {
+          await CompanySessionManager.clearSessionData();
+          if (mounted) {
+            if (access == AccessCheckStatus.noInventoryAccess) {
+              showInventoryAccessDialog(context);
+            } else {
+              showModuleMissingDialog(context);
+            }
+          }
+          return;
+        }
+
         await _storageService.saveSession(session);
         await _storageService.saveLoginState(
           isLoggedIn: true,
@@ -500,21 +517,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
           'image': profileImage,
         });
 
-        final checker = AppInstallCheck();
-        final access = await checker.evaluateAccess();
-
-        if (access != AccessCheckStatus.ok) {
-          await _storageService.clearLoginState();
-          await CompanySessionManager.clearSessionCache();
-          if (mounted) {
-            if (access == AccessCheckStatus.noInventoryAccess) {
-              showInventoryAccessDialog(context);
-            } else {
-              showModuleMissingDialog(context);
-            }
-          }
-          return;
-        } else {
+        if (mounted) {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(

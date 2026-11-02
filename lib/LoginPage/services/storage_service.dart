@@ -87,12 +87,4 @@ class StorageService {
       'password': prefs.getString('pass') ?? '',
     };
   }
-
-  /// Clears login state and session data from local storage.
-  Future<void> clearLoginState() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('isLoggedIn');
-    await prefs.remove('sessionId');
-    await prefs.remove('userId');
-  }
 }

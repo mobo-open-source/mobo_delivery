@@ -958,24 +958,7 @@ class CompanySessionManager {
 
     await Future.delayed(const Duration(milliseconds: 500));
 
-    await clearSessionCache();
-    try {
-      final hiveService = HiveService();
-      await hiveService.initialize();
-      await hiveService.clearAllData();
-    } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-
-    List<String> urlHistory = prefs.getStringList('urlHistory') ?? [];
-    bool isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
-    bool biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
-
-    await prefs.clear();
-
-    await prefs.setStringList('urlHistory', urlHistory);
-    await prefs.setBool('hasSeenGetStarted', isGetStarted);
-    await prefs.setBool('biometricEnabled', biometricEnabled);
-    await prefs.setBool('isLoggedIn', false);
+    await clearSessionData();
 
     await Future.delayed(const Duration(milliseconds: 100));
 
@@ -983,5 +966,34 @@ class CompanySessionManager {
       Navigator.of(context).pop();
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     }
+  }
+
+  /// Drops everything the signed-in session left on the device: the in-memory
+  /// caches, every Hive box, and all preferences bar the three that outlive a
+  /// session — the server list, whether onboarding was seen, and the biometric
+  /// choice.
+  ///
+  /// Shared by [logout] and by the sign-in paths that have to undo a session
+  /// they already saved, so a rejected sign-in leaves as little behind as a
+  /// deliberate one.
+  static Future<void> clearSessionData() async {
+    await clearSessionCache();
+    try {
+      final hiveService = HiveService();
+      await hiveService.initialize();
+      await hiveService.clearAllData();
+    } catch (_) {}
+
+    final prefs = await SharedPreferences.getInstance();
+    final urlHistory = prefs.getStringList('urlHistory') ?? [];
+    final isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
+    final biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+
+    await prefs.clear();
+
+    await prefs.setStringList('urlHistory', urlHistory);
+    await prefs.setBool('hasSeenGetStarted', isGetStarted);
+    await prefs.setBool('biometricEnabled', biometricEnabled);
+    await prefs.setBool('isLoggedIn', false);
   }
 }
