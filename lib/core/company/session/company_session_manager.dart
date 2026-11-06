@@ -988,12 +988,14 @@ class CompanySessionManager {
     final urlHistory = prefs.getStringList('urlHistory') ?? [];
     final isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
     final biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+    final useLocalAuth = prefs.getBool('useLocalAuth') ?? false;
 
     await prefs.clear();
 
     await prefs.setStringList('urlHistory', urlHistory);
     await prefs.setBool('hasSeenGetStarted', isGetStarted);
     await prefs.setBool('biometricEnabled', biometricEnabled);
+    await prefs.setBool('useLocalAuth', useLocalAuth);
     await prefs.setBool('isLoggedIn', false);
   }
 }

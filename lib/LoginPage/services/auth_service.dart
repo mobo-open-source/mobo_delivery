@@ -52,7 +52,7 @@ class AuthService {
             localizedReason: 'Authenticate to access the app',
             options: const AuthenticationOptions(
               stickyAuth: true,
-              biometricOnly: true,
+              biometricOnly: false,
             ),
           );
           return authenticate

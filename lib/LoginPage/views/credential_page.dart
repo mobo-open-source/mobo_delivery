@@ -122,7 +122,7 @@ class _CredentialsPageState extends State<CredentialsPage> {
       bool authenticated = await _localAuth.authenticate(
         localizedReason: 'Authenticate with $biometricType to log in',
         options: const AuthenticationOptions(
-          biometricOnly: true,
+          biometricOnly: false,
           stickyAuth: true,
         ),
       );

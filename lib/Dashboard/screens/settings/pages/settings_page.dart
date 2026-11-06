@@ -129,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final authenticated = await _auth.authenticate(
         localizedReason: 'Enable biometric authentication',
         options: const AuthenticationOptions(
-          biometricOnly: true,
+          biometricOnly: false,
           stickyAuth: true,
         ),
       );
