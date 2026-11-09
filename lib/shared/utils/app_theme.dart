@@ -61,6 +61,7 @@ class AppTheme {
       backgroundColor: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
+      centerTitle: false,
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,
       elevation: 0,
@@ -113,6 +114,7 @@ class AppTheme {
       backgroundColor: Color(0xFF2C2C2C),
     ),
     appBarTheme: const AppBarTheme(
+      centerTitle: false,
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,
       elevation: 0,
