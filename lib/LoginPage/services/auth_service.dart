@@ -31,22 +31,25 @@ class AuthService {
   /// Performs biometric authentication using device security.
   ///
   /// Flow:
-  /// 1. Check if biometrics hardware is available
-  /// 2. Check if biometric credentials are enrolled
-  /// 3. Prompt user authentication
+  /// 1. Check the device can authenticate at all (biometrics or passcode)
+  /// 2. Prompt user authentication
   ///
   /// Returns:
   /// - success → Authenticated
   /// - failure → User cancelled / failed authentication
   /// - unavailable → Biometrics not available on device
   /// - error → Unexpected runtime error
+  ///
+  /// Gated on [LocalAuthentication.isDeviceSupported], the same check the
+  /// Settings toggle uses to switch the lock on. Gating on enrolled
+  /// biometrics instead meant a device with only a passcode (or a simulator
+  /// with no Face ID enrolled) could turn the lock on but was then reported
+  /// "unavailable" at launch, which the lock screen treats as a pass.
   Future<AuthenticationResult> authenticateWithBiometrics() async {
     try {
-      bool canCheckBiometrics = await _auth.canCheckBiometrics;
-      List<BiometricType> availableBiometrics = await _auth
-          .getAvailableBiometrics();
+      final bool deviceSupported = await _auth.isDeviceSupported();
 
-      if (canCheckBiometrics && availableBiometrics.isNotEmpty) {
+      if (deviceSupported) {
         try {
           final bool authenticate = await _auth.authenticate(
             localizedReason: 'Authenticate to access the app',
