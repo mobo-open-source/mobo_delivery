@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:odoo_delivery_app/LoginPage/views/reset_password.dart';
 import 'package:odoo_delivery_app/LoginPage/views/totp_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +14,6 @@ import '../../Dashboard/services/storage_service.dart';
 import '../../core/company/session/company_session_manager.dart';
 import '../../core/session/database_expiry.dart';
 import '../../shared/utils/globals.dart';
-import '../../shared/widgets/snackbar.dart';
 import '../widgets/login_button.dart';
 import '../services/app_install_check.dart';
 import '../services/auth_service.dart';
@@ -63,13 +60,10 @@ class _CredentialsPageState extends State<CredentialsPage> {
   final _storageService = StorageService();
   final _dashboardStorageService = DashboardStorageService();
   String? _errorMessage;
-  bool _biometricEnabled = false;
-  final LocalAuthentication _localAuth = LocalAuthentication();
 
   @override
   void initState() {
     super.initState();
-    _loadBiometricPreference();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _usernameFocusNode.requestFocus();
     });
@@ -82,67 +76,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
     _usernameFocusNode.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
-  }
-
-  /// Loads whether biometric login was previously enabled by the user
-  Future<void> _loadBiometricPreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
-    });
-  }
-
-  /// Attempts biometric (Face ID / Touch ID / fingerprint) authentication.
-  ///
-  /// Returns `true` if successful, `false` otherwise (shows snackbar on failure).
-  Future<bool> _authenticateWithBiometrics() async {
-    try {
-      bool canAuthenticate =
-          await _localAuth.canCheckBiometrics ||
-          await _localAuth.isDeviceSupported();
-      if (!canAuthenticate) {
-        if (mounted) {
-          CustomSnackbar.showError(
-            context,
-            'Biometric authentication is not available on this device',
-          );
-        }
-        return false;
-      }
-
-      List<BiometricType> availableBiometrics = await _localAuth
-          .getAvailableBiometrics();
-      String biometricType = 'biometric';
-      if (Platform.isIOS && availableBiometrics.contains(BiometricType.face)) {
-        biometricType = 'Face ID';
-      } else if (availableBiometrics.contains(BiometricType.fingerprint)) {
-        biometricType = 'Touch ID';
-      }
-
-      bool authenticated = await _localAuth.authenticate(
-        localizedReason: 'Authenticate with $biometricType to log in',
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          stickyAuth: true,
-        ),
-      );
-
-      if (!authenticated && mounted) {
-        CustomSnackbar.showError(
-          context,
-          'Failed to authenticate with $biometricType',
-        );
-      }
-      return authenticated;
-    } catch (e) {
-      if (mounted) {
-        CustomSnackbar.showError(
-          context,
-          'Error during biometric authentication, please try again later',
-        );
-      }
-      return false;
-    }
   }
 
   /// Saves the server + credentials to history (most recent first).
@@ -397,10 +330,9 @@ class _CredentialsPageState extends State<CredentialsPage> {
 
   /// Main login flow:
   /// 1. Validate form
-  /// 2. Biometric check (if enabled)
-  /// 3. Call Odoo login via CompanySessionManager
-  /// 4. Save session + credentials
-  /// 5. Check required modules
+  /// 2. Call Odoo login via CompanySessionManager
+  /// 3. Save session + credentials
+  /// 4. Check required modules
   /// 6. Navigate to Dashboard or show error / 2FA screen
   Future<void> _login() async {
     String baseUrl = widget.url.trim();
@@ -413,13 +345,6 @@ class _CredentialsPageState extends State<CredentialsPage> {
     if (widget.database == null) {
       setState(() => _errorMessage = 'Please select a database.');
       return;
-    }
-
-    if (_biometricEnabled) {
-      bool authenticated = await _authenticateWithBiometrics();
-      if (!authenticated) {
-        return;
-      }
     }
 
     setState(() {

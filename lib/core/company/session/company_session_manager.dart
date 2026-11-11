@@ -969,9 +969,12 @@ class CompanySessionManager {
   }
 
   /// Drops everything the signed-in session left on the device: the in-memory
-  /// caches, every Hive box, and all preferences bar the three that outlive a
-  /// session — the server list, whether onboarding was seen, and the biometric
-  /// choice.
+  /// caches, every Hive box, and all preferences bar the two that outlive a
+  /// session — the server list and whether onboarding was seen.
+  ///
+  /// App Lock is deliberately not among them. It is a property of the account
+  /// that turned it on, so carrying it past a sign-out hands the next person to
+  /// sign in a lock they never chose, over someone else's decision.
   ///
   /// Shared by [logout] and by the sign-in paths that have to undo a session
   /// they already saved, so a rejected sign-in leaves as little behind as a
@@ -987,15 +990,11 @@ class CompanySessionManager {
     final prefs = await SharedPreferences.getInstance();
     final urlHistory = prefs.getStringList('urlHistory') ?? [];
     final isGetStarted = prefs.getBool('hasSeenGetStarted') ?? false;
-    final biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
-    final useLocalAuth = prefs.getBool('useLocalAuth') ?? false;
 
     await prefs.clear();
 
     await prefs.setStringList('urlHistory', urlHistory);
     await prefs.setBool('hasSeenGetStarted', isGetStarted);
-    await prefs.setBool('biometricEnabled', biometricEnabled);
-    await prefs.setBool('useLocalAuth', useLocalAuth);
     await prefs.setBool('isLoggedIn', false);
   }
 }

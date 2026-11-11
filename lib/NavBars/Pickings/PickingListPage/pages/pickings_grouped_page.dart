@@ -75,6 +75,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   String? _selectedGroupBy;
   Map<String, List<Map<String, dynamic>>> _groupedPickings = {};
   Map<String, bool> _groupExpanded = {};
+  String? _expandedForGroupBy;
   bool hasFilters = false;
   bool hasGroupBy = false;
   Timer? _searchDebounce;
@@ -227,21 +228,36 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
   void _buildGroupedPickings(List<Map<String, dynamic>> allPickings) {
     _groupedPickings.clear();
 
+    // Expansion is keyed by group name, so it is only meaningful while the
+    // group-by field stays put: a different field yields a different set of
+    // names, and anything kept would describe groups that no longer exist.
+    if (_selectedGroupBy != _expandedForGroupBy) {
+      _groupExpanded.clear();
+      _expandedForGroupBy = _selectedGroupBy;
+    }
+
     if (_selectedGroupBy == null || _selectedGroupBy!.isEmpty) {
       return;
     }
 
     for (final picking in allPickings) {
-      final groupKey = picking[_selectedGroupBy] ?? "Unknown";
-
-      final groupName = groupKey.toString().isEmpty
-          ? "Unknown"
-          : groupKey.toString();
+      // An empty Odoo field arrives as `false`, not null, so a `??` fallback
+      // would head a group with the literal "false". cleanOdooValue also
+      // unwraps the `[id, name]` pair a many2one arrives as. The per-field
+      // wording matches _getGroupKey on the return management and attach
+      // documents lists, so the same empty field reads the same everywhere.
+      final groupName = cleanOdooValue(
+        picking[_selectedGroupBy],
+        fallback: _selectedGroupBy == 'origin' ? 'No Source' : 'Unknown',
+      );
 
       if (!_groupedPickings.containsKey(groupName)) {
         _groupedPickings[groupName] = [];
-        _groupExpanded[groupName] = true;
       }
+      // Only a group not already on screen takes the expanded default. Every
+      // fetch rebuilds this map from empty, so assigning unconditionally threw
+      // away a Collapse All on the next refresh or search keystroke.
+      _groupExpanded.putIfAbsent(groupName, () => true);
 
       _groupedPickings[groupName]!.add(picking);
     }
@@ -791,8 +807,54 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
     );
   }
 
-  Widget _buildFilterIndicator(bool isDark, int count) {
+  /// The label the group-by sheet shows for [_selectedGroupBy], e.g. the
+  /// "Operation Type" behind the stored `picking_type`.
+  String? get _activeGroupByLabel {
+    if (_selectedGroupBy == null) return null;
+    for (final entry in groupTechnicalNames.entries) {
+      if (entry.value == _selectedGroupBy) return entry.key;
+    }
+    return _selectedGroupBy;
+  }
+
+  Widget _buildGroupByPill(bool isDark, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white70 : Colors.black,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedLayer,
+            size: 14,
+            color: isDark ? Colors.black : Colors.white,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.black : Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterIndicator(bool isDark, int count, bool hasGroupBy) {
     if (count == 0) {
+      // The group-by pill stands in for this line when grouping is the only
+      // thing active, so "No filters applied" never contradicts a visibly
+      // grouped list.
+      if (hasGroupBy) return const SizedBox.shrink();
       return Text(
         'No filters applied',
         style: TextStyle(
@@ -945,6 +1007,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
         (selectedScheduleDate != null ? 1 : 0) +
         (selectedDeadlineDate != null ? 1 : 0) +
         (selectedStateValue != null ? 1 : 0);
+    final groupByLabel = _activeGroupByLabel;
 
     final filteredLocations = _service.allPickingsByLocation.entries
         .map((entry) {
@@ -994,10 +1057,24 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        _buildFilterIndicator(isDark, activeFilterCount),
-                      ],
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildFilterIndicator(
+                            isDark,
+                            activeFilterCount,
+                            groupByLabel != null,
+                          ),
+                          if (groupByLabel != null) ...[
+                            if (activeFilterCount > 0)
+                              const SizedBox(width: 8),
+                            Flexible(
+                              child: _buildGroupByPill(isDark, groupByLabel),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                     if (_selectedGroupBy != null && _groupedPickings.isNotEmpty)
                       _buildGroupToggle(isDark)

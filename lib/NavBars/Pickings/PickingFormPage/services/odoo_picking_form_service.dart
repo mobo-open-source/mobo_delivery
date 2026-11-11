@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../../../../core/security/self_signed.dart';
+import '../../../../shared/utils/globals.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/company/session/company_session_manager.dart';
@@ -334,10 +335,12 @@ class OdooPickingFormService {
                   partner['street2'],
                   partner['city'],
                   partner['zip'],
-                  partner['state_id'] != null ? partner['state_id'][1] : null,
-                  partner['country_id'] != null
-                      ? partner['country_id'][1]
-                      : null,
+                  // Odoo sends `false`, not null, for a contact with no state
+                  // or country, and `false != null` held: indexing it threw,
+                  // the catch below swallowed it, and the whole block — the
+                  // address and the avatar with it — went missing.
+                  cleanOdooValue(partner['state_id'], fallback: ''),
+                  cleanOdooValue(partner['country_id'], fallback: ''),
                 ]
                 .where(
                   (part) =>

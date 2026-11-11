@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../shared/utils/globals.dart';
 import '../../../shared/utils/odoo_error_message.dart';
 import '../services/odoo_return_service.dart';
 import 'return_management_event.dart';
@@ -187,23 +188,22 @@ class ReturnManagementBloc
     return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
-  /// Helper to generate group key based on selected field
+  /// Helper to generate group key based on selected field.
+  ///
+  /// Everything goes through [cleanOdooValue]: an empty Odoo field arrives as
+  /// `false` rather than null, so a `??` fallback would let the literal
+  /// "false" through as a group heading. It also unwraps the `[id, name]`
+  /// pair a many2one arrives as, and collapses one that is empty.
   String _getGroupKey(Map<String, dynamic> item, String field) {
     final value = item[field];
 
     if (field == 'state') {
-      return capitalizeFirstLetter(value);
-    }
-    if (field == 'partner_id' && value is List && value.length > 1) {
-      return value[1].toString();
+      return capitalizeFirstLetter(cleanOdooValue(value, fallback: 'Unknown'));
     }
     if (field == 'origin') {
-      return value?.toString() ?? 'No Source';
+      return cleanOdooValue(value, fallback: 'No Source');
     }
-    if (field == 'picking_type_id' && value is List && value.length > 1) {
-      return value[1].toString();
-    }
-    return value?.toString() ?? 'Unknown';
+    return cleanOdooValue(value, fallback: 'Unknown');
   }
 
   /// Creates a new return picking from selected move lines. Errors are

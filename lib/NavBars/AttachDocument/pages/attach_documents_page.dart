@@ -180,8 +180,54 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
     );
   }
 
-  Widget _buildFilterIndicator(bool isDark, int count) {
+  /// The label the group-by sheet shows for [_selectedGroupBy], e.g. the
+  /// "Operation Type" behind the stored `picking_type_id`.
+  String? get _activeGroupByLabel {
+    if (_selectedGroupBy == null) return null;
+    for (final entry in groupTechnicalNames.entries) {
+      if (entry.value == _selectedGroupBy) return entry.key;
+    }
+    return _selectedGroupBy;
+  }
+
+  Widget _buildGroupByPill(bool isDark, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white70 : Colors.black,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedLayer,
+            size: 14,
+            color: isDark ? Colors.black : Colors.white,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.black : Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterIndicator(bool isDark, int count, bool hasGroupBy) {
     if (count == 0) {
+      // The group-by pill stands in for this line when grouping is the only
+      // thing active, so "No filters applied" never contradicts a visibly
+      // grouped list.
+      if (hasGroupBy) return const SizedBox.shrink();
       return Text(
         'No filters applied',
         style: TextStyle(
@@ -956,6 +1002,7 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                             hasGroupBy &&
                             state is AttachDocumentsLoaded &&
                             state.groupedPickings.isNotEmpty;
+                        final groupByLabel = _activeGroupByLabel;
                         return Column(
                           children: [
                             Padding(
@@ -969,10 +1016,27 @@ class _AttachDocumentsPageState extends State<AttachDocumentsPage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  _buildFilterIndicator(
-                                    isDark,
-
-                                    _selectedFilters.length,
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildFilterIndicator(
+                                          isDark,
+                                          _selectedFilters.length,
+                                          groupByLabel != null,
+                                        ),
+                                        if (groupByLabel != null) ...[
+                                          if (_selectedFilters.isNotEmpty)
+                                            const SizedBox(width: 8),
+                                          Flexible(
+                                            child: _buildGroupByPill(
+                                              isDark,
+                                              groupByLabel,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ),
                                   if (groupedNow)
                                     _buildGroupToggle(

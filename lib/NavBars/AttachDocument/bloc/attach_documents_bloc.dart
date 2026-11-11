@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../Rating/review_service.dart';
+import '../../../shared/utils/globals.dart';
 import '../../Pickings/PickingFormPage/services/hive_service.dart';
 import 'attach_documents_event.dart';
 import 'attach_documents_state.dart';
@@ -118,26 +119,20 @@ class AttachDocumentsBloc
 
   /// Generates a display-friendly group key based on the selected grouping field.
   ///
-  /// Special handling for:
-  ///   - 'state' → capitalized label
-  ///   - 'partner_id' / 'picking_type_id' → takes display name from list [id, name]
-  ///   - 'origin' → source document or fallback
+  /// Everything goes through [cleanOdooValue]: an empty Odoo field arrives as
+  /// `false` rather than null, so a `??` fallback would let the literal
+  /// "false" through as a group heading. It also unwraps the `[id, name]`
+  /// pair a many2one arrives as, and collapses one that is empty.
   String _getGroupKey(Map<String, dynamic> item, String field) {
     final value = item[field];
 
     if (field == 'state') {
-      return capitalizeFirstLetter(value);
-    }
-    if (field == 'partner_id' && value is List && value.length > 1) {
-      return value[1].toString();
+      return capitalizeFirstLetter(cleanOdooValue(value, fallback: 'Unknown'));
     }
     if (field == 'origin') {
-      return value?.toString() ?? 'No Source';
+      return cleanOdooValue(value, fallback: 'No Source');
     }
-    if (field == 'picking_type_id' && value is List && value.length > 1) {
-      return value[1].toString();
-    }
-    return value?.toString() ?? 'Unknown';
+    return cleanOdooValue(value, fallback: 'Unknown');
   }
 
   /// Fetches paginated stock pickings from Odoo (or Hive offline fallback).
