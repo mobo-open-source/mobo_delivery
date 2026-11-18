@@ -10,6 +10,7 @@ import '../../../LoginPage/widgets/login_button.dart';
 import 'package:odoo_delivery_app/Dashboard/screens/dashboard/pages/dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/company/session/company_session_manager.dart';
 import '../../../LoginPage/models/session_model.dart';
 import '../../../LoginPage/services/network_service.dart';
 import '../../../LoginPage/services/odoo_database_discovery.dart';
@@ -74,6 +75,9 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
   @override
   void initState() {
     super.initState();
+    // Screens left mounted underneath can still lose their session while
+    // this flow is open; see CompanySessionManager.onSessionLost.
+    CompanySessionManager.beginAccountFlow();
     _manualDbController.addListener(() {
       setState(() {});
     });
@@ -89,6 +93,7 @@ class _ServerUrlScreenState extends State<ServerUrlScreen> {
     _urlController.dispose();
     _manualDbController.dispose();
     _debounce?.cancel();
+    CompanySessionManager.endAccountFlow();
     super.dispose();
   }
 

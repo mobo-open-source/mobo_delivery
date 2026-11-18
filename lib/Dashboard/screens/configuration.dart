@@ -127,7 +127,7 @@ class _ConfigurationState extends State<Configuration> {
       setState(() => _isLoading = false);
     } catch (e) {
       if (e is SessionUnrecoverableException && mounted) {
-        CompanySessionManager.logout(context);
+        CompanySessionManager.onSessionLost(context);
         return;
       }
 

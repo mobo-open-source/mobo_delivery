@@ -173,6 +173,23 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   void Function(VoidCallback)? _activeSheetSetState;
   List<int> selectedPickings = [];
   List<String> selectedPickingNames = [];
+
+  /// Inline warning for the route sheet's picking picker. Kept on the State
+  /// rather than in the sheet builder so it reads the same whichever way the
+  /// dropdown was closed, and survives the sheet rebuilding.
+  String? _pickingsNotice;
+
+  /// The selection the stop list was last built from. Closing the dropdown
+  /// through "Done" also dismisses it, so without this the stops would be
+  /// geocoded twice, and any stop edited by hand would be overwritten by a
+  /// dismiss that changed nothing.
+  String? _resolvedPickingSignature;
+
+  /// The resolution in flight for [_resolvedPickingSignature], so a second
+  /// caller — "Done" after the dismiss it causes, or "Show Directions" tapped
+  /// mid-lookup — waits for the stops instead of reading a half-built list.
+  Future<void>? _stopsRebuild;
+
   bool shouldValidate = false;
   bool _isMapManuallyMoved = false;
   bool _isNavigationStarted = false;
@@ -420,6 +437,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
 
     try {
+      // A picking's stop is geocoded when the picker closes; tapping straight
+      // through to here must not read the list before that lookup lands.
+      await _stopsRebuild;
+
       if (_apiKey.isEmpty) {
         surfaceError(
           'Map service isn\'t configured. Please contact your administrator '
@@ -483,12 +504,28 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       }
 
       if (_stops.isEmpty) {
-        surfaceError(
-          'None of the stops could be located on the map. Try picking '
-          'suggestions from the search field or check the addresses.',
-          toastOverride:
-              'Could not resolve any stop locations. Try selecting from suggestions.',
+        // Three different situations used to share one "could not resolve"
+        // message, which pointed at geocoding even when nothing was ever
+        // sent to it — no stop at all, or a picking with no address in Odoo.
+        final anyStopTyped = _stopSearchControllers.any(
+          (c) => c.text.trim().isNotEmpty,
         );
+        if (!anyStopTyped && _pickingsNotice != null) {
+          surfaceError(_pickingsNotice!);
+        } else if (!anyStopTyped) {
+          surfaceError(
+            'Add a stop, or select a picking whose customer has an address '
+            'in Odoo.',
+            toastOverride: 'No stops to route to yet.',
+          );
+        } else {
+          surfaceError(
+            'None of the stops could be located on the map. Try picking '
+            'suggestions from the search field or check the addresses.',
+            toastOverride:
+                'Could not resolve any stop locations. Try selecting from suggestions.',
+          );
+        }
         return;
       }
 
@@ -1008,6 +1045,90 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     );
   }
 
+  /// Rebuilds the stop list from whichever pickings are currently selected,
+  /// and sets [_pickingsNotice] to whatever the user needs told about them.
+  ///
+  /// Runs when the picker is closed by any route, not just its "Done" button.
+  /// A picking selected and then dismissed by tapping outside used to leave
+  /// its chip on the sheet with no stop behind it and no warning anywhere, so
+  /// "Show Directions" failed with nothing on screen explaining why.
+  ///
+  /// Returns without touching anything when the selection has not changed,
+  /// which keeps "Done" from re-geocoding what the dismiss it triggers has
+  /// already resolved, and leaves stops edited by hand alone.
+  Future<void> _rebuildStopsFromSelectedPickings() {
+    final signature = selectedPickings.join(',');
+    if (signature == _resolvedPickingSignature) {
+      return _stopsRebuild ?? Future.value();
+    }
+    _resolvedPickingSignature = signature;
+    return _stopsRebuild = _resolveStopsFromPickings();
+  }
+
+  Future<void> _resolveStopsFromPickings() async {
+    final selected = pickings
+        .where((p) => selectedPickings.contains(p['id']))
+        .toList();
+
+    _stops.clear();
+    for (final c in _stopSearchControllers) {
+      c.dispose();
+    }
+    _stopSearchControllers.clear();
+    _stopSuggestions.clear();
+
+    final uniqueDestinations = <String>{};
+    final unresolvedDestinations = <String>[];
+    final missingAddressPickings = <String>[];
+
+    for (final picking in selected) {
+      final raw = picking['destination_point'] as String? ?? '';
+      final dest = raw
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty && s.toLowerCase() != 'false')
+          .join(', ');
+
+      if (dest.isEmpty) {
+        missingAddressPickings.add(
+          cleanOdooValue(picking['name'], fallback: 'Unknown'),
+        );
+        continue;
+      }
+      if (!uniqueDestinations.add(dest)) continue;
+
+      _stopSearchControllers.add(TextEditingController(text: dest));
+      _stopSuggestions.add([]);
+      final stopLatLng = await mapService.getLatLngFromPlace(
+        dest,
+        _apiKey,
+        proximity: _currentLatLng,
+      );
+      if (stopLatLng != null) {
+        _stops.add(stopLatLng);
+      } else {
+        unresolvedDestinations.add(dest);
+      }
+    }
+
+    if (_stopSearchControllers.isEmpty) {
+      _stopSearchControllers.add(TextEditingController());
+      _stopSuggestions.add([]);
+    }
+
+    if (missingAddressPickings.isNotEmpty) {
+      _pickingsNotice =
+          '${missingAddressPickings.join(', ')} '
+          '${missingAddressPickings.length == 1 ? 'has' : 'have'} '
+          'no destination address set in Odoo. Add stops manually below.';
+    } else if (unresolvedDestinations.isNotEmpty) {
+      _pickingsNotice =
+          'Could not locate: ${unresolvedDestinations.join(', ')}';
+    } else {
+      _pickingsNotice = null;
+    }
+  }
+
   /// Shows the modal bottom sheet for selecting pickings, source, and stops.
   ///
   /// Supports multi-select pickings (auto-fills stops from destination_point),
@@ -1042,12 +1163,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         bool didAddStopField = false;
         bool isPickingDropdownOpen = false;
 
-        /// Shown inline in the sheet rather than via [CustomSnackbar]: a
-        /// SnackBar anchors to the page's own Scaffold, which sits in the
-        /// Overlay *below* this modal bottom sheet's route, so it renders
-        /// invisibly behind the sheet for as long as the sheet stays open —
-        /// exactly the case right after tapping "Done" here.
-        String? pickingsNotice;
         final pickingsDropdownKey =
             GlobalKey<DropdownSearchState<Map<String, dynamic>>>();
         final pickingsSearchCtrl = TextEditingController();
@@ -1407,10 +1522,29 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                               ),
                                             ),
                                             popupProps: PopupPropsMultiSelection.menu(
-                                              onDismissed: () => sheetSetState(
-                                                () => isPickingDropdownOpen =
-                                                    false,
-                                              ),
+                                              onDismissed: () async {
+                                                sheetSetState(() {
+                                                  isPickingDropdownOpen = false;
+                                                  isFetchingStops = true;
+                                                });
+                                                try {
+                                                  await _rebuildStopsFromSelectedPickings();
+                                                } catch (_) {
+                                                  _resolvedPickingSignature =
+                                                      null;
+                                                  _pickingsNotice =
+                                                      'Failed to fetch stop locations. '
+                                                      'Please check your connection and try again.';
+                                                } finally {
+                                                  if (mounted) setState(() {});
+                                                  // The sheet may have closed
+                                                  // while the lookup ran.
+                                                  _activeSheetSetState?.call(
+                                                    () =>
+                                                        isFetchingStops = false,
+                                                  );
+                                                }
+                                              },
                                               showSearchBox: false,
                                               searchFieldProps: TextFieldProps(
                                                 controller: pickingsSearchCtrl,
@@ -1613,135 +1747,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                                         true,
                                                               );
                                                               try {
-                                                                final value = pickings
-                                                                    .where(
-                                                                      (
-                                                                        p,
-                                                                      ) => selectedPickings
-                                                                          .contains(
-                                                                            p['id'],
-                                                                          ),
-                                                                    )
-                                                                    .toList();
-                                                                _stops.clear();
-                                                                for (var c
-                                                                    in _stopSearchControllers) {
-                                                                  c.dispose();
-                                                                }
-                                                                _stopSearchControllers
-                                                                    .clear();
-                                                                _stopSuggestions
-                                                                    .clear();
-                                                                final Set<
-                                                                  String
-                                                                >
-                                                                uniqueDestinations =
-                                                                    {};
-                                                                final List<
-                                                                  String
-                                                                >
-                                                                unresolvedDestinations =
-                                                                    [];
-                                                                final List<
-                                                                  String
-                                                                >
-                                                                missingAddressPickings =
-                                                                    [];
-                                                                for (var picking
-                                                                    in value) {
-                                                                  final raw =
-                                                                      picking['destination_point']
-                                                                          as String? ??
-                                                                      '';
-
-                                                                  final dest = raw
-                                                                      .split(
-                                                                        ',',
-                                                                      )
-                                                                      .map(
-                                                                        (s) => s
-                                                                            .trim(),
-                                                                      )
-                                                                      .where(
-                                                                        (s) =>
-                                                                            s.isNotEmpty &&
-                                                                            s.toLowerCase() !=
-                                                                                'false',
-                                                                      )
-                                                                      .join(
-                                                                        ', ',
-                                                                      );
-
-                                                                  if (dest
-                                                                      .isEmpty) {
-                                                                    missingAddressPickings.add(
-                                                                      picking['name']
-                                                                              ?.toString() ??
-                                                                          'Unknown',
-                                                                    );
-                                                                  }
-
-                                                                  if (dest.isNotEmpty &&
-                                                                      uniqueDestinations
-                                                                          .add(
-                                                                            dest,
-                                                                          )) {
-                                                                    _stopSearchControllers.add(
-                                                                      TextEditingController(
-                                                                        text:
-                                                                            dest,
-                                                                      ),
-                                                                    );
-                                                                    _stopSuggestions
-                                                                        .add(
-                                                                          [],
-                                                                        );
-                                                                    final stopLatLng = await mapService.getLatLngFromPlace(
-                                                                      dest,
-                                                                      _apiKey,
-                                                                      proximity:
-                                                                          _currentLatLng,
-                                                                    );
-                                                                    if (stopLatLng !=
-                                                                        null) {
-                                                                      _stops.add(
-                                                                        stopLatLng,
-                                                                      );
-                                                                    } else {
-                                                                      unresolvedDestinations
-                                                                          .add(
-                                                                            dest,
-                                                                          );
-                                                                    }
-                                                                  }
-                                                                }
-                                                                if (_stopSearchControllers
-                                                                    .isEmpty) {
-                                                                  _stopSearchControllers
-                                                                      .add(
-                                                                        TextEditingController(),
-                                                                      );
-                                                                  _stopSuggestions
-                                                                      .add([]);
-                                                                }
-                                                                if (missingAddressPickings
-                                                                    .isNotEmpty) {
-                                                                  pickingsNotice =
-                                                                      '${missingAddressPickings.join(', ')} '
-                                                                      '${missingAddressPickings.length == 1 ? 'has' : 'have'} '
-                                                                      'no destination address set in Odoo. '
-                                                                      'Add stops manually below.';
-                                                                } else if (unresolvedDestinations
-                                                                    .isNotEmpty) {
-                                                                  pickingsNotice =
-                                                                      'Could not locate: '
-                                                                      '${unresolvedDestinations.join(', ')}';
-                                                                } else {
-                                                                  pickingsNotice =
-                                                                      null;
-                                                                }
+                                                                await _rebuildStopsFromSelectedPickings();
                                                               } catch (_) {
-                                                                pickingsNotice =
+                                                                _resolvedPickingSignature =
+                                                                    null;
+                                                                _pickingsNotice =
                                                                     'Failed to fetch stop locations. '
                                                                     'Please check your connection and try again.';
                                                               } finally {
@@ -1854,7 +1864,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                     ),
                                   ],
 
-                                  if (pickingsNotice != null) ...[
+                                  if (_pickingsNotice != null) ...[
                                     const SizedBox(height: 10),
                                     Container(
                                       width: double.infinity,
@@ -1880,7 +1890,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
-                                              pickingsNotice!,
+                                              _pickingsNotice!,
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: isDark

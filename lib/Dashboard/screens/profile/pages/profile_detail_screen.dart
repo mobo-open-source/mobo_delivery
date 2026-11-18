@@ -252,7 +252,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       }
     } catch (e) {
       if (e is SessionUnrecoverableException && mounted) {
-        CompanySessionManager.logout(context);
+        CompanySessionManager.onSessionLost(context);
         return;
       }
       if (mounted) {

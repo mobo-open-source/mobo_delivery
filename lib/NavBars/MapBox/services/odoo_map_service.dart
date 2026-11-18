@@ -317,7 +317,14 @@ class OdooMapService {
           ],
         ],
         'kwargs': {
-          'fields': ['street', 'city', 'zip', 'state_id', 'country_id'],
+          'fields': [
+            'street',
+            'street2',
+            'city',
+            'zip',
+            'state_id',
+            'country_id',
+          ],
         },
       });
 
@@ -332,7 +339,14 @@ class OdooMapService {
           ],
         ],
         'kwargs': {
-          'fields': ['street', 'city', 'zip', 'state_id', 'country_id'],
+          'fields': [
+            'street',
+            'street2',
+            'city',
+            'zip',
+            'state_id',
+            'country_id',
+          ],
         },
       });
 
@@ -386,7 +400,8 @@ class OdooMapService {
 
   /// Maps company/partner records to ID → formatted address string.
   ///
-  /// Combines street, city, state, country (if available) with commas.
+  /// Combines street, street2, city, zip, state, country (if available) with
+  /// commas.
   /// Filters out null/empty parts.
   Map<int, String> _mapAddresses(List<dynamic>? data) {
     final map = <int, String>{};
@@ -396,7 +411,9 @@ class OdooMapService {
         final addressParts =
             [
                   item['street'],
+                  item['street2'],
                   item['city'],
+                  item['zip'],
                   item['state_id'] is List && item['state_id'].length > 1
                       ? item['state_id'][1]
                       : null,

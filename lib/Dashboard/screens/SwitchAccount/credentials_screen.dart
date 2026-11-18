@@ -76,7 +76,14 @@ class _SwitchCredentialsScreenState extends State<SwitchCredentialsScreen> {
   @override
   void initState() {
     super.initState();
+    CompanySessionManager.beginAccountFlow();
     _loadPreviousSessionData();
+  }
+
+  @override
+  void dispose() {
+    CompanySessionManager.endAccountFlow();
+    super.dispose();
   }
 
   Future<void> _loadPreviousSessionData() async {

@@ -187,7 +187,7 @@ class _PickingsGroupedPageState extends State<PickingsGroupedPage> {
       }
     } on SessionUnrecoverableException {
       if (mounted) {
-        CompanySessionManager.logout(context);
+        CompanySessionManager.onSessionLost(context);
       }
     } on TimeoutException catch (e) {
       if (mounted) {

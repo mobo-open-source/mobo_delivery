@@ -90,26 +90,60 @@ class CompanySessionManager {
     _onSessionUpdated = callback;
   }
 
-  /// Detects whether an error is authentication/session related.
-  static bool _isAuthError(Object e) {
+  /// Whether Odoo itself said the session is gone. odoo_rpc raises
+  /// [OdooSessionExpiredException] for JSON-RPC error code 100 and for nothing
+  /// else, so this is the one signal that proves the login is dead.
+  static bool _isSessionExpiredError(Object e) {
+    if (e is OdooSessionExpiredException) return true;
     final errorStr = e.toString().toLowerCase();
+    return errorStr.contains('session expired') ||
+        errorStr.contains('invalid session');
+  }
 
+  /// Failures a lost session can produce but so can plenty else: an HTML page
+  /// where JSON was expected (a proxy or gateway error, a captive portal, a
+  /// login redirect — odoo_rpc decodes the body without looking at the status,
+  /// so all of these surface as a [FormatException]), or a 401/403. Each earns
+  /// one re-login attempt; none of them alone is proof the session died.
+  static bool _mightBeSessionLoss(Object e) {
     if (_isInvalidCompanyContext(e)) return false;
-
-    return e is OdooSessionExpiredException ||
-        errorStr.contains('401') ||
-        errorStr.contains('unauthorized') ||
-        errorStr.contains('access denied') ||
-        errorStr.contains('invalid session') ||
-        errorStr.contains('session expired') ||
-        errorStr.contains('authentication') ||
-        errorStr.contains('forbidden') ||
-        errorStr.contains('403') ||
-        e is FormatException ||
+    final errorStr = e.toString().toLowerCase();
+    return e is FormatException ||
         errorStr.contains('formatexception') ||
         errorStr.contains('unexpected character') ||
         errorStr.contains('<html') ||
-        errorStr.contains('<!doctype html');
+        errorStr.contains('<!doctype html') ||
+        errorStr.contains('401') ||
+        errorStr.contains('unauthorized') ||
+        errorStr.contains('access denied') ||
+        errorStr.contains('authentication') ||
+        errorStr.contains('forbidden') ||
+        errorStr.contains('403');
+  }
+
+  /// Open add-account / switch-account screens. While any is open, a session
+  /// loss reported by a screen still mounted underneath is not acted on: that
+  /// flow is about to replace or restore the session itself, and a logout
+  /// fired from a page the user has already left would tear it down mid-way.
+  static int _accountFlowDepth = 0;
+
+  static void beginAccountFlow() => _accountFlowDepth++;
+
+  static void endAccountFlow() {
+    if (_accountFlowDepth > 0) _accountFlowDepth--;
+  }
+
+  static bool _isLoggingOut = false;
+
+  /// Where a screen hands a [SessionUnrecoverableException] it caught, instead
+  /// of calling [logout] itself. Screens stay mounted under whatever is pushed
+  /// on top of them, so a request that started on one can fail after the user
+  /// has moved on; this is the single place that decides whether that ends
+  /// the session.
+  static Future<void> onSessionLost(BuildContext context) async {
+    if (_accountFlowDepth > 0) return;
+    if (!context.mounted) return;
+    await logout(context);
   }
 
   /// Forces reload of session from SharedPreferences.
@@ -849,7 +883,7 @@ class CompanySessionManager {
       try {
         return await action(newClient);
       } catch (retryError) {
-        if (_isAuthError(retryError)) {
+        if (_isSessionExpiredError(retryError)) {
           throw const SessionUnrecoverableException();
         }
         rethrow;
@@ -861,14 +895,20 @@ class CompanySessionManager {
     } catch (e) {
       if (e is NoInternetException || e is ServerUnreachableException) rethrow;
 
-      if (_isAuthError(e)) {
+      final expired = _isSessionExpiredError(e);
+      if (expired || _mightBeSessionLoss(e)) {
         if (_sessionGeneration != generation) {
           return await retryOnCurrentSession();
         }
 
         final refreshed = await refreshSession();
         if (!refreshed) {
-          throw const SessionUnrecoverableException();
+          // Only Odoo's own "session expired" proves the login is gone. An
+          // HTML page or a 403 that a fresh login could not get past is the
+          // server, or something in front of it, failing — ending the session
+          // over that signed people out in the middle of an outage.
+          if (expired) throw const SessionUnrecoverableException();
+          rethrow;
         }
         return await retryOnCurrentSession();
       }
@@ -895,6 +935,19 @@ class CompanySessionManager {
 
   /// Clears session data and navigates to the login screen.
   static Future<void> logout(BuildContext context) async {
+    // Two screens hitting the same dead session at once each asked for a
+    // logout; the second stacked another dialog, and its pop then removed
+    // the login screen instead.
+    if (_isLoggingOut) return;
+    _isLoggingOut = true;
+    try {
+      await _logout(context);
+    } finally {
+      _isLoggingOut = false;
+    }
+  }
+
+  static Future<void> _logout(BuildContext context) async {
     showDialog(
       context: context,
       barrierDismissible: false,

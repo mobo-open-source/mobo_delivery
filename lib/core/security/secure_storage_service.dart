@@ -1,5 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../shared/utils/server_url_utils.dart';
+
 /// Provides secure storage operations for saving and retrieving user passwords.
 ///
 /// Uses platform secure storage:
@@ -15,8 +17,13 @@ class SecureStorageService {
 
   /// Generates a unique key for storing password based on
   /// server URL, database name, and username.
+  /// The URL is normalised here rather than trusted from callers. The one
+  /// writer passes a normalised URL, but session refresh read it back with the
+  /// raw `url` preference, which the sign-in screens store un-normalised — a
+  /// trailing slash or a capital in the host was enough for refresh never to
+  /// find the password, and every expired session then ended in a logout.
   static String _passwordKey(String url, String database, String username) {
-    return 'odoo_pass_${url}_${database}_${username}';
+    return 'odoo_pass_${normalizeServerUrl(url)}_${database}_${username}';
   }
 
   /// Saves password securely for given server, database and user.

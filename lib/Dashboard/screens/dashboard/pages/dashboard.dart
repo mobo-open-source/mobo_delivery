@@ -25,7 +25,6 @@ import '../bloc/dashboard_state.dart';
 import '../widgets/dashboard_bottom_nav_bar.dart';
 import '../../../../shared/widgets/odoo_avatar.dart';
 import '../../../../core/company/services/connectivity_service.dart';
-import '../../../../core/company/session/company_session_manager.dart';
 
 /// Main dashboard screen of the delivery / logistics application.
 ///
@@ -109,209 +108,193 @@ class _DashboardState extends State<Dashboard> with WidgetsBindingObserver {
       create: (_) => DashboardBloc(DashboardStorageService(), (url, session) {
         return OdooDashboardService(url, session);
       })..add(InitializeDashboard(widget.initialIndex)),
-      child: BlocListener<DashboardBloc, DashboardState>(
-        listenWhen: (previous, current) =>
-            !previous.isSessionExpired && current.isSessionExpired,
-        listener: (context, state) {
-          if (state.isSessionExpired) {
-            CompanySessionManager.logout(context);
-          }
-        },
-        child: BlocBuilder<DashboardBloc, DashboardState>(
-          builder: (context, state) {
-            final bloc = context.read<DashboardBloc>();
+      child: BlocBuilder<DashboardBloc, DashboardState>(
+        builder: (context, state) {
+          final bloc = context.read<DashboardBloc>();
 
-            final currentPage = state.pages[state.currentIndex];
+          final currentPage = state.pages[state.currentIndex];
 
-            return ValueListenableBuilder<bool>(
-              valueListenable: RouteNavigationBus.isNavigating,
-              builder: (context, isNavigating, _) {
-                final hideAppBar =
-                    isNavigating && currentPage['title'] == 'Route';
-                return WillPopScope(
-                  onWillPop: () async {
-                    final bloc = context.read<DashboardBloc>();
-                    if (state.currentIndex != 0) {
-                      bloc.add(ChangeTab(0));
-                      return false;
-                    }
-                    SystemNavigator.pop();
+          return ValueListenableBuilder<bool>(
+            valueListenable: RouteNavigationBus.isNavigating,
+            builder: (context, isNavigating, _) {
+              final hideAppBar =
+                  isNavigating && currentPage['title'] == 'Route';
+              return WillPopScope(
+                onWillPop: () async {
+                  final bloc = context.read<DashboardBloc>();
+                  if (state.currentIndex != 0) {
+                    bloc.add(ChangeTab(0));
                     return false;
-                  },
-                  child: Scaffold(
-                    backgroundColor: isDark
-                        ? Colors.grey[900]
-                        : Colors.grey[50],
-                    appBar: hideAppBar
-                        ? null
-                        : AppBar(
-                            forceMaterialTransparency: true,
-                            title: Text(
-                              currentPage['title'],
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white : Colors.black,
-                              ),
+                  }
+                  SystemNavigator.pop();
+                  return false;
+                },
+                child: Scaffold(
+                  backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
+                  appBar: hideAppBar
+                      ? null
+                      : AppBar(
+                          forceMaterialTransparency: true,
+                          title: Text(
+                            currentPage['title'],
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black,
                             ),
-                            automaticallyImplyLeading: false,
-                            backgroundColor: isDark
-                                ? Colors.grey[900]
-                                : Colors.grey[50],
-                            actions: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ValueListenableBuilder<int>(
-                                    valueListenable: PendingSyncService
-                                        .instance
-                                        .pendingCount,
-                                    builder: (context, count, _) {
-                                      if (count <= 0)
-                                        return const SizedBox.shrink();
-                                      return IconButton(
-                                        tooltip:
-                                            'Offline sync ($count pending)',
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const SyncCenterPage(),
-                                            ),
-                                          ).then(
-                                            (_) => PendingSyncService.instance
-                                                .refreshCount(),
-                                          );
-                                        },
-                                        icon: Badge(
-                                          label: Text('$count'),
-                                          backgroundColor:
-                                              AppStyle.primaryColor,
-                                          child: Icon(
-                                            HugeIcons.strokeRoundedCloudUpload,
-                                            color: isDark
-                                                ? Colors.white70
-                                                : Colors.black54,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  CompanySelectorWidget(
-                                    onCompanyChanged: () async {
-                                      if (!context.mounted) return;
-                                      final provider = context
-                                          .read<CompanyProvider>();
-                                      final companyName =
-                                          provider.selectedCompany?['name']
-                                              ?.toString() ??
-                                          'company';
-                                      bloc.add(RefreshUserProfile());
-                                      CompanyRefreshBus.notify();
-
-                                      CustomSnackbar.showSuccess(
-                                        context,
-                                        'Switched to $companyName',
-                                      );
-                                    },
-                                  ),
-                                  Container(
-                                    margin: const EdgeInsets.only(right: 8),
-                                    child: IconButton(
-                                      icon: OdooAvatar(
-                                        key: ValueKey(
-                                          'avatar_${state.profilePicBytes != null ? "image" : "placeholder"}',
-                                        ),
-                                        imageBytes: state.profilePicBytes,
-                                        size: 32,
-                                        iconSize: 18,
-                                        borderRadius: BorderRadius.circular(16),
-                                        placeholderColor: isDark
-                                            ? Colors.grey[800]
-                                            : Colors.grey[300],
-                                        iconColor: isDark
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                      onPressed: () async {
-                                        await Navigator.push(
+                          ),
+                          automaticallyImplyLeading: false,
+                          backgroundColor: isDark
+                              ? Colors.grey[900]
+                              : Colors.grey[50],
+                          actions: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ValueListenableBuilder<int>(
+                                  valueListenable:
+                                      PendingSyncService.instance.pendingCount,
+                                  builder: (context, count, _) {
+                                    if (count <= 0)
+                                      return const SizedBox.shrink();
+                                    return IconButton(
+                                      tooltip: 'Offline sync ($count pending)',
+                                      onPressed: () {
+                                        Navigator.push(
                                           context,
-                                          PageRouteBuilder(
-                                            pageBuilder: (_, __, ___) =>
-                                                Configuration(
-                                                  profileImageBytes:
-                                                      state.profilePicBytes,
-                                                  userName: state.userName,
-                                                  mail: state.mail,
-                                                ),
-                                            transitionDuration: const Duration(
-                                              milliseconds: 300,
-                                            ),
-                                            reverseTransitionDuration:
-                                                const Duration(
-                                                  milliseconds: 300,
-                                                ),
-                                            transitionsBuilder:
-                                                (
-                                                  context,
-                                                  animation,
-                                                  secondaryAnimation,
-                                                  child,
-                                                ) {
-                                                  return FadeTransition(
-                                                    opacity: animation,
-                                                    child: child,
-                                                  );
-                                                },
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const SyncCenterPage(),
                                           ),
-                                        ).then((_) {
-                                          bloc.add(RefreshUserProfile());
-                                        });
+                                        ).then(
+                                          (_) => PendingSyncService.instance
+                                              .refreshCount(),
+                                        );
                                       },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-
-                    body: Column(
-                      children: [
-                        if (!state.isServerReachable)
-                          _OfflineBanner(
-                            onRetry: () => bloc.add(RefreshUserProfile()),
-                          ),
-                        Expanded(
-                          child: state.isLoading
-                              ? const SizedBox.expand()
-                              : IndexedStack(
-                                  index: state.currentIndex,
-                                  children: state.pages
-                                      .map<Widget>(
-                                        (p) =>
-                                            p['route'] as Widget? ??
-                                            const SizedBox.shrink(),
-                                      )
-                                      .toList(),
+                                      icon: Badge(
+                                        label: Text('$count'),
+                                        backgroundColor: AppStyle.primaryColor,
+                                        child: Icon(
+                                          HugeIcons.strokeRoundedCloudUpload,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                        ),
-                      ],
-                    ),
+                                CompanySelectorWidget(
+                                  onCompanyChanged: () async {
+                                    if (!context.mounted) return;
+                                    final provider = context
+                                        .read<CompanyProvider>();
+                                    final companyName =
+                                        provider.selectedCompany?['name']
+                                            ?.toString() ??
+                                        'company';
+                                    bloc.add(RefreshUserProfile());
+                                    CompanyRefreshBus.notify();
 
-                    bottomNavigationBar: DashboardBottomNavBar(
-                      currentIndex: state.currentIndex,
-                      pages: state.pages,
-                      onTap: (index) {
-                        context.read<DashboardBloc>().add(ChangeTab(index));
-                      },
-                    ),
+                                    CustomSnackbar.showSuccess(
+                                      context,
+                                      'Switched to $companyName',
+                                    );
+                                  },
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  child: IconButton(
+                                    icon: OdooAvatar(
+                                      key: ValueKey(
+                                        'avatar_${state.profilePicBytes != null ? "image" : "placeholder"}',
+                                      ),
+                                      imageBytes: state.profilePicBytes,
+                                      size: 32,
+                                      iconSize: 18,
+                                      borderRadius: BorderRadius.circular(16),
+                                      placeholderColor: isDark
+                                          ? Colors.grey[800]
+                                          : Colors.grey[300],
+                                      iconColor: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                    onPressed: () async {
+                                      await Navigator.push(
+                                        context,
+                                        PageRouteBuilder(
+                                          pageBuilder: (_, __, ___) =>
+                                              Configuration(
+                                                profileImageBytes:
+                                                    state.profilePicBytes,
+                                                userName: state.userName,
+                                                mail: state.mail,
+                                              ),
+                                          transitionDuration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          reverseTransitionDuration:
+                                              const Duration(milliseconds: 300),
+                                          transitionsBuilder:
+                                              (
+                                                context,
+                                                animation,
+                                                secondaryAnimation,
+                                                child,
+                                              ) {
+                                                return FadeTransition(
+                                                  opacity: animation,
+                                                  child: child,
+                                                );
+                                              },
+                                        ),
+                                      ).then((_) {
+                                        bloc.add(RefreshUserProfile());
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                  body: Column(
+                    children: [
+                      if (!state.isServerReachable)
+                        _OfflineBanner(
+                          onRetry: () => bloc.add(RefreshUserProfile()),
+                        ),
+                      Expanded(
+                        child: state.isLoading
+                            ? const SizedBox.expand()
+                            : IndexedStack(
+                                index: state.currentIndex,
+                                children: state.pages
+                                    .map<Widget>(
+                                      (p) =>
+                                          p['route'] as Widget? ??
+                                          const SizedBox.shrink(),
+                                    )
+                                    .toList(),
+                              ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            );
-          },
-        ),
+
+                  bottomNavigationBar: DashboardBottomNavBar(
+                    currentIndex: state.currentIndex,
+                    pages: state.pages,
+                    onTap: (index) {
+                      context.read<DashboardBloc>().add(ChangeTab(index));
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
