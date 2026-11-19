@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,16 +14,19 @@ import 'package:http/http.dart' as http;
 import '../../../shared/utils/globals.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../shared/widgets/snackbar.dart';
+import '../services/external_maps_service.dart';
 import '../services/map_service.dart';
 import '../services/odoo_map_service.dart';
 import '../services/route_navigation_bus.dart';
 import '../services/route_plan_bus.dart';
+import '../../../core/company/infrastructure/company_refresh_bus.dart';
 import '../../../shared/widgets/loaders/loading_widget.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/error_state_widget.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../../../shared/widgets/inputs/mobo_text_field.dart';
 import '../../../shared/widgets/dialogs/common_dialog.dart';
+import '../widgets/maps_app_picker_sheet.dart';
 import '../widgets/navigation_header.dart';
 import '../widgets/remaining_info_card.dart';
 import '../widgets/route_info_card.dart';
@@ -36,6 +40,12 @@ const double _kMaxMapZoom = 18;
 /// Ignore GPS jitter below roughly a metre so the pin doesn't rebuild the
 /// map on every tick while the device is stationary.
 const double _kMinPinMoveDegrees = 0.00001;
+
+/// How long to wait for a position fix before showing the map without one.
+/// `getLocation` never completes on a device that cannot produce a fix (a
+/// simulator with no simulated location, or GPS indoors), and the page used
+/// to sit on its loading overlay for as long as it waited.
+const Duration _kLocationTimeout = Duration(seconds: 12);
 
 /// Default TomTom key, byte-XOR'd against [_kKeyPad] so it isn't a
 /// plaintext, grep/scan-able string in source control. This is
@@ -123,6 +133,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   bool _locationNoticeShown = false;
   bool _locationNoticePending = false;
 
+  /// Set while the map is showing [_fallbackCenter] because no position
+  /// could be had, so the page can say so and offer a retry instead of
+  /// silently showing somewhere that is not the user.
+  bool _locationUnavailable = false;
+  bool _isLocating = false;
+
   final MapController _mapController = MapController();
   final TextEditingController sourceController = TextEditingController();
   final TextEditingController sourceSearchController = TextEditingController();
@@ -160,6 +176,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   Widget? _navigationIcon;
   StreamSubscription? _gyroscopeSubscription;
   StreamSubscription<void>? _planSub;
+  StreamSubscription<void>? _companySub;
+
+  /// The picking load in flight, so overlapping refreshes share one request.
+  Future<void>? _pickingsFetch;
   bool _isPhoneRotated = false;
   LatLng? _currentLatLng;
   bool _showLayer = true;
@@ -179,16 +199,48 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// dropdown was closed, and survives the sheet rebuilding.
   String? _pickingsNotice;
 
-  /// The selection the stop list was last built from. Closing the dropdown
-  /// through "Done" also dismisses it, so without this the stops would be
-  /// geocoded twice, and any stop edited by hand would be overwritten by a
-  /// dismiss that changed nothing.
-  String? _resolvedPickingSignature;
+  /// Set once the driver has closed the pickings notice. A notice they have
+  /// already read should not greet them again every time the sheet opens;
+  /// a *different* notice is new information and clears this.
+  bool _pickingsNoticeDismissed = false;
 
-  /// The resolution in flight for [_resolvedPickingSignature], so a second
-  /// caller — "Done" after the dismiss it causes, or "Show Directions" tapped
-  /// mid-lookup — waits for the stops instead of reading a half-built list.
+  /// Which pickings each stop field came from, parallel to
+  /// [_stopSearchControllers]. Empty for a stop the user added by hand. Two
+  /// pickings for the same address share one stop, so this is a set.
+  ///
+  /// Kept beside the controllers so selecting or deselecting a picking adds
+  /// or removes only that picking's stop and leaves hand-added stops alone.
+  final List<Set<int>> _stopPickingIds = [<int>{}];
+
+  /// The pickings the stop fields currently reflect. Selection changes are
+  /// applied as a difference against this, which makes applying the same
+  /// selection twice — "Done" and the dismiss it triggers — a no-op.
+  Set<int> _syncedPickingIds = <int>{};
+
+  /// The selection sync in flight, so "Show Directions" tapped mid-lookup
+  /// waits for it, and two syncs never interleave.
   Future<void>? _stopsRebuild;
+
+  /// Bumped whenever the route is cleared, so a lookup that was in flight
+  /// at that moment drops its result instead of writing into the new state.
+  int _stopsGeneration = 0;
+
+  /// Places already located, keyed by normalised text. Routing re-reads every
+  /// stop's text, so an edited stop is always located again while unchanged
+  /// stops cost no extra request.
+  final Map<String, LatLng> _geocodeCache = {};
+
+  /// Places looked up and not found (or not reachable). Retried on the next
+  /// lookup, never cached as a failure.
+  final Set<String> _geocodeMisses = {};
+
+  /// Inline error under a stop field, keyed by its controller so it stays
+  /// with the field when stops are reordered or removed. Shown in the sheet
+  /// rather than as a snackbar, which would sit behind the sheet.
+  final Map<TextEditingController, String> _stopFieldErrors = {};
+
+  final ExternalMapsService _externalMaps = const ExternalMapsService();
+  bool _openingExternalMaps = false;
 
   bool shouldValidate = false;
   bool _isMapManuallyMoved = false;
@@ -218,6 +270,14 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     _planSub = RoutePlanBus.stream.listen((_) {
       if (!mounted) return;
       _showEnterRootPopup();
+    });
+
+    // Every tab stays alive in the dashboard's IndexedStack, so this page is
+    // built once per launch; the other tabs reload on a company switch the
+    // same way.
+    _companySub = CompanyRefreshBus.stream.listen((_) async {
+      await _pickingsFetch;
+      if (mounted) _fetchPickings();
     });
   }
 
@@ -259,7 +319,20 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// — and pushes a rebuild into the sheet via [_activeSheetSetState] if
   /// it's already open when this finishes, since it lives in a separate
   /// route that the outer `setState` below does not reach.
-  Future<void> _fetchPickings() async {
+  /// Loads the open deliveries for the picker: on start, every time the
+  /// Enter Route sheet opens, and on a company switch, so a delivery created
+  /// in Odoo shows up without restarting the app.
+  ///
+  /// Once a list is on screen the refresh is quiet: the list stays while it
+  /// loads, and a failed refresh keeps it instead of replacing it with an
+  /// error. Overlapping calls share one request.
+  Future<void> _fetchPickings() {
+    return _pickingsFetch ??= _loadPickings().whenComplete(
+      () => _pickingsFetch = null,
+    );
+  }
+
+  Future<void> _loadPickings() async {
     void update(VoidCallback fn) {
       if (mounted) setState(fn);
       try {
@@ -267,21 +340,22 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       } catch (_) {}
     }
 
-    update(() {
-      _pickingsLoading = true;
-      _pickingsLoadFailed = false;
-    });
+    final quiet = pickings.isNotEmpty;
+    if (!quiet) {
+      update(() {
+        _pickingsLoading = true;
+        _pickingsLoadFailed = false;
+      });
+    }
 
+    final List<Map<String, dynamic>> fetched;
     try {
       await odooService.initializeOdooClient();
-      final fetched = await odooService.fetchStockPickings().timeout(
+      fetched = await odooService.fetchStockPickings().timeout(
         const Duration(seconds: 20),
       );
-      update(() {
-        pickings = fetched;
-        _pickingsLoading = false;
-      });
     } catch (e) {
+      if (quiet) return;
       update(() {
         _pickingsLoading = false;
         _pickingsLoadFailed = true;
@@ -292,7 +366,60 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           'Could not load pickings from Odoo. Map navigation still works.',
         );
       }
+      return;
     }
+
+    update(() {
+      pickings = fetched;
+      _pickingsLoading = false;
+      _pickingsLoadFailed = false;
+    });
+    await _dropClosedSelectedPickings();
+  }
+
+  /// Takes selected deliveries that are no longer open — validated or
+  /// cancelled in Odoo meanwhile, or not in this company — out of the
+  /// selection. Their stops go with them through the usual picking sync, and
+  /// the sheet says which ones and why.
+  Future<void> _dropClosedSelectedPickings() async {
+    final open = {for (final p in pickings) p['id']};
+    final keep = <int>[];
+    final keepNames = <String>[];
+    final dropped = <String>[];
+    for (var i = 0; i < selectedPickings.length; i++) {
+      final name = i < selectedPickingNames.length
+          ? selectedPickingNames[i]
+          : '';
+      if (open.contains(selectedPickings[i])) {
+        keep.add(selectedPickings[i]);
+        if (i < selectedPickingNames.length) keepNames.add(name);
+      } else if (name.isNotEmpty) {
+        dropped.add(name);
+      }
+    }
+    if (keep.length == selectedPickings.length) return;
+
+    selectedPickings = keep;
+    selectedPickingNames = keepNames;
+    await _rebuildStopsFromSelectedPickings();
+    if (!mounted) return;
+
+    final what = dropped.isEmpty
+        ? 'A selected delivery is no longer open in Odoo, so it was'
+        : dropped.length == 1
+        ? '${dropped.first} is no longer open in Odoo, so it was'
+        : '${dropped.join(', ')} are no longer open in Odoo, so they were';
+    final removedNotice = '$what taken off the route.';
+    void apply() {
+      final rest = _pickingsNotice;
+      _pickingsNotice = rest == null ? removedNotice : '$removedNotice $rest';
+      _pickingsNoticeDismissed = false;
+    }
+
+    setState(apply);
+    try {
+      _activeSheetSetState?.call(() {});
+    } catch (_) {}
   }
 
   /// Listens to gyroscope events to detect phone rotation (used for bearing updates).
@@ -309,6 +436,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     _locationSubscription?.cancel();
     _gyroscopeSubscription?.cancel();
     _planSub?.cancel();
+    _companySub?.cancel();
     _distanceUpdateTimer?.cancel();
     sourceController.dispose();
     sourceSearchController.dispose();
@@ -352,52 +480,46 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// Example: Source → [Ramanattukara, Kozhikode] → Thamarassery
   /// If Ramanattukara is closer to Source, order stays; otherwise swaps.
   void _applySortedStopOrder() {
-    if (_sourceLatLng == null || _stops.length < 2) return;
+    final n = _stops.length;
+    if (_sourceLatLng == null || n < 2) return;
 
-    final finalStop = _stops.last;
-    final finalCtrl = _stopSearchControllers.last;
-
-    final intermediate = _stops.sublist(0, _stops.length - 1);
-    final intermediateCtrls = _stopSearchControllers.sublist(
-      0,
-      _stopSearchControllers.length - 1,
-    );
-
-    final remaining = List<int>.generate(intermediate.length, (i) => i);
+    // Only the first [n] fields are on the route (see _resolveStopFields);
+    // anything after them is unresolved or blank and keeps its place.
+    final intermediate = List<int>.generate(n - 1, (i) => i);
     final sortedIndices = <int>[];
     LatLng current = _sourceLatLng!;
 
-    while (remaining.isNotEmpty) {
-      int bestIdx = remaining[0];
+    while (intermediate.isNotEmpty) {
+      int bestIdx = intermediate.first;
       double bestDist = mapService.distanceBetweenPoints(
         current,
-        intermediate[bestIdx],
+        _stops[bestIdx],
       );
-      for (final i in remaining) {
-        final d = mapService.distanceBetweenPoints(current, intermediate[i]);
+      for (final i in intermediate) {
+        final d = mapService.distanceBetweenPoints(current, _stops[i]);
         if (d < bestDist) {
           bestDist = d;
           bestIdx = i;
         }
       }
       sortedIndices.add(bestIdx);
-      remaining.remove(bestIdx);
-      current = intermediate[bestIdx];
+      intermediate.remove(bestIdx);
+      current = _stops[bestIdx];
     }
+    sortedIndices.add(n - 1);
+
+    final stops = sortedIndices.map((i) => _stops[i]).toList();
+    final ctrls = sortedIndices.map((i) => _stopSearchControllers[i]).toList();
+    final ids = sortedIndices.map((i) => _stopPickingIds[i]).toList();
 
     _stops
       ..clear()
-      ..addAll(sortedIndices.map((i) => intermediate[i]))
-      ..add(finalStop);
-
-    _stopSearchControllers
-      ..clear()
-      ..addAll(sortedIndices.map((i) => intermediateCtrls[i]))
-      ..add(finalCtrl);
-
-    _stopSuggestions
-      ..clear()
-      ..addAll(List.generate(_stops.length, (_) => <String>[]));
+      ..addAll(stops);
+    _stopSearchControllers.replaceRange(0, n, ctrls);
+    _stopPickingIds.replaceRange(0, n, ids);
+    for (final s in _stopSuggestions) {
+      s.clear();
+    }
   }
 
   String _getTomTomTravelMode(String travelMode) {
@@ -437,9 +559,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
 
     try {
-      // A picking's stop is geocoded when the picker closes; tapping straight
-      // through to here must not read the list before that lookup lands.
-      await _stopsRebuild;
+      // A picking's stop is added when the picker closes; tapping straight
+      // through to here must not read the list before that lands. A failed
+      // sync has already been reported in the sheet, so it isn't fatal here.
+      try {
+        await _stopsRebuild;
+      } catch (_) {}
+      if (!mounted) return;
 
       if (_apiKey.isEmpty) {
         surfaceError(
@@ -479,29 +605,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         return;
       }
 
-      final filledCtrls = _stopSearchControllers
-          .where((c) => c.text.trim().isNotEmpty)
-          .toList();
-      if (filledCtrls.isNotEmpty && _stops.length != filledCtrls.length) {
-        final resolved = <LatLng>[];
-        for (final ctrl in filledCtrls) {
-          final latlng = await mapService.getLatLngFromPlace(
-            ctrl.text,
-            _apiKey,
-            proximity: _currentLatLng,
-          );
-          if (latlng != null) {
-            resolved.add(latlng);
-          }
-        }
-        if (mounted) {
-          setState(() {
-            _stops
-              ..clear()
-              ..addAll(resolved);
-          });
-        }
-      }
+      // Every stop is located from its current text, so an edited stop is
+      // routed to where it now says, not where it used to point.
+      final generation = _stopsGeneration;
+      final unresolvedStops = await _resolveStopFields();
+      // The route was closed while the stops were being located.
+      if (!mounted || generation != _stopsGeneration) return;
+      setState(() {});
 
       if (_stops.isEmpty) {
         // Three different situations used to share one "could not resolve"
@@ -520,13 +630,20 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           );
         } else {
           surfaceError(
-            'None of the stops could be located on the map. Try picking '
-            'suggestions from the search field or check the addresses.',
-            toastOverride:
-                'Could not resolve any stop locations. Try selecting from suggestions.',
+            'None of the stops could be located on the map. Edit them and '
+            'pick a suggestion, or check your connection.',
+            toastOverride: 'Could not locate any of the stops.',
           );
         }
         return;
+      }
+
+      if (unresolvedStops.isNotEmpty) {
+        CustomSnackbar.showWarning(
+          context,
+          'Left out of the route because it could not be located: '
+          '${unresolvedStops.join(', ')}. Edit the stop to fix it.',
+        );
       }
 
       if (_stops.length >= 2) _applySortedStopOrder();
@@ -543,40 +660,13 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode != 200) {
-        if (!mounted) return;
-        String friendly =
-            'We couldn\'t compute a route between these '
-            'locations. Please check your stops and try again.';
-        try {
-          final errJson = jsonDecode(response.body);
-          final msg =
-              errJson['detailedError']?['message'] ??
-              errJson['message'] ??
-              'HTTP ${response.statusCode}';
-          if (travelMode == 'bicycle') {
-            friendly =
-                'Bike routing is unavailable for this trip. '
-                'Try a shorter distance or switch to Drive mode.';
-          }
-          CustomSnackbar.showError(
-            context,
-            travelMode == 'bicycle'
-                ? 'Bike routing unavailable for this route. Try a shorter distance or Drive mode. ($msg)'
-                : 'Route request failed: $msg',
-          );
-        } catch (_) {
-          CustomSnackbar.showError(
-            context,
-            'Route request failed (HTTP ${response.statusCode}).',
-          );
-        }
-        setState(() {
-          _polylines.clear();
-          _routeDistance = '--';
-          _routeDuration = '--';
-          _legInfo = [];
-          _routeError = friendly;
-        });
+        surfaceError(
+          travelMode == 'bicycle'
+              ? 'Bike routing is unavailable for this trip. '
+                    'Try a shorter distance or switch to Drive mode.'
+              : 'We couldn\'t compute a route between these '
+                    'locations. Please check your stops and try again.',
+        );
         return;
       }
 
@@ -688,28 +778,18 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         });
         _moveCameraToFitAllMarkers();
       } else {
-        final errorMsg =
-            json['detailedError']?['message'] ??
-            json['message'] ??
-            'No route found between these locations.';
-        if (mounted) {
-          CustomSnackbar.showError(context, 'Route error: $errorMsg');
-          setState(() {
-            _polylines.clear();
-            _routeDistance = '--';
-            _routeDuration = '--';
-            _legInfo = [];
-            _routeError = errorMsg.contains('ProductId')
-                ? 'The pickup and drop-off points aren\'t connected by any drivable road. Try different stops or use another travel mode.'
-                : errorMsg;
-          });
-        }
+        surfaceError(
+          'These stops aren\'t connected by any drivable road. Try '
+          'different stops or another travel mode.',
+        );
       }
-    } catch (e) {
+    } catch (_) {
       surfaceError(
         'Something went wrong while computing the route. Please check your '
         'connection and try again.',
-        toastOverride: 'Failed to get route: $e',
+        toastOverride:
+            'Couldn\'t get the route. Check your connection and '
+            'try again.',
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -906,11 +986,20 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   }
 
   /// Requests location permission, gets current position, and sets it as the source.
+  ///
+  /// The service check and the fix itself are bounded by [_kLocationTimeout];
+  /// the permission request is not, since that waits on the user answering
+  /// the system prompt. Also serves as the retry from the location card, in
+  /// which case the map is already up and is moved to the new position.
   Future<void> _setInitialLocation() async {
+    if (_isLocating) return;
+    if (mounted) setState(() => _isLocating = true);
     try {
       final location = Location();
 
-      bool serviceEnabled = await location.serviceEnabled();
+      bool serviceEnabled = await location.serviceEnabled().timeout(
+        _kLocationTimeout,
+      );
       if (!serviceEnabled) {
         serviceEnabled = await location.requestService();
         if (!serviceEnabled) {
@@ -928,23 +1017,38 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         }
       }
 
-      final currentLocation = await location.getLocation();
+      final currentLocation = await location.getLocation().timeout(
+        _kLocationTimeout,
+      );
       final currentLatLng = LatLng(
         currentLocation.latitude!,
         currentLocation.longitude!,
       );
 
       if (!mounted) return;
+      final mapAlreadyShown = _initialCameraPosition != null;
       setState(() {
         _initialCameraPosition = currentLatLng;
         _isLoading = false;
+        _locationUnavailable = false;
         _currentLatLng = currentLatLng;
-        _sourceLatLng = currentLatLng;
-        sourceController.text = 'Your Location';
+        _sourceLatLng ??= currentLatLng;
+        if (sourceController.text.isEmpty) {
+          sourceController.text = 'Your Location';
+        }
       });
       _setCurrentLocationMarker(currentLatLng);
+      if (mapAlreadyShown && !_isNavigationStarted) {
+        _mapController.move(currentLatLng, 15.0);
+      }
     } catch (_) {
       _useFallbackLocation();
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      } else {
+        _isLocating = false;
+      }
     }
   }
 
@@ -952,10 +1056,15 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// obtained, so the page never gets stuck on the loading overlay. Tells the
   /// user (once) to set their source manually.
   void _useFallbackLocation() {
-    if (!mounted || _initialCameraPosition != null) return;
+    if (!mounted) return;
+    if (_initialCameraPosition != null) {
+      if (_currentLatLng == null) setState(() => _locationUnavailable = true);
+      return;
+    }
     setState(() {
       _initialCameraPosition = _fallbackCenter;
       _isLoading = false;
+      _locationUnavailable = true;
     });
     // The notice is held, not shown. Every tab lives in an IndexedStack, so
     // this page builds and asks for a location while Home is on screen — and
@@ -1045,88 +1154,253 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     );
   }
 
-  /// Rebuilds the stop list from whichever pickings are currently selected,
-  /// and sets [_pickingsNotice] to whatever the user needs told about them.
-  ///
-  /// Runs when the picker is closed by any route, not just its "Done" button.
-  /// A picking selected and then dismissed by tapping outside used to leave
-  /// its chip on the sheet with no stop behind it and no warning anywhere, so
-  /// "Show Directions" failed with nothing on screen explaining why.
-  ///
-  /// Returns without touching anything when the selection has not changed,
-  /// which keeps "Done" from re-geocoding what the dismiss it triggers has
-  /// already resolved, and leaves stops edited by hand alone.
-  Future<void> _rebuildStopsFromSelectedPickings() {
-    final signature = selectedPickings.join(',');
-    if (signature == _resolvedPickingSignature) {
-      return _stopsRebuild ?? Future.value();
-    }
-    _resolvedPickingSignature = signature;
-    return _stopsRebuild = _resolveStopsFromPickings();
+  // ---------------------------------------------------------------------------
+  // Stop fields
+  //
+  // Three lists describe the stop fields and must always be the same length:
+  // [_stopSearchControllers] (the text), [_stopSuggestions] (the open
+  // autocomplete list) and [_stopPickingIds] (which pickings the stop came
+  // from). Every change goes through the helpers below so they never drift —
+  // drift is what let editing one stop move another.
+  // ---------------------------------------------------------------------------
+
+  void _addStopField({String text = '', Set<int>? pickingIds, int? at}) {
+    final index = at ?? _stopSearchControllers.length;
+    _stopSearchControllers.insert(index, TextEditingController(text: text));
+    _stopSuggestions.insert(index, <String>[]);
+    _stopPickingIds.insert(index, pickingIds ?? <int>{});
   }
 
-  Future<void> _resolveStopsFromPickings() async {
-    final selected = pickings
-        .where((p) => selectedPickings.contains(p['id']))
+  void _removeStopFieldAt(int index) {
+    final ctrl = _stopSearchControllers.removeAt(index);
+    _stopSuggestions.removeAt(index);
+    _stopPickingIds.removeAt(index);
+    _stopFieldErrors.remove(ctrl);
+    // The field may still be on screen for the rest of this frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.dispose());
+  }
+
+  void _moveStopField(int from, int to) {
+    if (from == to) return;
+    final ctrl = _stopSearchControllers.removeAt(from);
+    final sugg = _stopSuggestions.removeAt(from);
+    final ids = _stopPickingIds.removeAt(from);
+    _stopSearchControllers.insert(to, ctrl);
+    _stopSuggestions.insert(to, sugg);
+    _stopPickingIds.insert(to, ids);
+  }
+
+  /// Drops every stop field and leaves a single empty one.
+  void _clearStopFields() {
+    while (_stopSearchControllers.isNotEmpty) {
+      _removeStopFieldAt(_stopSearchControllers.length - 1);
+    }
+    _addStopField();
+  }
+
+  /// Removes the stop field at [index] at the user's request. A stop that came
+  /// from pickings takes those pickings out of the selection too, so the
+  /// picker never shows a picking whose stop is gone.
+  void _removeStopByUser(int index) {
+    if (index < 0 || index >= _stopSearchControllers.length) return;
+    final ids = _stopPickingIds[index];
+    if (ids.isNotEmpty) {
+      final keep = <int>[];
+      final keepNames = <String>[];
+      for (var i = 0; i < selectedPickings.length; i++) {
+        if (ids.contains(selectedPickings[i])) continue;
+        keep.add(selectedPickings[i]);
+        if (i < selectedPickingNames.length) {
+          keepNames.add(selectedPickingNames[i]);
+        }
+      }
+      selectedPickings = keep;
+      selectedPickingNames = keepNames;
+      _syncedPickingIds = _syncedPickingIds.difference(ids);
+    }
+    _removeStopFieldAt(index);
+    if (_stopSearchControllers.isEmpty) _addStopField();
+    _refreshPickingsNoticeFromCache();
+  }
+
+  static String _placeKey(String text) => text.trim().toLowerCase();
+
+  /// Locates [text], answering from [_geocodeCache] when it can.
+  Future<LatLng?> _geocode(String text) async {
+    final key = _placeKey(text);
+    if (key.isEmpty) return null;
+    final cached = _geocodeCache[key];
+    if (cached != null) return cached;
+    final latLng = await mapService.getLatLngFromPlace(
+      text.trim(),
+      _apiKey,
+      proximity: _currentLatLng,
+    );
+    if (latLng != null) {
+      _geocodeCache[key] = latLng;
+      _geocodeMisses.remove(key);
+    } else {
+      _geocodeMisses.add(key);
+    }
+    return latLng;
+  }
+
+  /// The destination address of a picking, with Odoo's `false` parts removed.
+  static String _pickingDestination(Map<String, dynamic> picking) {
+    final raw = picking['destination_point'];
+    if (raw is! String) return '';
+    return raw
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty && s.toLowerCase() != 'false')
+        .join(', ');
+  }
+
+  /// Applies the current picking selection to the stop fields, then locates
+  /// the pickings' addresses so the sheet can warn about any it can't find.
+  ///
+  /// Only the difference from the last applied selection is touched: a newly
+  /// selected picking adds its stop, a deselected one removes its stop, and
+  /// stops added by hand are never removed. Calls are queued, so "Done" and
+  /// the dismiss it causes run one after the other, the second as a no-op.
+  Future<void> _rebuildStopsFromSelectedPickings() {
+    final previous = _stopsRebuild ?? Future<void>.value();
+    final next = previous
+        .catchError((_) {})
+        .then((_) => _applyPickingSelection());
+    _stopsRebuild = next;
+    return next;
+  }
+
+  Future<void> _applyPickingSelection() async {
+    final generation = _stopsGeneration;
+    final selected = selectedPickings.toSet();
+    final removed = _syncedPickingIds.difference(selected);
+    final added = selectedPickings
+        .where((id) => !_syncedPickingIds.contains(id))
         .toList();
 
-    _stops.clear();
-    for (final c in _stopSearchControllers) {
-      c.dispose();
+    if (removed.isNotEmpty) {
+      for (var i = _stopSearchControllers.length - 1; i >= 0; i--) {
+        final ids = _stopPickingIds[i];
+        if (ids.isEmpty || !ids.any(removed.contains)) continue;
+        ids.removeAll(removed);
+        if (ids.isEmpty) _removeStopFieldAt(i);
+      }
     }
-    _stopSearchControllers.clear();
-    _stopSuggestions.clear();
 
-    final uniqueDestinations = <String>{};
-    final unresolvedDestinations = <String>[];
-    final missingAddressPickings = <String>[];
-
-    for (final picking in selected) {
-      final raw = picking['destination_point'] as String? ?? '';
-      final dest = raw
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty && s.toLowerCase() != 'false')
-          .join(', ');
-
-      if (dest.isEmpty) {
-        missingAddressPickings.add(
-          cleanOdooValue(picking['name'], fallback: 'Unknown'),
+    if (added.isNotEmpty) {
+      // A blank field left over from "Add another stop" would otherwise sit
+      // between the stops; the new stops take its place.
+      for (var i = _stopSearchControllers.length - 1; i >= 0; i--) {
+        if (_stopPickingIds[i].isEmpty &&
+            _stopSearchControllers[i].text.trim().isEmpty) {
+          _removeStopFieldAt(i);
+        }
+      }
+      for (final id in added) {
+        final picking = pickings.cast<Map<String, dynamic>?>().firstWhere(
+          (p) => p?['id'] == id,
+          orElse: () => null,
         );
-        continue;
-      }
-      if (!uniqueDestinations.add(dest)) continue;
-
-      _stopSearchControllers.add(TextEditingController(text: dest));
-      _stopSuggestions.add([]);
-      final stopLatLng = await mapService.getLatLngFromPlace(
-        dest,
-        _apiKey,
-        proximity: _currentLatLng,
-      );
-      if (stopLatLng != null) {
-        _stops.add(stopLatLng);
-      } else {
-        unresolvedDestinations.add(dest);
+        if (picking == null) continue;
+        final dest = _pickingDestination(picking);
+        if (dest.isEmpty) continue;
+        final existing = _stopSearchControllers.indexWhere(
+          (c) => _placeKey(c.text) == _placeKey(dest),
+        );
+        if (existing >= 0) {
+          _stopPickingIds[existing].add(id);
+        } else {
+          _addStopField(text: dest, pickingIds: {id});
+        }
       }
     }
 
-    if (_stopSearchControllers.isEmpty) {
-      _stopSearchControllers.add(TextEditingController());
-      _stopSuggestions.add([]);
-    }
+    _syncedPickingIds = Set.of(selected);
+    if (_stopSearchControllers.isEmpty) _addStopField();
 
-    if (missingAddressPickings.isNotEmpty) {
-      _pickingsNotice =
-          '${missingAddressPickings.join(', ')} '
-          '${missingAddressPickings.length == 1 ? 'has' : 'have'} '
-          'no destination address set in Odoo. Add stops manually below.';
-    } else if (unresolvedDestinations.isNotEmpty) {
-      _pickingsNotice =
-          'Could not locate: ${unresolvedDestinations.join(', ')}';
+    // Locate the selected pickings' addresses now, so a bad address is
+    // flagged in the sheet rather than only when routing.
+    final toLocate = <String>{
+      for (final p in pickings)
+        if (selected.contains(p['id'])) _pickingDestination(p),
+    }..remove('');
+    for (final dest in toLocate) {
+      await _geocode(dest);
+      if (generation != _stopsGeneration) return;
+    }
+    _refreshPickingsNoticeFromCache();
+  }
+
+  /// Rewrites [_pickingsNotice] for the current selection from what is
+  /// already known: pickings with no address in Odoo, and addresses that
+  /// were looked up and not found.
+  void _refreshPickingsNoticeFromCache() {
+    final selected = selectedPickings.toSet();
+    final missing = <String>[];
+    final unresolved = <String>{};
+    for (final p in pickings) {
+      if (!selected.contains(p['id'])) continue;
+      final dest = _pickingDestination(p);
+      if (dest.isEmpty) {
+        missing.add(cleanOdooValue(p['name'], fallback: 'Unknown'));
+      } else if (_geocodeMisses.contains(_placeKey(dest))) {
+        unresolved.add(dest);
+      }
+    }
+    final String? notice;
+    if (missing.isNotEmpty) {
+      notice =
+          '${missing.join(', ')} '
+          '${missing.length == 1 ? 'has' : 'have'} '
+          'no destination address in Odoo, so '
+          '${missing.length == 1 ? "it is" : "they are"} not in the route. '
+          'Add a stop below for any you still need to deliver.';
+    } else if (unresolved.isNotEmpty) {
+      notice =
+          'Could not locate: ${unresolved.join(', ')}. Edit the stop or '
+          'check your connection.';
     } else {
-      _pickingsNotice = null;
+      notice = null;
     }
+    if (notice != _pickingsNotice) _pickingsNoticeDismissed = false;
+    _pickingsNotice = notice;
+  }
+
+  /// Locates every filled stop field and rebuilds [_stops] from them, in the
+  /// fields' order. Fields that resolve are moved to the front so that
+  /// `_stops[i]` and `_stopSearchControllers[i]` always describe the same
+  /// stop; fields that can't be found are kept (the user's text is not
+  /// thrown away) but left out of the route, and returned.
+  Future<List<String>> _resolveStopFields() async {
+    final generation = _stopsGeneration;
+    final resolvedCtrls = <TextEditingController>[];
+    final points = <LatLng>[];
+    final unresolved = <String>[];
+
+    for (final ctrl in List.of(_stopSearchControllers)) {
+      final text = ctrl.text.trim();
+      if (text.isEmpty) continue;
+      final latLng = await _geocode(text);
+      if (generation != _stopsGeneration) return const [];
+      if (latLng != null) {
+        resolvedCtrls.add(ctrl);
+        points.add(latLng);
+      } else {
+        unresolved.add(text);
+      }
+    }
+
+    // Order: resolved stops (as typed), then unresolved, then blanks.
+    for (var target = 0; target < resolvedCtrls.length; target++) {
+      final from = _stopSearchControllers.indexOf(resolvedCtrls[target]);
+      if (from >= 0) _moveStopField(from, target);
+    }
+    _stops
+      ..clear()
+      ..addAll(points);
+    return unresolved;
   }
 
   /// Shows the modal bottom sheet for selecting pickings, source, and stops.
@@ -1135,6 +1409,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
   /// source field with Mapbox autocomplete, and dynamic stop fields.
   void _showEnterRootPopup({bool fromAddStop = false}) {
     _showPendingLocationNotice();
+    _fetchPickings();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     bool popCalled = false;
     bool needsAutoRoute = false;
@@ -1156,9 +1431,6 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
         reverseCurve: Curves.easeInCubic,
       ),
       builder: (BuildContext context) {
-        if (pickings.isEmpty && !_pickingsLoading && !_pickingsLoadFailed) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _fetchPickings());
-        }
         bool isFetchingStops = false;
         bool didAddStopField = false;
         bool isPickingDropdownOpen = false;
@@ -1167,14 +1439,31 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             GlobalKey<DropdownSearchState<Map<String, dynamic>>>();
         final pickingsSearchCtrl = TextEditingController();
 
+        /// Applies the picker's selection to the stop fields, with the sheet
+        /// showing its loader meanwhile. Used by every way the selection can
+        /// change: "Done", dismissing the picker, and removing a chip.
+        Future<void> syncStopsWithPickings() async {
+          _activeSheetSetState?.call(() => isFetchingStops = true);
+          try {
+            await _rebuildStopsFromSelectedPickings();
+          } catch (_) {
+            _pickingsNotice =
+                'Couldn\'t update the stops from the selected pickings. '
+                'Check your connection and try again.';
+          } finally {
+            if (mounted) setState(() {});
+            // The sheet may have closed while the lookup ran.
+            _activeSheetSetState?.call(() => isFetchingStops = false);
+          }
+        }
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter sheetSetState) {
             _activeSheetSetState = sheetSetState;
             if (fromAddStop && !didAddStopField) {
               didAddStopField = true;
               if (_stopSearchControllers.last.text.trim().isNotEmpty) {
-                _stopSearchControllers.add(TextEditingController());
-                _stopSuggestions.add([]);
+                _addStopField();
               }
             }
 
@@ -1433,6 +1722,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                                           ?.changeSelectedItems(
                                                                             updated,
                                                                           );
+                                                                      // Removing a chip never opens the
+                                                                      // picker, so its dismiss won't
+                                                                      // sync the stops for us.
+                                                                      syncStopsWithPickings();
                                                                     },
                                                                     child: const Icon(
                                                                       HugeIcons
@@ -1523,27 +1816,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                             ),
                                             popupProps: PopupPropsMultiSelection.menu(
                                               onDismissed: () async {
-                                                sheetSetState(() {
-                                                  isPickingDropdownOpen = false;
-                                                  isFetchingStops = true;
-                                                });
-                                                try {
-                                                  await _rebuildStopsFromSelectedPickings();
-                                                } catch (_) {
-                                                  _resolvedPickingSignature =
-                                                      null;
-                                                  _pickingsNotice =
-                                                      'Failed to fetch stop locations. '
-                                                      'Please check your connection and try again.';
-                                                } finally {
-                                                  if (mounted) setState(() {});
-                                                  // The sheet may have closed
-                                                  // while the lookup ran.
-                                                  _activeSheetSetState?.call(
-                                                    () =>
-                                                        isFetchingStops = false,
-                                                  );
-                                                }
+                                                sheetSetState(
+                                                  () => isPickingDropdownOpen =
+                                                      false,
+                                                );
+                                                await syncStopsWithPickings();
                                               },
                                               showSearchBox: false,
                                               searchFieldProps: TextFieldProps(
@@ -1741,28 +2018,12 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                               pickingsDropdownKey
                                                                   .currentState
                                                                   ?.closeDropDownSearch();
-                                                              sheetSetState(
-                                                                () =>
-                                                                    isFetchingStops =
-                                                                        true,
-                                                              );
-                                                              try {
-                                                                await _rebuildStopsFromSelectedPickings();
-                                                              } catch (_) {
-                                                                _resolvedPickingSignature =
-                                                                    null;
-                                                                _pickingsNotice =
-                                                                    'Failed to fetch stop locations. '
-                                                                    'Please check your connection and try again.';
-                                                              } finally {
-                                                                setState(() {});
-                                                                sheetSetState(() {
-                                                                  shouldValidate =
-                                                                      false;
-                                                                  isFetchingStops =
-                                                                      false;
-                                                                });
-                                                              }
+                                                              await syncStopsWithPickings();
+                                                              _activeSheetSetState
+                                                                  ?.call(
+                                                                    () => shouldValidate =
+                                                                        false,
+                                                                  );
                                                             },
                                                             child: Text(
                                                               'Done',
@@ -1855,7 +2116,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                     Align(
                                       alignment: Alignment.centerLeft,
                                       child: Text(
-                                        'Pickings cannot be empty',
+                                        'Select a picking or add a stop',
                                         style: TextStyle(
                                           color: Colors.red[400],
                                           fontSize: 12,
@@ -1864,7 +2125,8 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                     ),
                                   ],
 
-                                  if (_pickingsNotice != null) ...[
+                                  if (_pickingsNotice != null &&
+                                      !_pickingsNoticeDismissed) ...[
                                     const SizedBox(height: 10),
                                     Container(
                                       width: double.infinity,
@@ -1896,6 +2158,24 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                 color: isDark
                                                     ? AppColors.warningIcon
                                                     : AppColors.warning,
+                                              ),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => sheetSetState(
+                                              () => _pickingsNoticeDismissed =
+                                                  true,
+                                            ),
+                                            child: const Padding(
+                                              padding: EdgeInsets.only(
+                                                left: 8,
+                                                top: 1,
+                                              ),
+                                              child: Icon(
+                                                HugeIcons.strokeRoundedCancel01,
+                                                size: 14,
+                                                color: AppColors.warning,
                                               ),
                                             ),
                                           ),
@@ -2145,33 +2425,78 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                           CrossAxisAlignment.stretch,
                                       children: [
                                         const SizedBox(height: 18),
-                                        _fieldHeading(
-                                          'Stop ${index + 1}',
-                                          isDark,
-                                        ),
+                                        _stopFieldHeading(index, isDark),
                                         Focus(
                                           onFocusChange: (hasFocus) async {
-                                            if (!hasFocus) {
-                                              await Future.delayed(
-                                                const Duration(
-                                                  milliseconds: 150,
-                                                ),
-                                              );
-                                              if (index <
-                                                  _stopSuggestions.length) {
-                                                sheetSetState(
-                                                  () => _stopSuggestions[index]
-                                                      .clear(),
-                                                );
-                                              }
-                                            }
+                                            if (hasFocus) return;
+                                            final ctrl =
+                                                _stopSearchControllers[index];
+                                            await Future.delayed(
+                                              const Duration(milliseconds: 150),
+                                            );
+                                            final i = _stopSearchControllers
+                                                .indexOf(ctrl);
+                                            if (i < 0) return;
+                                            _activeSheetSetState?.call(
+                                              () => _stopSuggestions[i].clear(),
+                                            );
                                           },
                                           child: MoboTextField(
                                             controller:
                                                 _stopSearchControllers[index],
                                             hintText: 'Add your stop',
                                             showShadow: false,
+                                            suffixIcon: _canRemoveStop(index)
+                                                ? IconButton(
+                                                    tooltip: 'Remove stop',
+                                                    icon: Icon(
+                                                      HugeIcons
+                                                          .strokeRoundedCancel01,
+                                                      size: 18,
+                                                      color: onSurface
+                                                          .withValues(
+                                                            alpha: 0.5,
+                                                          ),
+                                                    ),
+                                                    onPressed: () {
+                                                      FocusScope.of(
+                                                        context,
+                                                      ).unfocus();
+                                                      sheetSetState(
+                                                        () => _removeStopByUser(
+                                                          index,
+                                                        ),
+                                                      );
+                                                      pickingsDropdownKey
+                                                          .currentState
+                                                          ?.changeSelectedItems(
+                                                            pickings
+                                                                .where(
+                                                                  (
+                                                                    p,
+                                                                  ) => selectedPickings
+                                                                      .contains(
+                                                                        p['id'],
+                                                                      ),
+                                                                )
+                                                                .toList(),
+                                                          );
+                                                      setState(() {});
+                                                    },
+                                                  )
+                                                : null,
                                             onChanged: (value) async {
+                                              final ctrl =
+                                                  _stopSearchControllers[index];
+                                              if (_stopFieldErrors.containsKey(
+                                                    ctrl,
+                                                  ) ||
+                                                  shouldValidate) {
+                                                sheetSetState(() {
+                                                  _stopFieldErrors.remove(ctrl);
+                                                  shouldValidate = false;
+                                                });
+                                              }
                                               final suggestions =
                                                   await mapService
                                                       .fetchSuggestions(
@@ -2180,20 +2505,35 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                         proximity:
                                                             _currentLatLng,
                                                       );
-                                              sheetSetState(() {
-                                                if (_stopSuggestions.length <=
-                                                    index) {
-                                                  _stopSuggestions.add(
+                                              // The field may have been
+                                              // removed, or typed on since.
+                                              final i = _stopSearchControllers
+                                                  .indexOf(ctrl);
+                                              if (i < 0 || ctrl.text != value) {
+                                                return;
+                                              }
+                                              _activeSheetSetState?.call(
+                                                () => _stopSuggestions[i] =
                                                     suggestions,
-                                                  );
-                                                } else {
-                                                  _stopSuggestions[index] =
-                                                      suggestions;
-                                                }
-                                              });
+                                              );
                                             },
                                           ),
                                         ),
+                                        if (_stopFieldErrors[_stopSearchControllers[index]]
+                                            case final error?)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 6,
+                                              left: 2,
+                                            ),
+                                            child: Text(
+                                              error,
+                                              style: TextStyle(
+                                                color: Colors.red[400],
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
                                         if (_stopSuggestions[index].isNotEmpty)
                                           Container(
                                             margin: const EdgeInsets.only(
@@ -2228,63 +2568,68 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                                     final nav = Navigator.of(
                                                       context,
                                                     );
-                                                    _stopSearchControllers[index]
-                                                            .text =
+                                                    final ctrl =
+                                                        _stopSearchControllers[index];
+                                                    final picked =
                                                         _stopSuggestions[index][si];
-                                                    sheetSetState(
-                                                      () =>
-                                                          _stopSuggestions[index]
-                                                              .clear(),
-                                                    );
+                                                    ctrl.text = picked;
+                                                    FocusScope.of(
+                                                      context,
+                                                    ).unfocus();
+                                                    sheetSetState(() {
+                                                      _stopSuggestions[index]
+                                                          .clear();
+                                                      _stopFieldErrors.remove(
+                                                        ctrl,
+                                                      );
+                                                    });
                                                     final stopLatLng =
-                                                        await mapService
-                                                            .getLatLngFromPlace(
-                                                              _stopSearchControllers[index]
-                                                                  .text,
-                                                              _apiKey,
-                                                              proximity:
-                                                                  _currentLatLng,
+                                                        await _geocode(picked);
+                                                    final i =
+                                                        _stopSearchControllers
+                                                            .indexOf(ctrl);
+                                                    if (!mounted || i < 0) {
+                                                      return;
+                                                    }
+                                                    if (stopLatLng == null) {
+                                                      _activeSheetSetState?.call(
+                                                        () => _stopFieldErrors[ctrl] =
+                                                            'Couldn\'t locate this place. '
+                                                            'Try another suggestion or '
+                                                            'check your connection.',
+                                                      );
+                                                      return;
+                                                    }
+                                                    // A stop added during a
+                                                    // route joins before the
+                                                    // final destination, which
+                                                    // stays last.
+                                                    final hasOtherStops =
+                                                        _stopSearchControllers
+                                                            .any(
+                                                              (c) =>
+                                                                  c != ctrl &&
+                                                                  c.text
+                                                                      .trim()
+                                                                      .isNotEmpty,
                                                             );
-                                                    if (stopLatLng != null) {
-                                                      setState(() {
-                                                        if (_stops.length >
-                                                            index) {
-                                                          _stops[index] =
-                                                              stopLatLng;
-                                                        } else if (fromAddStop &&
-                                                            _stops.isNotEmpty) {
-                                                          _stops.insert(
-                                                            0,
-                                                            stopLatLng,
-                                                          );
-                                                          final ctrl =
-                                                              _stopSearchControllers
-                                                                  .removeAt(
-                                                                    index,
-                                                                  );
-                                                          _stopSearchControllers
-                                                              .insert(0, ctrl);
-                                                          final sugg =
-                                                              _stopSuggestions
-                                                                  .removeAt(
-                                                                    index,
-                                                                  );
-                                                          _stopSuggestions
-                                                              .insert(0, sugg);
-                                                        } else {
-                                                          _stops.add(
-                                                            stopLatLng,
-                                                          );
-                                                        }
-                                                      });
-
-                                                      if (fromAddStop &&
-                                                          mounted &&
-                                                          !popCalled) {
-                                                        needsAutoRoute = true;
-                                                        popCalled = true;
-                                                        nav.pop();
-                                                      }
+                                                    if (fromAddStop &&
+                                                        hasOtherStops &&
+                                                        i ==
+                                                            _stopSearchControllers
+                                                                    .length -
+                                                                1) {
+                                                      _moveStopField(i, 0);
+                                                    }
+                                                    setState(() {});
+                                                    _activeSheetSetState?.call(
+                                                      () {},
+                                                    );
+                                                    if (fromAddStop &&
+                                                        !popCalled) {
+                                                      needsAutoRoute = true;
+                                                      popCalled = true;
+                                                      nav.pop();
                                                     }
                                                   },
                                                   child: Padding(
@@ -2341,12 +2686,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                       alignment: Alignment.centerLeft,
                                       child: TextButton.icon(
                                         onPressed: () {
-                                          sheetSetState(() {
-                                            _stopSearchControllers.add(
-                                              TextEditingController(),
-                                            );
-                                            _stopSuggestions.add([]);
-                                          });
+                                          sheetSetState(_addStopField);
                                         },
                                         style: TextButton.styleFrom(
                                           padding: const EdgeInsets.symmetric(
@@ -2422,14 +2762,20 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                                       elevation: 0,
                                     ),
                                     onPressed: () async {
+                                      // Edit opens this sheet without
+                                      // "fromAddStop", and a route can be
+                                      // made of typed stops alone.
+                                      final hasTypedStop =
+                                          _stopSearchControllers.any(
+                                            (c) => c.text.trim().isNotEmpty,
+                                          );
                                       if (!fromAddStop &&
-                                          selectedPickings.isEmpty) {
+                                          selectedPickings.isEmpty &&
+                                          !hasTypedStop) {
+                                        // Say so where the driver is
+                                        // looking, without closing the sheet.
                                         setState(() => shouldValidate = true);
-                                        if (!popCalled) {
-                                          popCalled = true;
-                                          Navigator.of(context).pop(true);
-                                        }
-                                        _showEnterRootPopup();
+                                        sheetSetState(() {});
                                         return;
                                       }
                                       needsAutoRoute = false;
@@ -2525,6 +2871,46 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
 
   /// Left-aligned static heading shown above an input box in the bottom sheet.
   /// When [isRequired] is true a red `*` marks the field.
+  /// A stop can be removed when it holds something, or when it isn't the
+  /// only field — the sheet always keeps one field to type into.
+  bool _canRemoveStop(int index) =>
+      _stopSearchControllers.length > 1 ||
+      _stopSearchControllers[index].text.trim().isNotEmpty;
+
+  /// "Stop N", followed by the picking(s) it was filled from, so the driver
+  /// can tell which stops came from Odoo and which they typed. The reference
+  /// reads as part of the heading rather than sitting out on the right, and
+  /// it stays out of the field so the address keeps its full width.
+  Widget _stopFieldHeading(int index, bool isDark) {
+    final ids = _stopPickingIds[index];
+    final names = [
+      for (final p in pickings)
+        if (ids.contains(p['id'])) cleanOdooValue(p['name'], fallback: ''),
+    ].where((n) => n.isNotEmpty).toList();
+    if (names.isEmpty) return _fieldHeading('Stop ${index + 1}', isDark);
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 6),
+      child: Row(
+        children: [
+          RequiredLabel('Stop ${index + 1}'),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '\u00b7 ${names.join(', ')}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white54 : Colors.grey[600],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _fieldHeading(String text, bool isDark, {bool isRequired = false}) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -2567,6 +2953,77 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Floats over the map while it is showing [_fallbackCenter], so a map of
+  /// somewhere else is not mistaken for the user's surroundings, and gives a
+  /// way to try again without leaving the tab.
+  Widget _buildLocationUnavailableCard(bool isDark) {
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(14),
+      color: isDark ? const Color(0xFF2C2C3E) : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+        child: Row(
+          children: [
+            Icon(
+              HugeIcons.strokeRoundedLocationOffline01,
+              color: AppStyle.primaryColor,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Location unavailable',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Couldn\'t get your position. Retry, or set a source in Enter Route.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            _isLocating
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppStyle.primaryColor,
+                      ),
+                    ),
+                  )
+                : TextButton(
+                    onPressed: _setInitialLocation,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppStyle.primaryColor,
+                    ),
+                    child: const Text(
+                      'Retry',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }
@@ -2692,9 +3149,14 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     right: 16,
                     child: SearchInputs(
                       sourceController: sourceSearchController,
-                      stopControllers: _stopSearchControllers,
+                      // Once routed, only the stops on the route; one that
+                      // couldn't be located stays in the sheet to be fixed.
+                      stopControllers: _stops.isEmpty
+                          ? _stopSearchControllers
+                          : _stopSearchControllers.take(_stops.length).toList(),
                       showStopFields: _showStopLocationFields,
                       onClose: _resetNavigation,
+                      onEdit: _isLoading ? null : () => _showEnterRootPopup(),
                     ),
                   ),
                   Positioned(
@@ -2716,6 +3178,11 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                         setState(() => _showStopLocationFields = true);
                         _showEnterRootPopup(fromAddStop: true);
                       },
+                      onOpenInMapsPressed:
+                          (_routeError == null && _stops.isNotEmpty)
+                          ? _openInExternalMaps
+                          : null,
+                      isOpeningInMaps: _openingExternalMaps,
                     ),
                   ),
                 ],
@@ -2742,6 +3209,10 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                           setState(() => _isMapManuallyMoved = true);
                         }
                       },
+                      onOpenInMapsPressed: _stops.isNotEmpty
+                          ? _openInExternalMaps
+                          : null,
+                      isOpeningInMaps: _openingExternalMaps,
                       onAddRoutePressed: () {
                         setState(() {
                           _showStopLocationFields = true;
@@ -2752,6 +3223,17 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
                     ),
                   ),
                 ],
+
+                if (_locationUnavailable &&
+                    isOnline &&
+                    !_isNavigationStarted &&
+                    !(!_infoCard && _showLocationNames))
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: _buildLocationUnavailableCard(isDark),
+                  ),
 
                 if (_isLoading)
                   Positioned(
@@ -3032,6 +3514,7 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
           ),
         );
         _currentLatLng = currentLatLng;
+        _locationUnavailable = false;
       });
 
       if (!_isMapManuallyMoved) {
@@ -3057,6 +3540,98 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
     }
   }
 
+  /// Hands the planned route to a map app on the phone.
+  ///
+  /// Android sends every stop to Google Maps (or the browser when it isn't
+  /// installed). iOS asks between Google Maps, when installed, and Apple
+  /// Maps; otherwise it goes straight to Apple Maps. Whatever a link can't
+  /// carry is said out loud rather than silently dropped.
+  Future<void> _openInExternalMaps() async {
+    if (_openingExternalMaps) return;
+    if (_stops.isEmpty) {
+      CustomSnackbar.showWarning(
+        context,
+        'Get directions first, then open the route in Maps.',
+      );
+      return;
+    }
+    final stops = List<LatLng>.of(_stops);
+    final firstStopName = _stopSearchControllers.isNotEmpty
+        ? _stopSearchControllers.first.text
+        : null;
+    // Starting from the phone's own location lets Google Maps begin
+    // turn-by-turn navigation; a typed source opens as a route preview.
+    final fromDevice =
+        _isNavigationStarted || sourceController.text == 'Your Location';
+    final origin = fromDevice ? null : _sourceLatLng;
+
+    setState(() => _openingExternalMaps = true);
+    try {
+      var app = ExternalMapsApp.google;
+      if (Platform.isIOS) {
+        final hasGoogle = await _externalMaps.isGoogleMapsInstalled();
+        if (!mounted) return;
+        if (hasGoogle) {
+          final choice = await showMapsAppPicker(
+            context,
+            stopCount: stops.length,
+          );
+          if (choice == null || !mounted) return;
+          app = choice;
+        } else {
+          app = ExternalMapsApp.apple;
+        }
+      }
+
+      final link = app == ExternalMapsApp.google
+          ? _externalMaps.googleDirections(
+              origin: origin,
+              stops: stops,
+              travelMode: _selectedTravelMode,
+            )
+          : _externalMaps.appleDirections(
+              origin: origin,
+              destination: stops.first,
+              destinationAddress: firstStopName,
+              travelMode: _selectedTravelMode,
+              stopsTotal: stops.length,
+            );
+
+      final opened = await _externalMaps.open(link.uri);
+      if (!mounted) return;
+      if (!opened) {
+        CustomSnackbar.showError(
+          context,
+          app == ExternalMapsApp.google
+              ? 'Couldn\'t open Google Maps. Install Google Maps or a web '
+                    'browser and try again.'
+              : 'Couldn\'t open Apple Maps. Check it hasn\'t been removed '
+                    'from this iPhone and try again.',
+        );
+      } else if (link.isTruncated) {
+        CustomSnackbar.showWarning(
+          context,
+          app == ExternalMapsApp.google
+              ? 'Google Maps takes up to ${ExternalMapsService.googleMaxStops} '
+                    'stops, so the first ${link.stopsSent} of '
+                    '${link.stopsTotal} were sent. The rest are still on '
+                    'this route.'
+              : 'Apple Maps opened with your next stop only. Use Google Maps '
+                    'for the whole route.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Couldn\'t open the route in Maps. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingExternalMaps = false);
+    }
+  }
+
   /// Resets all navigation state back to the idle map view.
   void _resetNavigation() {
     RouteNavigationBus.set(false);
@@ -3079,15 +3654,22 @@ class _RouteVisualizationPageState extends State<RouteVisualizationPage> {
       _remainingLegInfo = [];
       _locationSubscription?.cancel();
       _distanceUpdateTimer?.cancel();
-      for (final c in _stopSearchControllers) {
-        c.dispose();
-      }
-      _stopSearchControllers
-        ..clear()
-        ..add(TextEditingController());
+      _clearStopFields();
       sourceController.text = 'Your Location';
+      // The label now says "Your Location", so the point must match it.
+      _sourceLatLng = _currentLatLng;
       selectedPickings.clear();
       selectedPickingNames.clear();
+      // Forget what the stops were built from too. Leaving this behind is
+      // what made re-selecting the same picking after closing a route add
+      // no stop at all ("No stops to route to yet") until an app restart.
+      _syncedPickingIds = <int>{};
+      _stopsRebuild = null;
+      _stopsGeneration++;
+      _pickingsNotice = null;
+      _pickingsNoticeDismissed = false;
+      _routeError = null;
+      shouldValidate = false;
       _showStopLocationFields = false;
       _stops.clear();
       if (_currentLatLng != null) {

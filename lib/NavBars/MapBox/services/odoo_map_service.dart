@@ -236,7 +236,27 @@ class OdooMapService {
     }
   }
 
-  /// Fetches all stock pickings and enriches them with human-readable start/destination addresses.
+  /// The deliveries a driver can still route to, as Odoo's own Deliveries
+  /// list filters them: outgoing pickings (Odoo's "Deliveries" filter) in
+  /// Draft, Waiting or Ready (its "Draft", "Waiting" and "Ready" filters).
+  /// Done and cancelled ones are left out. Drafts stay in because a delivery
+  /// created by hand in Odoo is a draft until "Mark as To Do".
+  ///
+  /// Field names and state values are the same in Odoo 17, 18, 19 and 20
+  /// (each version's `view_picking_internal_search`).
+  static const List<List<dynamic>> openDeliveriesDomain = [
+    ['picking_type_code', '=', 'outgoing'],
+    [
+      'state',
+      'in',
+      ['draft', 'waiting', 'confirmed', 'assigned'],
+    ],
+  ];
+
+  /// Fetches the open deliveries ([openDeliveriesDomain]) and enriches them
+  /// with human-readable start/destination addresses. No order is sent, so
+  /// Odoo applies its own (`priority desc, scheduled_date asc`), the same as
+  /// its Deliveries list.
   ///
   /// Steps:
   ///   1. Reads `stock.picking` records (id, name, location_id, location_dest_id, partner_id)
@@ -245,157 +265,155 @@ class OdooMapService {
   ///   4. Fetches partner addresses directly
   ///   5. Maps addresses → picking records (starting_point, destination_point)
   ///
-  /// Returns enriched list or empty list on any failure (graceful degradation).
+  /// Throws when Odoo can't be read, so a caller can tell "there are no open
+  /// deliveries" apart from "the list could not be loaded" — the route page
+  /// must not treat a failed refresh as every selected delivery being closed.
   Future<List<Map<String, dynamic>>> fetchStockPickings() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      userId = prefs.getInt('userId') ?? 0;
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getInt('userId') ?? 0;
 
-      final pickingItems = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.picking',
-        'method': 'search_read',
-        'args': [],
-        'kwargs': {
-          'fields': [
-            'id',
-            'name',
-            'location_id',
-            'location_dest_id',
-            'partner_id',
-          ],
-        },
-      });
-
-      if (pickingItems == null || pickingItems.isEmpty) return [];
-
-      final locationIds = <int>{};
-      final partnerIds = <int>{};
-
-      for (var p in pickingItems) {
-        if (p['location_id'] is List && p['location_id'].isNotEmpty) {
-          locationIds.add(p['location_id'][0]);
-        }
-        if (p['location_dest_id'] is List && p['location_dest_id'].isNotEmpty) {
-          locationIds.add(p['location_dest_id'][0]);
-        }
-        if (p['partner_id'] is List && p['partner_id'].isNotEmpty) {
-          partnerIds.add(p['partner_id'][0]);
-        }
-      }
-
-      final locationData = await CompanySessionManager.callKwWithCompany({
-        'model': 'stock.location',
-        'method': 'search_read',
-        'args': [
-          [
-            ['id', 'in', locationIds.toList()],
-          ],
+    final pickingItems = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.picking',
+      'method': 'search_read',
+      'args': [openDeliveriesDomain],
+      'kwargs': {
+        'fields': [
+          'id',
+          'name',
+          'location_id',
+          'location_dest_id',
+          'partner_id',
         ],
-        'kwargs': {
-          'fields': ['id', 'company_id'],
-        },
-      });
+      },
+    });
 
-      final locationToCompany = <int, int>{};
-      final companyIds = <int>{};
+    if (pickingItems == null || pickingItems.isEmpty) return [];
 
-      if (locationData != null) {
-        for (var loc in locationData) {
-          if (loc['company_id'] is List && loc['company_id'].isNotEmpty) {
-            locationToCompany[loc['id']] = loc['company_id'][0];
-            companyIds.add(loc['company_id'][0]);
-          }
-        }
+    final locationIds = <int>{};
+    final partnerIds = <int>{};
+
+    for (var p in pickingItems) {
+      if (p['location_id'] is List && p['location_id'].isNotEmpty) {
+        locationIds.add(p['location_id'][0]);
       }
-
-      final companyData = await CompanySessionManager.callKwWithCompany({
-        'model': 'res.company',
-        'method': 'search_read',
-        'args': [
-          [
-            ['id', 'in', companyIds.toList()],
-          ],
-        ],
-        'kwargs': {
-          'fields': [
-            'street',
-            'street2',
-            'city',
-            'zip',
-            'state_id',
-            'country_id',
-          ],
-        },
-      });
-
-      final companyAddresses = _mapAddresses(companyData);
-
-      final partnerData = await CompanySessionManager.callKwWithCompany({
-        'model': 'res.partner',
-        'method': 'search_read',
-        'args': [
-          [
-            ['id', 'in', partnerIds.toList()],
-          ],
-        ],
-        'kwargs': {
-          'fields': [
-            'street',
-            'street2',
-            'city',
-            'zip',
-            'state_id',
-            'country_id',
-          ],
-        },
-      });
-
-      final partnerAddresses = _mapAddresses(partnerData);
-
-      List<Map<String, dynamic>> enrichedPickings = [];
-
-      for (var picking in pickingItems) {
-        Map<String, dynamic> enrichedPicking = Map.from(picking);
-
-        int? locationId =
-            picking['location_id'] is List && picking['location_id'].isNotEmpty
-            ? picking['location_id'][0]
-            : null;
-        int? destLocationId =
-            picking['location_dest_id'] is List &&
-                picking['location_dest_id'].isNotEmpty
-            ? picking['location_dest_id'][0]
-            : null;
-        int? partnerId =
-            picking['partner_id'] is List && picking['partner_id'].isNotEmpty
-            ? picking['partner_id'][0]
-            : null;
-
-        String startingPoint = _getAddressFromMaps(
-          locationId,
-          partnerId,
-          locationToCompany,
-          companyAddresses,
-          partnerAddresses,
-        );
-        String destinationPoint = _getAddressFromMaps(
-          destLocationId,
-          partnerId,
-          locationToCompany,
-          companyAddresses,
-          partnerAddresses,
-        );
-
-        enrichedPicking['starting_point'] = startingPoint;
-        enrichedPicking['destination_point'] = destinationPoint;
-
-        enrichedPickings.add(enrichedPicking);
+      if (p['location_dest_id'] is List && p['location_dest_id'].isNotEmpty) {
+        locationIds.add(p['location_dest_id'][0]);
       }
-
-      return enrichedPickings;
-    } catch (e) {
-      return [];
+      if (p['partner_id'] is List && p['partner_id'].isNotEmpty) {
+        partnerIds.add(p['partner_id'][0]);
+      }
     }
+
+    final locationData = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.location',
+      'method': 'search_read',
+      'args': [
+        [
+          ['id', 'in', locationIds.toList()],
+        ],
+      ],
+      'kwargs': {
+        'fields': ['id', 'company_id'],
+      },
+    });
+
+    final locationToCompany = <int, int>{};
+    final companyIds = <int>{};
+
+    if (locationData != null) {
+      for (var loc in locationData) {
+        if (loc['company_id'] is List && loc['company_id'].isNotEmpty) {
+          locationToCompany[loc['id']] = loc['company_id'][0];
+          companyIds.add(loc['company_id'][0]);
+        }
+      }
+    }
+
+    final companyData = await CompanySessionManager.callKwWithCompany({
+      'model': 'res.company',
+      'method': 'search_read',
+      'args': [
+        [
+          ['id', 'in', companyIds.toList()],
+        ],
+      ],
+      'kwargs': {
+        'fields': [
+          'street',
+          'street2',
+          'city',
+          'zip',
+          'state_id',
+          'country_id',
+        ],
+      },
+    });
+
+    final companyAddresses = _mapAddresses(companyData);
+
+    final partnerData = await CompanySessionManager.callKwWithCompany({
+      'model': 'res.partner',
+      'method': 'search_read',
+      'args': [
+        [
+          ['id', 'in', partnerIds.toList()],
+        ],
+      ],
+      'kwargs': {
+        'fields': [
+          'street',
+          'street2',
+          'city',
+          'zip',
+          'state_id',
+          'country_id',
+        ],
+      },
+    });
+
+    final partnerAddresses = _mapAddresses(partnerData);
+
+    List<Map<String, dynamic>> enrichedPickings = [];
+
+    for (var picking in pickingItems) {
+      Map<String, dynamic> enrichedPicking = Map.from(picking);
+
+      int? locationId =
+          picking['location_id'] is List && picking['location_id'].isNotEmpty
+          ? picking['location_id'][0]
+          : null;
+      int? destLocationId =
+          picking['location_dest_id'] is List &&
+              picking['location_dest_id'].isNotEmpty
+          ? picking['location_dest_id'][0]
+          : null;
+      int? partnerId =
+          picking['partner_id'] is List && picking['partner_id'].isNotEmpty
+          ? picking['partner_id'][0]
+          : null;
+
+      String startingPoint = _getAddressFromMaps(
+        locationId,
+        partnerId,
+        locationToCompany,
+        companyAddresses,
+        partnerAddresses,
+      );
+      String destinationPoint = _getAddressFromMaps(
+        destLocationId,
+        partnerId,
+        locationToCompany,
+        companyAddresses,
+        partnerAddresses,
+      );
+
+      enrichedPicking['starting_point'] = startingPoint;
+      enrichedPicking['destination_point'] = destinationPoint;
+
+      enrichedPickings.add(enrichedPicking);
+    }
+
+    return enrichedPickings;
   }
 
   /// Maps company/partner records to ID → formatted address string.

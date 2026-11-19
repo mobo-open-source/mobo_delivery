@@ -1050,9 +1050,12 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
   /// and no spinner to hold the user on this screen. The earlier version
   /// pre-loaded the lines and fell back to a Hive `move_lines` box when
   /// offline, which is what showed three lines for a picking that had one.
-  void _stockMoveLine() {
+  ///
+  /// The lines can be changed there (lot/serial, pick-from, quantity), so a
+  /// `true` result re-reads this screen's lines and Lot/Serial column.
+  Future<void> _stockMoveLine() async {
     final pickingId = int.parse(widget.picking['id'].toString());
-    Navigator.push(
+    final changed = await Navigator.push<bool>(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
@@ -1064,6 +1067,7 @@ class _PickingDetailsPageState extends State<PickingDetailsPage> {
         },
       ),
     );
+    if (changed == true && mounted) await _loadSavingData();
   }
 
   Future<void> _returnPicking() async {

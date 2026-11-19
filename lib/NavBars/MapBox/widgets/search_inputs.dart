@@ -15,12 +15,18 @@ class SearchInputs extends StatelessWidget {
   /// If provided, a close button is shown inside the top-right of the card.
   final VoidCallback? onClose;
 
+  /// If provided, an edit button sits beside the close button and reopens
+  /// the route sheet with every stop editable. The rows themselves stay
+  /// read-only: they don't look tappable, so they shouldn't act it.
+  final VoidCallback? onEdit;
+
   const SearchInputs({
     super.key,
     required this.sourceController,
     required this.stopControllers,
     required this.showStopFields,
     this.onClose,
+    this.onEdit,
   });
 
   @override
@@ -135,22 +141,26 @@ class SearchInputs extends StatelessWidget {
               ),
             ),
 
-            if (onClose != null) ...[
+            if (onEdit != null || onClose != null) ...[
               const SizedBox(width: 4),
-              Align(
-                alignment: Alignment.topCenter,
-                child: GestureDetector(
-                  onTap: onClose,
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(
-                      HugeIcons.strokeRoundedCancel01,
-                      size: 16,
-                      color: isDark ? Colors.white38 : const Color(0xFF9AA0A6),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onClose != null)
+                    _CardIconButton(
+                      icon: HugeIcons.strokeRoundedCancel01,
+                      tooltip: 'Close route',
+                      onTap: onClose!,
+                      isDark: isDark,
                     ),
-                  ),
-                ),
+                  if (onEdit != null)
+                    _CardIconButton(
+                      icon: HugeIcons.strokeRoundedPencilEdit02,
+                      tooltip: 'Edit stops',
+                      onTap: onEdit!,
+                      isDark: isDark,
+                    ),
+                ],
               ),
             ],
           ],
@@ -199,6 +209,42 @@ class SearchInputs extends StatelessWidget {
             fontSize: 13,
             fontWeight: FontWeight.w500,
             color: Color(0xFF4285F4),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A 36×36 icon button for the card's corner actions (the guide's minimum
+/// tap target), with a tooltip so the glyph is never the only label.
+class _CardIconButton extends StatelessWidget {
+  const _CardIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 20,
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: Icon(
+            icon,
+            size: 18,
+            color: isDark ? Colors.white54 : const Color(0xFF70757A),
           ),
         ),
       ),

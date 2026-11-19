@@ -14,6 +14,7 @@ import '../models/product.dart';
 import '../models/partner.dart';
 import '../models/user.dart';
 import '../models/stock_move.dart';
+import '../models/detailed_operations.dart';
 import 'hive_service.dart';
 import '../../../../shared/utils/odoo_version.dart';
 
@@ -532,6 +533,204 @@ class OdooPickingFormService {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Fields of each model the Detailed Operations screen reads. Every one
+  /// exists under the same name in Odoo 17, 18, 19 and 20 (checked against
+  /// each version's `stock_move.py`, `stock_move_line.py`, `stock_quant.py`).
+  static const detailedMoveFields = [
+    'product_id',
+    'location_id',
+    'product_uom_qty',
+    'quantity',
+    'has_tracking',
+    'show_quant',
+    'show_lots_m2o',
+  ];
+  static const detailedLineFields = [
+    'move_id',
+    'product_id',
+    'location_id',
+    'lot_id',
+    'package_id',
+    'owner_id',
+    'quantity',
+  ];
+  static const pickFromFields = [
+    'location_id',
+    'lot_id',
+    'package_id',
+    'owner_id',
+    'available_quantity',
+  ];
+
+  /// Reads what Odoo's Detailed Operations shows for [pickingId]: the
+  /// picking's state, its product lines (`stock.move`) and their move lines
+  /// (`stock.move.line`). Always live from the server.
+  ///
+  /// Returns null when the read fails, so the screen can say "could not
+  /// load" rather than "no lines".
+  Future<DetailedOperations?> loadDetailedOperations(int pickingId) async {
+    try {
+      final picking = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.picking',
+        'method': 'read',
+        'args': [
+          [pickingId],
+          ['state', 'company_id'],
+        ],
+        'kwargs': {},
+      });
+      final moves = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.move',
+        'method': 'search_read',
+        'args': [
+          [
+            ['picking_id', '=', pickingId],
+            ['state', '!=', 'cancel'],
+          ],
+        ],
+        'kwargs': {'fields': detailedMoveFields},
+      });
+      final lines = await CompanySessionManager.callKwWithCompany({
+        'model': 'stock.move.line',
+        'method': 'search_read',
+        'args': [
+          [
+            ['picking_id', '=', pickingId],
+          ],
+        ],
+        'kwargs': {'fields': detailedLineFields},
+      });
+
+      final head = (picking is List && picking.isNotEmpty)
+          ? Map<String, dynamic>.from(picking.first as Map)
+          : <String, dynamic>{};
+      return DetailedOperations(
+        pickingState: head['state'] is String ? head['state'] as String : '',
+        companyId: m2oId(head['company_id']),
+        moves: [
+          for (final m in List<Map<String, dynamic>>.from(moves ?? []))
+            DetailedMove.fromJson(m),
+        ],
+        lines: [
+          for (final l in List<Map<String, dynamic>>.from(lines ?? []))
+            DetailedLine.fromJson(l),
+        ],
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// The stock Odoo offers in "Pick From" for a line of [move]: quants of
+  /// the product in the move's source location or below it — Odoo's own
+  /// `quant_id` domain, identical in 17-20 — leaving out empty ones.
+  /// Throws on RPC failure.
+  Future<List<PickFromOption>> loadPickFromOptions(DetailedMove move) async {
+    final quants = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.quant',
+      'method': 'search_read',
+      'args': [
+        [
+          ['product_id', '=', move.productId],
+          if (move.locationId != null)
+            ['location_id', 'child_of', move.locationId],
+          ['quantity', '>', 0],
+        ],
+      ],
+      'kwargs': {'fields': pickFromFields},
+    });
+    return [
+      for (final q in List<Map<String, dynamic>>.from(quants ?? []))
+        PickFromOption.fromJson(q),
+    ];
+  }
+
+  /// The lots Odoo offers in the Lot/Serial column when "Pick From" is not
+  /// shown: the product's lots in the picking's company or no company —
+  /// Odoo's `lot_id` domain on the line. Returns `[id, name]` pairs.
+  /// Throws on RPC failure.
+  Future<List<MapEntry<int, String>>> loadLots(
+    DetailedMove move,
+    int? companyId,
+  ) async {
+    final lots = await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.lot',
+      'method': 'search_read',
+      'args': [
+        [
+          ['product_id', '=', move.productId],
+          if (companyId != null) ...[
+            '|',
+            ['company_id', '=', companyId],
+            ['company_id', '=', false],
+          ],
+        ],
+      ],
+      'kwargs': {
+        'fields': ['name'],
+      },
+    });
+    return [
+      for (final l in List<Map<String, dynamic>>.from(lots ?? []))
+        if (l['id'] is int && l['name'] is String)
+          MapEntry(l['id'] as int, l['name'] as String),
+    ];
+  }
+
+  /// Writes [values] on a move line. Changing `lot_id`, `location_id`,
+  /// `package_id` or `owner_id` makes Odoo release the old reservation and
+  /// reserve the new stock itself. `picked` is never written, so validation
+  /// behaves as it does on the web when nothing is ticked. Throws on failure.
+  Future<void> updateMoveLine(int lineId, Map<String, dynamic> values) async {
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move.line',
+      'method': 'write',
+      'args': [
+        [lineId],
+        values,
+      ],
+      'kwargs': {},
+    });
+  }
+
+  /// Odoo's "Add a line" on a product line. Odoo fills in the destination,
+  /// the unit, the company and `picked` from the move, and reserves the
+  /// stock. Throws on failure.
+  Future<void> createMoveLine({
+    required DetailedMove move,
+    required int pickingId,
+    required double quantity,
+    Map<String, dynamic> values = const {},
+  }) async {
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move.line',
+      'method': 'create',
+      'args': [
+        {
+          'move_id': move.id,
+          'picking_id': pickingId,
+          'product_id': move.productId,
+          'quantity': quantity,
+          ...values,
+        },
+      ],
+      'kwargs': {},
+    });
+  }
+
+  /// Removes a move line, as the trash icon on Odoo's Detailed Operations.
+  /// Throws on failure.
+  Future<void> deleteMoveLine(int lineId) async {
+    await CompanySessionManager.callKwWithCompany({
+      'model': 'stock.move.line',
+      'method': 'unlink',
+      'args': [
+        [lineId],
+      ],
+      'kwargs': {},
+    });
   }
 
   /// Loads return pickings (reverse transfers) linked to this picking

@@ -503,7 +503,10 @@ class _ConfigurationState extends State<Configuration> {
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) {
-        CustomSnackbar.showError(context, 'Failed to remove account: $e');
+        CustomSnackbar.showError(
+          context,
+          'Couldn\'t remove the account. Please try again.',
+        );
       }
     }
   }

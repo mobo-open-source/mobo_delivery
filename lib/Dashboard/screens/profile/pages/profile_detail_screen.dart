@@ -17,6 +17,7 @@ import 'dart:convert';
 import '../../../services/storage_service.dart';
 import '../../../services/encryption_service.dart';
 import '../../../../NavBars/MapBox/services/odoo_map_service.dart';
+import '../../../../shared/utils/odoo_error_message.dart';
 import '../../../infrastructure/profile_refresh_bus.dart';
 
 /// Profile detail/edit screen — self-contained, matches mobo_inv_app's UI exactly.
@@ -572,8 +573,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       setState(() => _pickedImageBase64 = base64Encode(bytes));
       await _saveImage();
     } catch (e) {
-      if (mounted)
-        CustomSnackbar.showError(context, 'Failed to pick image: $e');
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Couldn\'t open that image. Try another photo.',
+        );
+      }
     }
   }
 
@@ -632,8 +637,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           type: SnackbarType.success,
         );
     } catch (e) {
-      if (mounted)
-        CustomSnackbar.showError(context, 'Failed to update image: $e');
+      if (mounted) {
+        CustomSnackbar.showError(
+          context,
+          'Couldn\'t update your photo. ${briefOdooMessage(e)}',
+        );
+      }
     } finally {
       _isShowingLoadingDialog = false;
     }
@@ -1057,7 +1066,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       navigator.pop();
                       CustomSnackbar.showError(
                         context,
-                        'Failed to update address: $e',
+                        'Couldn\'t update your address. '
+                        '${briefOdooMessage(e)}',
                       );
                     }
                   }
@@ -1237,7 +1247,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         Navigator.of(context).pop();
         CustomSnackbar.showError(
           context,
-          'Failed to update related company: $e',
+          'Couldn\'t update the related company. '
+          '${briefOdooMessage(e)}',
         );
       }
     }
