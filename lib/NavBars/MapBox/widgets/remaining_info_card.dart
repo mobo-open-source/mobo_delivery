@@ -3,6 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../shared/utils/globals.dart';
+import 'open_in_maps_button.dart';
 
 /// Slide-up card shown during active navigation with remaining route info.
 ///
@@ -20,6 +21,10 @@ class RemainingInfoCard extends StatefulWidget {
   final Function(LatLng?) onFocusPressed;
   final VoidCallback onAddRoutePressed;
 
+  /// Lets the driver switch to Google Maps / Apple Maps mid-route.
+  final VoidCallback? onOpenInMapsPressed;
+  final bool isOpeningInMaps;
+
   const RemainingInfoCard({
     super.key,
     required this.remainingDistance,
@@ -28,6 +33,8 @@ class RemainingInfoCard extends StatefulWidget {
     this.isLoading = false,
     required this.onFocusPressed,
     required this.onAddRoutePressed,
+    this.onOpenInMapsPressed,
+    this.isOpeningInMaps = false,
   });
 
   @override
@@ -101,219 +108,239 @@ class _RemainingInfoCardState extends State<RemainingInfoCard> {
             ),
           ),
 
-          AnimatedCrossFade(
-            crossFadeState: _collapsed
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-            reverseDuration: const Duration(milliseconds: 300),
-            sizeCurve: Curves.easeInOutCubic,
-            firstCurve: Curves.easeInOut,
-            secondCurve: Curves.easeInOut,
-            secondChild: const SizedBox(width: double.infinity),
-            firstChild: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: isLoading
-                            ? Row(
-                                children: [
-                                  SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: accent,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'Calculating…',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                      color: secondary,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    remainingDuration.isEmpty
-                                        ? '--'
-                                        : remainingDuration,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color: primary,
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                                  Text(
-                                    remainingDistance.isEmpty
-                                        ? '--'
-                                        : remainingDistance,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: secondary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                      Text(
-                        'Remaining',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: secondary,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(
-                  height: 1,
-                  color: dividerColor,
-                  indent: 20,
-                  endIndent: 20,
-                ),
-
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 160),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    itemCount: remainingLegInfo.length,
-                    itemBuilder: (context, index) {
-                      final leg = remainingLegInfo[index];
-                      final type = leg['type'] as String? ?? 'stop';
-                      final isLast = index == remainingLegInfo.length - 1;
-
-                      Color dotColor;
-                      IconData dotIcon;
-                      switch (type) {
-                        case 'start':
-                          dotColor = const Color(0xFF4285F4);
-                          dotIcon = HugeIcons.strokeRoundedLocation03;
-                          break;
-                        case 'visited_stop':
-                          dotColor = Colors.green[600]!;
-                          dotIcon = HugeIcons.strokeRoundedCheckmarkCircle02;
-                          break;
-                        case 'destination':
-                          dotColor = accent;
-                          dotIcon = HugeIcons.strokeRoundedFlag02;
-                          break;
-                        default:
-                          dotColor = accent;
-                          dotIcon = HugeIcons.strokeRoundedCircle;
-                      }
-
-                      return IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              width: 32,
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      color: dotColor.withValues(alpha: 0.12),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      dotIcon,
-                                      color: dotColor,
-                                      size: 13,
-                                    ),
-                                  ),
-                                  if (!isLast)
-                                    Expanded(
-                                      child: Container(
-                                        width: 1.5,
-                                        color: dividerColor,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: 12,
-                                  top: 2,
-                                ),
-                                child: Row(
+          Flexible(
+            child: AnimatedCrossFade(
+              crossFadeState: _collapsed
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+              reverseDuration: const Duration(milliseconds: 300),
+              sizeCurve: Curves.easeInOutCubic,
+              firstCurve: Curves.easeInOut,
+              secondCurve: Curves.easeInOut,
+              secondChild: const SizedBox(width: double.infinity),
+              firstChild: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: isLoading
+                              ? Row(
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            leg['name'] as String? ?? '',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                              color: primary,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            '${leg['distance']}  ·  ${leg['duration']}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: secondary,
-                                            ),
-                                          ),
-                                        ],
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: accent,
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: Icon(
-                                        HugeIcons.strokeRoundedCenterFocus,
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Calculating…',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
                                         color: secondary,
-                                        size: 18,
                                       ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(
-                                        minWidth: 32,
-                                        minHeight: 32,
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      remainingDuration.isEmpty
+                                          ? '--'
+                                          : remainingDuration,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: primary,
+                                        letterSpacing: -0.5,
                                       ),
-                                      onPressed: () => onFocusPressed(
-                                        leg['latlng'] as LatLng?,
+                                    ),
+                                    Text(
+                                      remainingDistance.isEmpty
+                                          ? '--'
+                                          : remainingDistance,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: secondary,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      tooltip: 'Focus on ${leg['name']}',
                                     ),
                                   ],
                                 ),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (widget.onOpenInMapsPressed != null) ...[
+                              OpenInMapsButton(
+                                onPressed: widget.onOpenInMapsPressed,
+                                isBusy: widget.isOpeningInMaps,
+                              ),
+                              const SizedBox(height: 6),
+                            ],
+                            Text(
+                              'Remaining',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: secondary,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.3,
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Divider(
+                    height: 1,
+                    color: dividerColor,
+                    indent: 20,
+                    endIndent: 20,
+                  ),
+
+                  Flexible(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 160),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        itemCount: remainingLegInfo.length,
+                        itemBuilder: (context, index) {
+                          final leg = remainingLegInfo[index];
+                          final type = leg['type'] as String? ?? 'stop';
+                          final isLast = index == remainingLegInfo.length - 1;
+
+                          Color dotColor;
+                          IconData dotIcon;
+                          switch (type) {
+                            case 'start':
+                              dotColor = const Color(0xFF4285F4);
+                              dotIcon = HugeIcons.strokeRoundedLocation03;
+                              break;
+                            case 'visited_stop':
+                              dotColor = Colors.green[600]!;
+                              dotIcon =
+                                  HugeIcons.strokeRoundedCheckmarkCircle02;
+                              break;
+                            case 'destination':
+                              dotColor = accent;
+                              dotIcon = HugeIcons.strokeRoundedFlag02;
+                              break;
+                            default:
+                              dotColor = accent;
+                              dotIcon = HugeIcons.strokeRoundedCircle;
+                          }
+
+                          return IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: dotColor.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          dotIcon,
+                                          color: dotColor,
+                                          size: 13,
+                                        ),
+                                      ),
+                                      if (!isLast)
+                                        Expanded(
+                                          child: Container(
+                                            width: 1.5,
+                                            color: dividerColor,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 12,
+                                      top: 2,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                leg['name'] as String? ?? '',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: primary,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              Text(
+                                                '${leg['distance']}  ·  ${leg['duration']}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: secondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            HugeIcons.strokeRoundedCenterFocus,
+                                            color: secondary,
+                                            size: 18,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
+                                          onPressed: () => onFocusPressed(
+                                            leg['latlng'] as LatLng?,
+                                          ),
+                                          tooltip: 'Focus on ${leg['name']}',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 

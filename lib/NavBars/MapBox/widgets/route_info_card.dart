@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../shared/utils/globals.dart';
+import 'open_in_maps_button.dart';
 
 /// Route overview card shown before navigation starts.
 ///
@@ -18,6 +19,11 @@ class RouteInfoCard extends StatefulWidget {
   final VoidCallback? onStartPressed;
   final VoidCallback onAddStopPressed;
 
+  /// Hands the route to Google Maps / Apple Maps. Hidden while the route
+  /// has an error, since there is nothing valid to hand over.
+  final VoidCallback? onOpenInMapsPressed;
+  final bool isOpeningInMaps;
+
   /// Optional error message shown when the routing engine failed to
   /// compute a route (e.g. NO_ROUTE_FOUND). When non-null the card
   /// replaces the duration/legs area with a friendly error block.
@@ -30,6 +36,8 @@ class RouteInfoCard extends StatefulWidget {
     required this.legInfo,
     this.onStartPressed,
     required this.onAddStopPressed,
+    this.onOpenInMapsPressed,
+    this.isOpeningInMaps = false,
     this.routeError,
   });
 
@@ -104,180 +112,204 @@ class _RouteInfoCardState extends State<RouteInfoCard> {
             ),
           ),
 
-          AnimatedCrossFade(
-            crossFadeState: _collapsed
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-            reverseDuration: const Duration(milliseconds: 300),
-            sizeCurve: Curves.easeInOutCubic,
-            firstCurve: Curves.easeInOut,
-            secondCurve: Curves.easeInOut,
-            secondChild: const SizedBox(width: double.infinity),
-            firstChild: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (routeError != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
+          Flexible(
+            child: AnimatedCrossFade(
+              crossFadeState: _collapsed
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+              reverseDuration: const Duration(milliseconds: 300),
+              sizeCurve: Curves.easeInOutCubic,
+              firstCurve: Curves.easeInOut,
+              secondCurve: Curves.easeInOut,
+              secondChild: const SizedBox(width: double.infinity),
+              firstChild: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (routeError != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              HugeIcons.strokeRoundedAlert02,
+                              size: 22,
+                              color: Colors.orange[700],
+                            ),
                           ),
-                          child: Icon(
-                            HugeIcons.strokeRoundedAlert02,
-                            size: 22,
-                            color: Colors.orange[700],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Route unavailable',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: primary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                routeError,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  height: 1.35,
-                                  color: secondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          routeDuration,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: primary,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          routeDistance,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: secondary,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Divider(
-                    height: 1,
-                    color: dividerColor,
-                    indent: 20,
-                    endIndent: 20,
-                  ),
-
-                  if (legInfo.isNotEmpty)
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 260),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 6,
-                        ),
-                        itemCount: legInfo.length,
-                        separatorBuilder: (_, __) =>
-                            Divider(height: 1, color: dividerColor),
-                        itemBuilder: (context, i) {
-                          final leg = legInfo[i];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            child: Row(
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${i + 1}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: accent,
-                                      ),
-                                    ),
+                                Text(
+                                  'Route unavailable',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: primary,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        leg['end_address'] ?? '',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w400,
-                                          color: primary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${leg['distance']}  ·  ${leg['duration']}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: secondary,
-                                        ),
-                                      ),
-                                    ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  routeError,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    height: 1.35,
+                                    color: secondary,
                                   ),
-                                ),
-                                Icon(
-                                  HugeIcons.strokeRoundedArrowRight01,
-                                  color: isDark
-                                      ? Colors.white24
-                                      : Colors.grey[350],
-                                  size: 18,
                                 ),
                               ],
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ),
+                  ] else ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  routeDuration,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: primary,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    routeDistance,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: secondary,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (widget.onOpenInMapsPressed != null) ...[
+                            const SizedBox(width: 8),
+                            OpenInMapsButton(
+                              onPressed: widget.onOpenInMapsPressed,
+                              isBusy: widget.isOpeningInMaps,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(
+                      height: 1,
+                      color: dividerColor,
+                      indent: 20,
+                      endIndent: 20,
+                    ),
+
+                    if (legInfo.isNotEmpty)
+                      Flexible(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 260),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 6,
+                            ),
+                            itemCount: legInfo.length,
+                            separatorBuilder: (_, __) =>
+                                Divider(height: 1, color: dividerColor),
+                            itemBuilder: (context, i) {
+                              final leg = legInfo[i];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 9,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: accent.withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${i + 1}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            leg['end_address'] ?? '',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w400,
+                                              color: primary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${leg['distance']}  ·  ${leg['duration']}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: secondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      HugeIcons.strokeRoundedArrowRight01,
+                                      color: isDark
+                                          ? Colors.white24
+                                          : Colors.grey[350],
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
 
